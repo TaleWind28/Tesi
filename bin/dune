@@ -1,0 +1,4 @@
+(executable
+ (name main)
+  (ocamlopt_flags (:standard -w -27))
+ (libraries tesi_lib))
