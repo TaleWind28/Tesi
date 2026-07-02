@@ -1,13 +1,12 @@
-open Syntax
-open Abstract_domains
-open Interpeters
-
+(*
 (* --- Test --- *)
 let test_st : (string, Signs.t) Hashtbl.t = Hashtbl.create 10
 let () =
   Hashtbl.add test_st "x" Signs.Pos;
   Hashtbl.add test_st "y" Signs.Neg;
-  Hashtbl.add test_st "z" Signs.Zero
+  Hashtbl.add test_st "z" Signs.Zero;
+  Hashtbl.add test_st "w" Signs.PosZero;
+  Hashtbl.add test_st "k" Signs.NegZero
 
 let sign_to_string = function
   | Signs.SignTop    -> "Top (sconosciuto)"
@@ -15,21 +14,28 @@ let sign_to_string = function
   | Signs.Neg        -> "Negativo"
   | Signs.Zero       -> "Zero"
   | Signs.SignBottom -> "Bottom (errore/irraggiungibile)"
+  | Signs.PosZero -> "Positivo o Zero"
+  | Signs.NegZero -> "Negativo o Zero"
+  | Signs.NonZero -> "Diverso da Zero"
 
 let signtests =
   [ 
   "Somma Pos+Neg",          BinaryOperation (Var "x", Add, Var "y"); 
   "Moltiplicazione Pos*Zero", BinaryOperation (Var "x", Mul, Var "z"); 
   "Divisione per Zero",     BinaryOperation (Const 10, Div, Var "z");
-  "Input non deterministico", Random (1, 10);
+  "Input non deterministico", Random (-1, 10);
   "Negazione di Pos",       UnaryOperation (Negation, Var "x");
   "Pos + (-Neg) ",    BinaryOperation (Var "x", Add, UnaryOperation(Negation,Var "y"));
   "Pos - Neg ",    BinaryOperation (Var "x", Sub, Var "y");
   "Pos - Neg ",    BinaryOperation (Var "x", Sub, Var "x");
-  "10 - 20", BinaryOperation(Const 10, Sub,Const 20 )
+  "10 - 20", BinaryOperation(Const 10, Sub,Const 20 );
+  "NegZero + Neg", BinaryOperation(Var "k", Add, Var "y");
+  "Pos + Neg", BinaryOperation(Const 10, Add, Const (-20));
+  "PosZero + Pos", BinaryOperation(Var "k", Add, Var "y");
+  "NegZero + Pos", BinaryOperation(Var "w", Add, Var "y");
   ]
 
-let test_st_int : (string, Intervals.t) Hashtbl.t = Hashtbl.create 10
+let test_st_int : (string, Intervals.t) Hashtbl.t = Hashtbl.create 200
 let () =
   Hashtbl.add test_st_int "x" (Intervals.abstract_range 1 5);   (* [1,5]  *)
   Hashtbl.add test_st_int "y" (Intervals.abstract_range (-3) (-1)); (* [-3,-1] *)
@@ -57,8 +63,9 @@ let intervaltests =
   "Costante 42",               Const 42;
   "Div",          BinaryOperation (Const 0, Div, Var "z"); (* div per zero -> Bottom *)
   ]
-
+*)
 (*Run test*)
+(*
 let run_sign_tests () =
   Printf.printf "=== Inizio Test ===\n";
 
@@ -67,8 +74,8 @@ let run_sign_tests () =
     Printf.printf "%-30s -> %s\n" name (sign_to_string res)
   ) signtests;
   Printf.printf "=== Fine Test ===\n";;
-
-let () = run_sign_tests ()
+*)
+(*
 
 let run_interval_tests () =
   Printf.printf "=== Inizio Test ===\n";
@@ -81,3 +88,6 @@ let run_interval_tests () =
   Printf.printf "=== Fine Test ===\n";;
 
 let () = run_interval_tests ()
+*)
+
+let () = Test.run_signs_tests()

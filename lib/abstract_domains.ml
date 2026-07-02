@@ -16,7 +16,7 @@ end
 
 (* Dominio dei segni *)
 module Signs = struct
-  type t = SignTop | Pos |PosZero | Neg | NegZero | Zero | SignBottom
+  type t = SignTop | Pos |PosZero | Zero | NegZero | Neg | NonZero | SignBottom
   
   let top    = SignTop
   let bottom = SignBottom
@@ -24,12 +24,12 @@ module Signs = struct
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
     | x, y when x = y              -> x
-    | Neg,Pos | Pos,Neg | PosZero, NegZero | NegZero,PosZero | Pos,NegZero | NegZero,Pos | PosZero,Neg | Neg,PosZero | SignTop,_ | _,SignTop                            -> SignTop
     | Neg, Neg -> Neg
-    | Pos,Pos -> Pos
-    | PosZero,PosZero | Pos,PosZero | PosZero, Pos | Pos,Zero | Zero, Pos | PosZero, Zero  | Zero, PosZero -> PosZero
-    | NegZero,NegZero | NegZero,Neg | Neg,NegZero | Neg,Zero | Zero, Neg | NegZero, Zero  | Zero, NegZero -> NegZero
-    | Zero,Zero -> Zero
+    | Pos, Pos -> Pos
+    | NonZero, NonZero | NonZero,Pos | NonZero,Neg | Neg,NonZero | Pos,NonZero | Neg,Pos | Pos,Neg -> NonZero
+    | Zero, Pos | Pos,Zero | PosZero,Zero | Pos,PosZero  -> PosZero
+    | Zero, Neg | Neg, Zero | NegZero,Neg | Neg, NegZero -> NegZero
+    | _,_ -> SignTop
 
   let leq s1 s2 = match s1, s2 with
     | SignBottom, _                -> true
@@ -45,35 +45,27 @@ module Signs = struct
     if a > b then SignBottom
     else lub (abstract_int a) (abstract_int b)
 
-  (*| SignBottom,_ | _, SignBottom -> SignBottom
-  | Pos,Pos -> Pos
-  | Neg,Neg -> Neg
-  | Zero,Zero -> Zero
-  | Zero, Pos | Pos, Zero | PosZero,Pos | Pos,PosZero | Zero,PosZero | PosZero,Zero | PosZero,PosZero -> PosZero
-  | Zero, Neg | Neg, Zero | NegZero,Neg | Neg,NegZero | NegZero,Zero | Zero,NegZero| NegZero,NegZero-> NegZero
-  | _,_ -> SignTop *)
-  (*| Pos,Neg | Neg,Pos | Pos,NegZero | NegZero,Pos | PosZero,Neg | Neg,PosZero | NegZero,PosZero | PosZero,NegZero -> SignTop*)
-  
   let mul s1 s2 = match s1, s2 with
     | SignBottom, _ | _, SignBottom -> SignBottom
     | Zero, _       | _, Zero      -> Zero
-    | SignTop, _    | _, SignTop  -> SignTop
-    | Pos, Pos      | Neg, Neg     -> Pos
-    | NegZero, NegZero  | PosZero,PosZero | Neg,NegZero| NegZero,Neg | Pos,PosZero | PosZero,Pos -> PosZero
-    | NegZero, PosZero  | PosZero,NegZero | Pos,NegZero| NegZero,Pos | Neg,PosZero | PosZero,Neg-> NegZero
-    | Pos, Neg      | Neg, Pos     -> Neg
+    | Pos, Pos | Neg,Neg -> Pos
+    | Neg,Pos | Pos,Neg -> Neg
+    | PosZero, PosZero | NegZero, NegZero | PosZero, Pos |NegZero,Neg | Pos,PosZero |Neg,NegZero-> PosZero
+    | PosZero, NegZero | PosZero, Neg | NegZero,Pos | NegZero, PosZero | Neg, PosZero | Pos, NegZero-> NegZero
+    | NonZero,NonZero | NonZero,Pos | NonZero,Neg | Pos,NonZero | Neg,NonZero -> NonZero
+    | _,_ -> SignTop
 
   let sum s1 s2 = match s1, s2 with
     | SignBottom, _ | _, SignBottom  -> SignBottom
+    | Zero,Zero -> Zero
     | Zero, n       | n, Zero      -> n
-    | Pos, Pos                      -> Pos
-    | PosZero, PosZero | PosZero,Pos | Pos,PosZero  -> PosZero
-    | NegZero, NegZero | NegZero,Neg | Neg,NegZero  -> NegZero
-    | Neg, Neg                      -> Neg
-    | SignTop, _    | _, SignTop
-    | Pos, Neg      | Neg, Pos | PosZero,NegZero | NegZero,PosZero | Pos,NegZero | NegZero,Pos | Neg,PosZero | PosZero,Neg     -> SignTop
-    
-
+    | Pos, Pos | PosZero, Pos | Pos, PosZero -> Pos
+    | Neg, Neg | NegZero, Neg | Neg, NegZero -> Neg
+    | PosZero,PosZero  -> PosZero
+    | NegZero,NegZero -> NegZero
+    | _,_ -> SignTop
+  
+    (*Non del tutto corretta in quanto dovrebbe essere divisione intera*)
   let div s1 s2 = match s1, s2 with
     | _, Zero       | _, PosZero | _,NegZero                 -> SignBottom  (* divisione per zero *)
     | SignBottom, _ | _, SignBottom   -> SignBottom
@@ -82,6 +74,7 @@ module Signs = struct
     | NegZero, _ -> NegZero
     | Pos, Pos      | Neg, Neg       -> Pos
     | Pos, Neg      | Neg, Pos       -> Neg
+    | NonZero, _ | _, NonZero  -> NonZero
     | SignTop, _    | _, SignTop      -> SignTop
 
   let negate = function
@@ -89,7 +82,7 @@ module Signs = struct
     | PosZero -> NegZero
     | Neg        -> Pos
     | NegZero -> PosZero 
-    | x          -> x   (* Zero, SignTop, SignBottom invariati *)
+    | x          -> x   (* Zero, SignTop, SignBottom, NonZero invariati *)
 end
 
 (*Dominio degli Intervalli*)
