@@ -1,5 +1,5 @@
-open Abstract_domains
 open Syntax
+open Abstract_domains
 open Interpeters
 
 (* --- Test --- *)
@@ -60,17 +60,24 @@ let intervaltests =
 
 (*Run test*)
 let run_sign_tests () =
+  Printf.printf "=== Inizio Test ===\n";
+
   List.iter (fun (name, e) ->
     let res = SignInterp.eval e test_st in
     Printf.printf "%-30s -> %s\n" name (sign_to_string res)
-  ) signtests
+  ) signtests;
+  Printf.printf "=== Fine Test ===\n";;
 
 let () = run_sign_tests ()
 
 let run_interval_tests () =
+  Printf.printf "=== Inizio Test ===\n";
+
   List.iter (fun (name, e) ->
     let res = IntervalInterp.eval e test_st_int in
     Printf.printf "%-35s -> %s\n" name (interval_to_string res)
-  ) intervaltests
+  ) intervaltests;
+
+  Printf.printf "=== Fine Test ===\n";;
 
 let () = run_interval_tests ()

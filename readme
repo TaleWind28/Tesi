@@ -1,0 +1,4 @@
+per eseguire l'interprete:
+1)opam exec -- dune utop lib
+2)#use "bin\main.ml";;     
+3)ignore (run_sign_tests()) ;; 

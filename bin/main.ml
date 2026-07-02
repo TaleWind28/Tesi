@@ -7,7 +7,9 @@ let test_st : (string, Signs.t) Hashtbl.t = Hashtbl.create 10
 let () =
   Hashtbl.add test_st "x" Signs.Pos;
   Hashtbl.add test_st "y" Signs.Neg;
-  Hashtbl.add test_st "z" Signs.Zero
+  Hashtbl.add test_st "z" Signs.Zero;
+  Hashtbl.add test_st "w" Signs.PosZero;
+  Hashtbl.add test_st "k" Signs.NegZero
 
 let sign_to_string = function
   | Signs.SignTop    -> "Top (sconosciuto)"
@@ -15,18 +17,21 @@ let sign_to_string = function
   | Signs.Neg        -> "Negativo"
   | Signs.Zero       -> "Zero"
   | Signs.SignBottom -> "Bottom (errore/irraggiungibile)"
+  | Signs.PosZero -> "Positivo o Zero"
+  | Signs.NegZero -> "Negativo o Zero"
 
 let signtests =
   [ 
   "Somma Pos+Neg",          BinaryOperation (Var "x", Add, Var "y"); 
   "Moltiplicazione Pos*Zero", BinaryOperation (Var "x", Mul, Var "z"); 
   "Divisione per Zero",     BinaryOperation (Const 10, Div, Var "z");
-  "Input non deterministico", Random (1, 10);
+  "Input non deterministico", Random (-1, 10);
   "Negazione di Pos",       UnaryOperation (Negation, Var "x");
   "Pos + (-Neg) ",    BinaryOperation (Var "x", Add, UnaryOperation(Negation,Var "y"));
   "Pos - Neg ",    BinaryOperation (Var "x", Sub, Var "y");
   "Pos - Neg ",    BinaryOperation (Var "x", Sub, Var "x");
-  "10 - 20", BinaryOperation(Const 10, Sub,Const 20 )
+  "10 - 20", BinaryOperation(Const 10, Sub,Const 20 );
+  "NegZero + Neg", BinaryOperation(Var "k", Add, Var "y");
   ]
 
 let test_st_int : (string, Intervals.t) Hashtbl.t = Hashtbl.create 10
