@@ -4,6 +4,7 @@ let test_st_int : (string, Abstract_domains.Intervals.t) Hashtbl.t = Hashtbl.cre
 let () =
   Hashtbl.add test_st_int "x" (Abstract_domains.Intervals.abstract_range 1 5);   (* [1,5]  *)
   Hashtbl.add test_st_int "y" (Abstract_domains.Intervals.abstract_range (-3) (-1)); (* [-3,-1] *)
+  Hashtbl.add test_st_int "j" (Abstract_domains.Intervals.abstract_range (1) (3)); (* [-3,-1] *)
   Hashtbl.add test_st_int "z" (Abstract_domains.Intervals.abstract_int 0);         (* [0,0]  *)
   Hashtbl.add test_st_int "t" (Abstract_domains.Intervals.top);         (* [0,0]  *)
   Hashtbl.add test_st_int "h" (Abstract_domains.Intervals.Interval (Abstract_domains.Intervals.Int(5),Abstract_domains.Intervals.PosInf));;
@@ -33,6 +34,9 @@ let intervaltests =
   "Moltiplicazione [1,5]*[5,+inf]",         Syntax.BinaryOperation (Var "x", Mul, Var "h");
   "Moltiplicazione [1,5]*[-inf,+inf]",         Syntax.BinaryOperation (Var "x", Mul, Var "t");
   "Moltiplicazione [1,5]*[42,42]",         Syntax.BinaryOperation (Var "x", Mul, Const 42);
+  "Divisione [1,5]+[-3,-1]", Syntax.BinaryOperation(Var "x", Div, Var "y");
+  "Divisione [1,5]+[1,3]", Syntax.BinaryOperation(Var "x", Div, Var "j");
+  "Divisione [1,5]+[5,PosInf]", Syntax.BinaryOperation(Var "x", Div, Var "h");
 
   (*"Div",          Syntax.BinaryOperation (Const 0, Div, Var "z"); (* div per zero -> Bottom *) *)
   ]

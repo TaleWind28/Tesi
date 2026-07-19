@@ -5,6 +5,7 @@ module type DOMAIN = sig
   val bottom : t
   val lub    : t -> t -> t
   val leq    : t -> t -> bool
+  val glb    : t-> t -> t
 
   val abstract_int   : int -> t
   val abstract_range : int -> int -> t
@@ -36,6 +37,8 @@ module Signs = struct
     | SignBottom, _                -> true
     | _, SignTop                   -> true
     | x, y                        -> x = y
+
+  let glb s1 s2 = failwith "not implemented"
 
   let abstract_int n =
     if n > 0 then Pos
@@ -93,22 +96,6 @@ module Intervals = struct
   
   let bottom = Bottom
   let top = Interval (NegInf,PosInf)
-  
-  let leq  c1 c2 = match c1,c2 with
-    |Bottom,_ -> true
-    |_,Bottom -> false
-    |Interval (a,b), Interval(c,d)-> c<=a && d<= b
-
-  let lub c1 c2 = match c1,c2 with 
-    | Bottom,x | x,Bottom -> x
-    | Interval(a,b), Interval(c,d) -> Interval(min a c ,max b d )
-
-  (*Helper*)
-  let add_bound a b = match a,b with 
-    | PosInf,NegInf | NegInf,PosInf -> PosInf (*dovrebbe dare bottom*)
-    | PosInf,_ | _,PosInf -> PosInf
-    | NegInf,_ | _,NegInf -> NegInf
-    | Int a, Int b -> Int (a+b)
 
   let min_bound x y = match x,y with
   | _,NegInf | NegInf,_ -> NegInf
@@ -120,6 +107,31 @@ module Intervals = struct
   | NegInf,a | a,NegInf -> a
   | Int a, Int b -> Int( max a b)  
 
+  
+  let leq  c1 c2 = match c1,c2 with
+    |Bottom,_ -> true
+    |_,Bottom -> false
+    |Interval (a,b), Interval(c,d)-> c<=a && d<= b
+
+  let lub c1 c2 = match c1,c2 with 
+    | Bottom,x | x,Bottom -> x
+    | Interval(a,b), Interval(c,d) -> Interval(min_bound a c ,max_bound b d )
+
+  let glb c1 c2 = match c1,c2 with
+  | Bottom,_ | _,Bottom -> Bottom
+  | Interval(a,b) , Interval(c,d) -> 
+    let lo = max_bound a c in 
+    let hi = min_bound b d in 
+    if lo > hi then Bottom else Interval(lo, hi) 
+
+  (*Helper*)
+  let add_bound a b = match a,b with 
+    | PosInf,NegInf | NegInf,PosInf -> PosInf (*dovrebbe dare bottom*)
+    | PosInf,_ | _,PosInf -> PosInf
+    | NegInf,_ | _,NegInf -> NegInf
+    | Int a, Int b -> Int (a+b)
+
+  
   let mul_bound x y = match x,y with
   | Int x, Int y -> Int( x* y)
   | NegInf, NegInf | PosInf,PosInf -> PosInf
@@ -128,14 +140,23 @@ module Intervals = struct
   | Int x, PosInf | PosInf, Int x -> if x>= 0 then PosInf else NegInf
   | Int x, NegInf | NegInf, Int x -> if x>= 0 then NegInf else PosInf
   
-
-  
   let mul_helper a b c d = 
     let p1 = mul_bound a c in
     let p2 = mul_bound a d in
     let p3 = mul_bound b c in
     let p4 = mul_bound b d in 
+    
     Interval (min_bound (min_bound p1 p2) (min_bound p3 p4), max_bound (max_bound p1 p2) (max_bound p3 p4) )
+  
+
+  let div_bound x y = match x,y with
+  | Int 0,_ -> Int 0
+  | _,Int 0 -> PosInf
+  | _,PosInf | _,NegInf -> Int 0
+  | PosInf, Int b -> if b > 0 then PosInf else NegInf
+  | NegInf, Int b -> if b > 0 then NegInf else PosInf 
+  | Int a, Int b -> Int (a/b)
+
 
   let neg_bound = function
     | PosInf -> NegInf 
@@ -160,8 +181,20 @@ module Intervals = struct
     | Bottom,_ | _,Bottom -> Bottom
     | Interval(a,b),Interval(c,d) -> mul_helper a b c d
 
-  let div c1 c2 = failwith "not implemented"
-  
+  let rec div c1 c2 = 
+    let div_helper a b c d = 
+      let p1 = glb (Interval(c,d)) (Interval(Int 1,PosInf)) in 
+      let p2 = glb (Interval(c,d)) (Interval(NegInf,Int (-1))) in 
+      let p3 = Interval(a,b) in 
+      let r1 = div p3 p1 in 
+      let r2 = div p3 p2 in
+      lub r1 r2 in  
+    match c1,c2 with
+    | Bottom,_ | _,Bottom -> Bottom
+    | Interval(a,b), Interval(c,d) -> 
+      if c >= Int 1 then Interval(min_bound (div_bound a c) (div_bound a d), max_bound (div_bound b c) (div_bound b d))
+      else if d <= Int(-1) then  Interval(min_bound (div_bound b c) (div_bound b d), max_bound (div_bound a c) (div_bound a d))
+      else div_helper a b c d
 end
 
   
