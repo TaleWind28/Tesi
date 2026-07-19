@@ -109,7 +109,34 @@ module Intervals = struct
     | PosInf,_ | _,PosInf -> PosInf
     | NegInf,_ | _,NegInf -> NegInf
     | Int a, Int b -> Int (a+b)
+
+  let min_bound x y = match x,y with
+  | _,NegInf | NegInf,_ -> NegInf
+  | PosInf,a | a,PosInf -> a
+  | Int a, Int b -> Int( min a b)
+
+  let max_bound x y = match x,y with
+  | _,PosInf | PosInf,_ -> PosInf
+  | NegInf,a | a,NegInf -> a
+  | Int a, Int b -> Int( max a b)  
+
+  let mul_bound x y = match x,y with
+  | Int x, Int y -> Int( x* y)
+  | NegInf, NegInf | PosInf,PosInf -> PosInf
+  | NegInf,PosInf | PosInf,NegInf -> NegInf
+  | Int 0, _ | _, Int 0 -> Int 0
+  | Int x, PosInf | PosInf, Int x -> if x>= 0 then PosInf else NegInf
+  | Int x, NegInf | NegInf, Int x -> if x>= 0 then NegInf else PosInf
   
+
+  
+  let mul_helper a b c d = 
+    let p1 = mul_bound a c in
+    let p2 = mul_bound a d in
+    let p3 = mul_bound b c in
+    let p4 = mul_bound b d in 
+    Interval (min_bound (min_bound p1 p2) (min_bound p3 p4), max_bound (max_bound p1 p2) (max_bound p3 p4) )
+
   let neg_bound = function
     | PosInf -> NegInf 
     | NegInf -> PosInf
@@ -129,7 +156,10 @@ module Intervals = struct
     |Bottom -> Bottom
     | Interval(a,b) -> Interval(neg_bound b,neg_bound a)
 
-  let mul c1 c2 = failwith "not implemented"
+  let mul c1 c2 = match c1,c2 with
+    | Bottom,_ | _,Bottom -> Bottom
+    | Interval(a,b),Interval(c,d) -> mul_helper a b c d
+
   let div c1 c2 = failwith "not implemented"
   
 end

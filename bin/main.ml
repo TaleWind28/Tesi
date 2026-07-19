@@ -1,93 +1,53 @@
-(*
+
 (* --- Test --- *)
-let test_st : (string, Signs.t) Hashtbl.t = Hashtbl.create 10
+let test_st_int : (string, Abstract_domains.Intervals.t) Hashtbl.t = Hashtbl.create 200
 let () =
-  Hashtbl.add test_st "x" Signs.Pos;
-  Hashtbl.add test_st "y" Signs.Neg;
-  Hashtbl.add test_st "z" Signs.Zero;
-  Hashtbl.add test_st "w" Signs.PosZero;
-  Hashtbl.add test_st "k" Signs.NegZero
-
-let sign_to_string = function
-  | Signs.SignTop    -> "Top (sconosciuto)"
-  | Signs.Pos        -> "Positivo"
-  | Signs.Neg        -> "Negativo"
-  | Signs.Zero       -> "Zero"
-  | Signs.SignBottom -> "Bottom (errore/irraggiungibile)"
-  | Signs.PosZero -> "Positivo o Zero"
-  | Signs.NegZero -> "Negativo o Zero"
-  | Signs.NonZero -> "Diverso da Zero"
-
-let signtests =
-  [ 
-  "Somma Pos+Neg",          BinaryOperation (Var "x", Add, Var "y"); 
-  "Moltiplicazione Pos*Zero", BinaryOperation (Var "x", Mul, Var "z"); 
-  "Divisione per Zero",     BinaryOperation (Const 10, Div, Var "z");
-  "Input non deterministico", Random (-1, 10);
-  "Negazione di Pos",       UnaryOperation (Negation, Var "x");
-  "Pos + (-Neg) ",    BinaryOperation (Var "x", Add, UnaryOperation(Negation,Var "y"));
-  "Pos - Neg ",    BinaryOperation (Var "x", Sub, Var "y");
-  "Pos - Neg ",    BinaryOperation (Var "x", Sub, Var "x");
-  "10 - 20", BinaryOperation(Const 10, Sub,Const 20 );
-  "NegZero + Neg", BinaryOperation(Var "k", Add, Var "y");
-  "Pos + Neg", BinaryOperation(Const 10, Add, Const (-20));
-  "PosZero + Pos", BinaryOperation(Var "k", Add, Var "y");
-  "NegZero + Pos", BinaryOperation(Var "w", Add, Var "y");
-  ]
-
-let test_st_int : (string, Intervals.t) Hashtbl.t = Hashtbl.create 200
-let () =
-  Hashtbl.add test_st_int "x" (Intervals.abstract_range 1 5);   (* [1,5]  *)
-  Hashtbl.add test_st_int "y" (Intervals.abstract_range (-3) (-1)); (* [-3,-1] *)
-  Hashtbl.add test_st_int "z" (Intervals.abstract_int 0)         (* [0,0]  *)
+  Hashtbl.add test_st_int "x" (Abstract_domains.Intervals.abstract_range 1 5);   (* [1,5]  *)
+  Hashtbl.add test_st_int "y" (Abstract_domains.Intervals.abstract_range (-3) (-1)); (* [-3,-1] *)
+  Hashtbl.add test_st_int "z" (Abstract_domains.Intervals.abstract_int 0);         (* [0,0]  *)
+  Hashtbl.add test_st_int "t" (Abstract_domains.Intervals.top);         (* [0,0]  *)
+  Hashtbl.add test_st_int "h" (Abstract_domains.Intervals.Interval (Abstract_domains.Intervals.Int(5),Abstract_domains.Intervals.PosInf));;
 
 let interval_to_string = function
-  | Intervals.Bottom -> "Bottom (errore/irraggiungibile)"
-  | Intervals.Interval (a, b) ->
+  | Abstract_domains.Intervals.Bottom -> "Bottom (errore/irraggiungibile)"
+  | Abstract_domains.Intervals.Interval (a, b) ->
     let bound_to_string = function
-      | Intervals.Int n -> string_of_int n
-      | Intervals.PosInf -> "+inf"
-      | Intervals.NegInf -> "-inf"
+      | Abstract_domains.Intervals.Int n -> string_of_int n
+      | Abstract_domains.Intervals.PosInf -> "+inf"
+      | Abstract_domains.Intervals.NegInf -> "-inf"
     in
     Printf.sprintf "[%s, %s]" (bound_to_string a) (bound_to_string b)
 
 let intervaltests =
   [
-  "Somma [1,5]+[-3,-1]",       BinaryOperation (Var "x", Add, Var "y");
-  "Somma [1,5]+[0,0]",         BinaryOperation (Var "x", Add, Var "z");
-  "Sottrazione [1,5]-[-3,-1]", BinaryOperation (Var "x", Sub, Var "y");
-  "Sottrazione Const 42 -[-3,-1]", BinaryOperation (Const 42, Sub, Var "y");
-  "Negazione di [1,5]",        UnaryOperation (Negation, Var "x");
-  "Negazione di [-3,-1]",      UnaryOperation (Negation, Var "y");
-  "Input non deterministico",  Random (1, 10);
-  "Costante 42",               Const 42;
-  "Div",          BinaryOperation (Const 0, Div, Var "z"); (* div per zero -> Bottom *)
-  ]
-*)
-(*Run test*)
-(*
-let run_sign_tests () =
-  Printf.printf "=== Inizio Test ===\n";
+  "Somma [1,5]+[-3,-1]",       Syntax.BinaryOperation (Var "x", Add, Var "y");
+  "Somma [1,5]+[0,0]",         Syntax.BinaryOperation (Var "x", Add, Var "z");
+  "Sottrazione [1,5]-[-3,-1]", Syntax.BinaryOperation (Var "x", Sub, Var "y");
+  "Sottrazione Const 42 -[-3,-1]", Syntax.BinaryOperation (Const 42, Sub, Var "y");
+  "Negazione di [1,5]",        Syntax.UnaryOperation (Negation, Var "x");
+  "Negazione di [-3,-1]",      Syntax.UnaryOperation (Negation, Var "y");
+  "Input non deterministico",  Syntax.Random (1, 10);
+  "Costante 42",               Syntax.Const 42;
+  "Moltiplicazione [1,5]+[-3,-1]", Syntax.BinaryOperation(Var "x", Mul, Var "y");
+  "Moltiplicazione [1,5]*[0,0]",         Syntax.BinaryOperation (Var "x", Mul, Var "z");
+  "Moltiplicazione [1,5]*[5,+inf]",         Syntax.BinaryOperation (Var "x", Mul, Var "h");
+  "Moltiplicazione [1,5]*[-inf,+inf]",         Syntax.BinaryOperation (Var "x", Mul, Var "t");
+  "Moltiplicazione [1,5]*[42,42]",         Syntax.BinaryOperation (Var "x", Mul, Const 42);
 
-  List.iter (fun (name, e) ->
-    let res = SignInterp.eval e test_st in
-    Printf.printf "%-30s -> %s\n" name (sign_to_string res)
-  ) signtests;
-  Printf.printf "=== Fine Test ===\n";;
-*)
-(*
+  (*"Div",          Syntax.BinaryOperation (Const 0, Div, Var "z"); (* div per zero -> Bottom *) *)
+  ]
+
+(*Run test*)
 
 let run_interval_tests () =
   Printf.printf "=== Inizio Test ===\n";
 
   List.iter (fun (name, e) ->
-    let res = IntervalInterp.eval e test_st_int in
+    let res = Interpeters.IntervalInterp.eval e test_st_int in
     Printf.printf "%-35s -> %s\n" name (interval_to_string res)
   ) intervaltests;
 
   Printf.printf "=== Fine Test ===\n";;
 
 let () = run_interval_tests ()
-*)
 
-let () = Test.run_signs_tests()
