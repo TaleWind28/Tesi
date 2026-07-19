@@ -30,89 +30,91 @@ let sign_to_string = function
 (* ------------------------------------------------------------------ *)
 (* Test tramite espressioni: (descrizione, espressione)                *)
 (* ------------------------------------------------------------------ *)
-let signtests =
-  [
-    (* ---------- SUM ---------- *)
-    (*
-    "Sum: Pos + Pos",             BinaryOperation (Var "x", Add, Var "x");
-    "Sum: Pos + Neg",             BinaryOperation (Var "x", Add, Var "y");
-    "Sum: Neg + Neg",             BinaryOperation (Var "y", Add, Var "y");
-    "Sum: Pos + Zero",            BinaryOperation (Var "x", Add, Var "z");
-    "Sum: Zero + Zero",           BinaryOperation (Var "z", Add, Var "z");
-    "Sum: PosZero + PosZero",     BinaryOperation (Var "w", Add, Var "w");
-    "Sum: NegZero + NegZero",     BinaryOperation (Var "k", Add, Var "k");
-    "Sum: PosZero + NegZero",     BinaryOperation (Var "w", Add, Var "k");
-    "Sum: PosZero + Pos",         BinaryOperation (Var "w", Add, Var "x");
-    "Sum: PosZero + Neg",         BinaryOperation (Var "w", Add, Var "y");
-    "Sum: NegZero + Pos",         BinaryOperation (Var "k", Add, Var "x");
-    "Sum: NegZero + Neg",         BinaryOperation (Var "k", Add, Var "y");
-    "Sum: NonZero + Pos",         BinaryOperation (Var "n", Add, Var "x");
-    "Sum: NonZero + Zero",        BinaryOperation (Var "n", Add, Var "z");
-    "Sum: NonZero + NonZero",     BinaryOperation (Var "n", Add, Var "n");
-    "Sum: Top + Pos",             BinaryOperation (Var "t", Add, Var "x");
-    "Sum: Bottom + Pos",          BinaryOperation (Var "b", Add, Var "x");
-    "Sum: 10 + (-20)",            BinaryOperation (Const 10, Add, Const (-20));
-    *)
- 
-    (* ---------- SUB ---------- *)
-    (*
-    "Sub: Pos - Neg",             BinaryOperation (Var "x", Sub, Var "y");
-    "Sub: Pos - Pos (stessa var)",BinaryOperation (Var "x", Sub, Var "x");
-    "Sub: 10 - 20",               BinaryOperation (Const 10, Sub, Const 20);
-    "Sub: PosZero - PosZero",     BinaryOperation (Var "w", Sub, Var "w");
-    "Sub: Zero - Neg",            BinaryOperation (Var "z", Sub, Var "y");
-    *)
-    (*
-    (* ---------- MUL ---------- *)
-    "Mul: Pos * Pos",             BinaryOperation (Var "x", Mul, Var "x");
-    "Mul: Pos * Neg",             BinaryOperation (Var "x", Mul, Var "y");
-    "Mul: Neg * Neg",             BinaryOperation (Var "y", Mul, Var "y");
-    "Mul: Pos * Zero",            BinaryOperation (Var "x", Mul, Var "z");
-    "Mul: PosZero * Neg",         BinaryOperation (Var "w", Mul, Var "y");
-    "Mul: NegZero * Pos",         BinaryOperation (Var "k", Mul, Var "x");
-    "Mul: NonZero * Zero",        BinaryOperation (Var "n", Mul, Var "z");
-    "Mul: NonZero * NonZero",     BinaryOperation (Var "n", Mul, Var "n");
-    "Mul: Top * Zero",            BinaryOperation (Var "t", Mul, Var "z");
-    "Mul: Bottom * Pos",          BinaryOperation (Var "b", Mul, Var "x");
+let sumtests = [
+  (* ---------- SUM ---------- *)
+  "Sum: Pos + Pos",             BinaryOperation (Var "x", Add, Var "x");
+  "Sum: Pos + Neg",             BinaryOperation (Var "x", Add, Var "y");
+  "Sum: Neg + Neg",             BinaryOperation (Var "y", Add, Var "y");
+  "Sum: Pos + Zero",            BinaryOperation (Var "x", Add, Var "z");
+  "Sum: Zero + Zero",           BinaryOperation (Var "z", Add, Var "z");
+  "Sum: PosZero + PosZero",     BinaryOperation (Var "w", Add, Var "w");
+  "Sum: NegZero + NegZero",     BinaryOperation (Var "k", Add, Var "k");
+  "Sum: PosZero + NegZero",     BinaryOperation (Var "w", Add, Var "k");
+  "Sum: PosZero + Pos",         BinaryOperation (Var "w", Add, Var "x");
+  "Sum: PosZero + Neg",         BinaryOperation (Var "w", Add, Var "y");
+  "Sum: NegZero + Pos",         BinaryOperation (Var "k", Add, Var "x");
+  "Sum: NegZero + Neg",         BinaryOperation (Var "k", Add, Var "y");
+  "Sum: NonZero + Pos",         BinaryOperation (Var "n", Add, Var "x");
+  "Sum: NonZero + Zero",        BinaryOperation (Var "n", Add, Var "z");
+  "Sum: NonZero + NonZero",     BinaryOperation (Var "n", Add, Var "n");
+  "Sum: Top + Pos",             BinaryOperation (Var "t", Add, Var "x");
+  "Sum: Bottom + Pos",          BinaryOperation (Var "b", Add, Var "x");
+  "Sum: 10 + (-20)",            BinaryOperation (Const 10, Add, Const (-20));
+]
 
-    *)
-    (*
-    (* ---------- DIV ---------- *)
-    "Div: Pos / Pos",             BinaryOperation (Var "x", Div, Var "x");
-    "Div: Pos / Neg",             BinaryOperation (Var "x", Div, Var "y");
-    "Div: Neg / Neg",             BinaryOperation (Var "y", Div, Var "y");
-    "Div: Costante / Zero",       BinaryOperation (Const 10, Div, Var "z");
-    "Div: Pos / PosZero (rischio 0)", BinaryOperation (Var "x", Div, Var "w");
-    "Div: Pos / NegZero (rischio 0)", BinaryOperation (Var "x", Div, Var "k");
-    "Div: Pos / NonZero",         BinaryOperation (Var "x", Div, Var "n");
-    "Div: Zero / Pos",            BinaryOperation (Var "z", Div, Var "x");
-    "Div: Zero / Neg",            BinaryOperation (Var "z", Div, Var "y");
-    "Div: Top / Pos",             BinaryOperation (Var "t", Div, Var "x");
-    *)
+let subtest = [
+  (* ---------- SUB ---------- *)
+  "Sub: Pos - Neg",             BinaryOperation (Var "x", Sub, Var "y");
+  "Sub: Pos - Pos (stessa var)",BinaryOperation (Var "x", Sub, Var "x");
+  "Sub: 10 - 20",               BinaryOperation (Const 10, Sub, Const 20);
+  "Sub: PosZero - PosZero",     BinaryOperation (Var "w", Sub, Var "w");
+  "Sub: Zero - Neg",            BinaryOperation (Var "z", Sub, Var "y");
+]
 
-    (*
-    (* ---------- NEGATE ---------- *)
-    "Negate: Pos",                UnaryOperation (Negation, Var "x");
-    "Negate: Neg",                UnaryOperation (Negation, Var "y");
-    "Negate: Zero",               UnaryOperation (Negation, Var "z");
-    "Negate: PosZero",            UnaryOperation (Negation, Var "w");
-    "Negate: NegZero",            UnaryOperation (Negation, Var "k");
-    "Negate: NonZero",            UnaryOperation (Negation, Var "n");
-    "Negate: Top",                UnaryOperation (Negation, Var "t");
-    "Negate: Bottom",             UnaryOperation (Negation, Var "b");
-    "Doppia negazione: --Pos",    UnaryOperation (Negation, UnaryOperation (Negation, Var "x"));
-    "Pos + (-Neg)",               BinaryOperation (Var "x", Add, UnaryOperation (Negation, Var "y"));
-    *)
-    
-    (* ---------- RANDOM ---------- *)
-    "Random(-1,10)",              Random (-1, 10);
-    "Random(1,10)",               Random (1, 10);
-    "Random(-10,-1)",             Random (-10, -1);
-    "Random(0,10)",               Random (0, 10);
-    "Random(-10,0)",              Random (-10, 0);
-    "Random(0,0)",                Random (0, 0);
-    
-  ]
+let multest = [
+(* ---------- MUL ---------- *)
+  "Mul: Pos * Pos",             BinaryOperation (Var "x", Mul, Var "x");
+  "Mul: Pos * Neg",             BinaryOperation (Var "x", Mul, Var "y");
+  "Mul: Neg * Neg",             BinaryOperation (Var "y", Mul, Var "y");
+  "Mul: Pos * Zero",            BinaryOperation (Var "x", Mul, Var "z");
+  "Mul: PosZero * Neg",         BinaryOperation (Var "w", Mul, Var "y");
+  "Mul: NegZero * Pos",         BinaryOperation (Var "k", Mul, Var "x");
+  "Mul: NonZero * Zero",        BinaryOperation (Var "n", Mul, Var "z");
+  "Mul: NonZero * NonZero",     BinaryOperation (Var "n", Mul, Var "n");
+  "Mul: Top * Zero",            BinaryOperation (Var "t", Mul, Var "z");
+  "Mul: Bottom * Pos",          BinaryOperation (Var "b", Mul, Var "x");
+
+]
+
+let divtest = [
+(* ---------- DIV ---------- *)
+  "Div: Pos / Pos",             BinaryOperation (Var "x", Div, Var "x");
+  "Div: Pos / Neg",             BinaryOperation (Var "x", Div, Var "y");
+  "Div: Neg / Neg",             BinaryOperation (Var "y", Div, Var "y");
+  "Div: Costante / Zero",       BinaryOperation (Const 10, Div, Var "z");
+  "Div: Pos / PosZero (rischio 0)", BinaryOperation (Var "x", Div, Var "w");
+  "Div: Pos / NegZero (rischio 0)", BinaryOperation (Var "x", Div, Var "k");
+  "Div: Pos / NonZero",         BinaryOperation (Var "x", Div, Var "n");
+  "Div: Zero / Pos",            BinaryOperation (Var "z", Div, Var "x");
+  "Div: Zero / Neg",            BinaryOperation (Var "z", Div, Var "y");
+  "Div: Top / Pos",             BinaryOperation (Var "t", Div, Var "x");
+
+]
+
+let negatetest = [
+  (* ---------- NEGATE ---------- *)
+  "Negate: Pos",                UnaryOperation (Negation, Var "x");
+  "Negate: Neg",                UnaryOperation (Negation, Var "y");
+  "Negate: Zero",               UnaryOperation (Negation, Var "z");
+  "Negate: PosZero",            UnaryOperation (Negation, Var "w");
+  "Negate: NegZero",            UnaryOperation (Negation, Var "k");
+  "Negate: NonZero",            UnaryOperation (Negation, Var "n");
+  "Negate: Top",                UnaryOperation (Negation, Var "t");
+  "Negate: Bottom",             UnaryOperation (Negation, Var "b");
+  "Doppia negazione: --Pos",    UnaryOperation (Negation, UnaryOperation (Negation, Var "x"));
+  "Pos + (-Neg)",               BinaryOperation (Var "x", Add, UnaryOperation (Negation, Var "y"));
+]
+
+let randomtest = [
+  "Random(-1,10)",              Random (-1, 10);
+  "Random(1,10)",               Random (1, 10);
+  "Random(-10,-1)",             Random (-10, -1);
+  "Random(0,10)",               Random (0, 10);
+  "Random(-10,0)",              Random (-10, 0);
+  "Random(0,0)",                Random (0, 0);
+]
+
+let signtests = sumtests @ subtest @ multest @ divtest @ negatetest @ randomtest
  
 (* ------------------------------------------------------------------ *)
 (* Runner: valuta ogni espressione con l'interprete astratto e stampa  *)
@@ -121,7 +123,7 @@ let signtests =
    effettivamente definito in interpeters.ml. Qui assumo una funzione
    tipo:  eval_expr : (string, Signs.t) Hashtbl.t -> expr -> Signs.t
    Se si chiama diversamente, cambia solo la riga con "eval_expr". *)
-let run_signs_tests () =
+let run_signs_tests tests =
   Printf.printf "===== TEST DOMINIO DEI SEGNI =====\n\n";
   List.iter
     (fun (name, e) ->
@@ -130,9 +132,9 @@ let run_signs_tests () =
         Printf.printf "[%-35s] -> %s\n" name (sign_to_string result)
       with e ->
         Printf.printf "[%-35s] -> ECCEZIONE: %s\n" name (Printexc.to_string e))
-    signtests;
+    tests;
   print_newline ()
- 
+
 (* ------------------------------------------------------------------ *)
 (* Test diretti su lub / leq (non passano dall'interprete)             *)
 (* ------------------------------------------------------------------ *)
@@ -170,5 +172,5 @@ let run_lub_leq_tests () =
   print_newline ()
  
 let run_all_tests () =
-  run_signs_tests ();
+  run_signs_tests (signtests);
   run_lub_leq_tests ()

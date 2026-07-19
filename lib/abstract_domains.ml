@@ -24,6 +24,7 @@ module Signs = struct
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
     | x, y when x = y              -> x
+
     | Neg, Neg -> Neg
     | Pos, Pos -> Pos
     | NonZero, NonZero | NonZero,Pos | NonZero,Neg | Neg,NonZero | Pos,NonZero | Neg,Pos | Pos,Neg -> NonZero
@@ -87,16 +88,20 @@ end
 
 (*Dominio degli Intervalli*)
 module Intervals = struct
-  type bound = Int of int | PosInf | NegInf
-  type t = 
-    |Interval of bound * bound
-    |Bottom
+  type bound = NegInf | Int of int | PosInf 
+  type t = Interval of bound * bound | Bottom
   
   let bottom = Bottom
   let top = Interval (NegInf,PosInf)
   
-  let lub  c1 c2 = failwith "not Implemented"
-  let leq c1 c2 = failwith "not Implemented"
+  let leq  c1 c2 = match c1,c2 with
+    |Bottom,_ -> true
+    |_,Bottom -> false
+    |Interval (a,b), Interval(c,d)-> c<=a && d<= b
+
+  let lub c1 c2 = match c1,c2 with 
+    | Bottom,x | x,Bottom -> x
+    | Interval(a,b), Interval(c,d) -> Interval(min a c ,max b d )
 
   (*Helper*)
   let add_bound a b = match a,b with 
@@ -126,6 +131,7 @@ module Intervals = struct
 
   let mul c1 c2 = failwith "not implemented"
   let div c1 c2 = failwith "not implemented"
+  
 end
 
   
