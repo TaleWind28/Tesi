@@ -2,4 +2,4 @@
  (name tesi_lib)
  (wrapped false)
  (flags (:standard -w -27))
- (modules abstract_domains interpeters syntax test))
+ (modules abstract_domains interpeters syntax test test_intervals test_signs))

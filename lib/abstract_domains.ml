@@ -33,12 +33,16 @@ module Signs = struct
     | Zero, Neg | Neg, Zero | NegZero,Neg | Neg, NegZero -> NegZero
     | _,_ -> SignTop
 
-  let leq s1 s2 = match s1, s2 with
-    | SignBottom, _                -> true
-    | _, SignTop                   -> true
-    | x, y                        -> x = y
+  let glb s1 s2 = match s1,s2 with
+  | _,SignBottom | SignBottom,_ -> SignBottom
+  | x,SignTop | SignTop,x -> x
+  | x,y when x = y -> x
+  | NonZero,Pos | NonZero,PosZero| Pos, PosZero | Pos,NonZero | PosZero,NonZero | PosZero,Pos-> Pos
+  | NonZero,Neg | NonZero,NegZero |Neg,NegZero | Neg,NonZero | NegZero,NonZero | NegZero,Neg -> Neg
+  | Zero,PosZero | Zero, NegZero | PosZero, NegZero | PosZero, Zero | NegZero, Zero | NegZero, PosZero-> Zero
+  | _,_ -> SignBottom
 
-  let glb s1 s2 = failwith "not implemented"
+  let leq s1 s2 = (glb s1 s2) = s1
 
   let abstract_int n =
     if n > 0 then Pos
@@ -47,7 +51,8 @@ module Signs = struct
 
   let abstract_range a b = 
     if a > b then SignBottom
-    else lub (abstract_int a) (abstract_int b)
+  else if a < 0 && b > 0 then SignTop
+  else lub (abstract_int a) (abstract_int b)
 
   let mul s1 s2 = match s1, s2 with
     | SignBottom, _ | _, SignBottom -> SignBottom
@@ -71,15 +76,18 @@ module Signs = struct
   
     (*Non del tutto corretta in quanto dovrebbe essere divisione intera*)
   let div s1 s2 = match s1, s2 with
-    | _, Zero       | _, PosZero | _,NegZero                 -> SignBottom  (* divisione per zero *)
-    | SignBottom, _ | _, SignBottom   -> SignBottom
-    | Zero, _                        -> Zero
-    | PosZero, _ -> PosZero
-    | NegZero, _ -> NegZero
-    | Pos, Pos      | Neg, Neg       -> Pos
-    | Pos, Neg      | Neg, Pos       -> Neg
-    | NonZero, _ | _, NonZero  -> NonZero
-    | SignTop, _    | _, SignTop      -> SignTop
+    (*Errore/Irraggiungibile*)
+    | SignBottom, _ | _, SignBottom -> SignBottom
+    (* divisione per zero *)
+    | _, Zero -> SignBottom
+    | Zero,(Pos | Neg | NonZero) -> Zero
+    (*Unici casi noti della tabella della divisione*)
+    | Pos, Pos    | Neg, Neg     -> PosZero
+    | Pos, Neg    | Neg, Pos     -> NegZero
+    | PosZero,Neg | NegZero, Pos -> NegZero
+    | PosZero,Pos | NegZero,Neg  -> PosZero
+    (*Casi con possibili divisioni per 0 oppure divisioni con NonZero*)
+    | _ -> SignTop
 
   let negate = function
     | Pos        -> Neg
@@ -105,13 +113,19 @@ module Intervals = struct
   let max_bound x y = match x,y with
   | _,PosInf | PosInf,_ -> PosInf
   | NegInf,a | a,NegInf -> a
-  | Int a, Int b -> Int( max a b)  
+  | Int a, Int b -> Int( max a b)
+
+  let compare_bound c1 c2 = match c1,c2 with
+  | x,y when x = y -> 0
+  | NegInf,_ | _,PosInf -> -1
+  | _,NegInf | PosInf,_ -> 1
+  | Int x, Int y -> compare x y
 
   
   let leq  c1 c2 = match c1,c2 with
     |Bottom,_ -> true
     |_,Bottom -> false
-    |Interval (a,b), Interval(c,d)-> c<=a && d<= b
+    |Interval (a,b), Interval(c,d)-> compare_bound a c >= 0 && compare_bound d b >= 0
 
   let lub c1 c2 = match c1,c2 with 
     | Bottom,x | x,Bottom -> x

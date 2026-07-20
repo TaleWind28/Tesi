@@ -119,10 +119,6 @@ let signtests = sumtests @ subtest @ multest @ divtest @ negatetest @ randomtest
 (* ------------------------------------------------------------------ *)
 (* Runner: valuta ogni espressione con l'interprete astratto e stampa  *)
 (* ------------------------------------------------------------------ *)
-(* NOTA: adatta il nome/la firma di questa funzione a quella che hai
-   effettivamente definito in interpeters.ml. Qui assumo una funzione
-   tipo:  eval_expr : (string, Signs.t) Hashtbl.t -> expr -> Signs.t
-   Se si chiama diversamente, cambia solo la riga con "eval_expr". *)
 let run_signs_tests tests =
   Printf.printf "===== TEST DOMINIO DEI SEGNI =====\n\n";
   List.iter
