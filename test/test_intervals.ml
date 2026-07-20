@@ -104,6 +104,7 @@ module TestIntervals = struct
     check_mul "[2, 3] * [4, 5]" (abstract_range 2 3) (abstract_range 4 5) (abstract_range 8 15);
     check_mul "[-2, 3] * [-4, 5]" (abstract_range (-2) 3) (abstract_range (-4) 5) (abstract_range (-12) 15);
     check_mul "[-5, -2] * [-4, -1]" (abstract_range (-5) (-2)) (abstract_range (-4) (-1)) (abstract_range 2 20);
+    check_mul "[-5, 2] * [4, 1]" (abstract_range (-5) (2)) (abstract_range (4) (1)) (abstract_range (-20) 8);
     check_mul "[0, 5] * Bottom" (abstract_range 0 5) Bottom Bottom;
     print_newline ();
 
