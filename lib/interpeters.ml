@@ -73,10 +73,11 @@ module AbsInterp (D : DOMAIN) = struct
             let env1  = eval_cmd c1 env in 
             eval_cmd c2 env1
         | Skip -> env
-        | Filter(cd,c) -> 
+        | Filter(cd,c) -> failwith "not implemented"
+            (*
             let env' = eval_cond cd env in 
             eval_cmd c env'
-
+            *)
     let eval (prog : cmd) : state =
         let initial_env = Hashtbl.create 10 in
         eval_cmd prog initial_env
