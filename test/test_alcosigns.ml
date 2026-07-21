@@ -40,7 +40,7 @@ let make_case (desc, expr, expected) =
     `Quick,
     fun () ->
       let st = make_test_state () in
-      let res = SignInterp.eval expr st in
+      let res = SignInterp.eval_exp expr st in
       Alcotest.(check sign_testable) desc expected res )
 
 (* ------------------------------------------------------------------ *)
