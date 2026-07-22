@@ -20,6 +20,7 @@ let sign_testable =
   let pp fmt s = Format.fprintf fmt "%s" (sign_to_string s) in
   Alcotest.testable pp ( = )
 
+(* Restituisce una Hashtbl "grezza"; chi la usa deve wrapparla in Env(...) *)
 let make_test_state () =
   let st = Hashtbl.create 10 in
   Hashtbl.add st "x" Pos;
@@ -38,22 +39,32 @@ let make_case (desc, expr, expected) =
     `Quick,
     fun () ->
       let st = make_test_state () in
-      let res = SignInterp.eval_exp expr st in
+      let res = SignInterp.eval_exp expr (Env st) in
       Alcotest.(check sign_testable) desc expected res )
 
-(* Verifica una o più variabili in uno stato finale *)
-let check_vars desc final_env expected_vars =
-  List.iter
-    (fun (var, expected) ->
-      let res =
-        match Hashtbl.find_opt final_env var with
-        | Some v -> v
-        | None ->
-            Alcotest.fail
-              (Printf.sprintf "Variabile '%s' non trovata nello stato finale" var)
-      in
-      Alcotest.(check sign_testable) (desc ^ " - " ^ var) expected res)
-    expected_vars
+(* Verifica una o più variabili in uno stato finale.
+   Fallisce esplicitamente se lo stato finale è BottomEnv,
+   perché in quel caso non esiste alcuna variabile da controllare. *)
+let check_vars desc (final_env : Interpeters.SignInterp.state) expected_vars =
+  match final_env with
+  | BottomEnv ->
+      Alcotest.fail
+        (Printf.sprintf
+           "%s: stato finale è BottomEnv, impossibile verificare variabili"
+           desc)
+  | Env tbl ->
+      List.iter
+        (fun (var, expected) ->
+          let res =
+            match Hashtbl.find_opt tbl var with
+            | Some v -> v
+            | None ->
+                Alcotest.fail
+                  (Printf.sprintf
+                     "Variabile '%s' non trovata nello stato finale" var)
+          in
+          Alcotest.(check sign_testable) (desc ^ " - " ^ var) expected res)
+        expected_vars
 
 (* Caso di test su un programma, partendo da stato VUOTO *)
 let make_prog_case (desc, prog, expected_vars) =
@@ -67,7 +78,7 @@ let make_prog_case_with_env (desc, prog, expected_vars) =
     `Quick,
     fun () ->
       let st = make_test_state () in
-      check_vars desc (SignInterp.eval_cmd prog st) expected_vars )
+      check_vars desc (SignInterp.eval_cmd prog (Env st)) expected_vars )
 
 (* ------------------------------------------------------------------ *)
 (* 2. Test sulle espressioni (eval_exp)                               *)
@@ -219,15 +230,23 @@ let skiptests =
       `Quick,
       fun () ->
         let final_env = SignInterp.eval Skip in
-        Alcotest.(check int) "stato vuoto" 0 (Hashtbl.length final_env) );
+        match final_env with
+        | Env tbl ->
+            Alcotest.(check int) "stato vuoto" 0 (Hashtbl.length tbl)
+        | BottomEnv ->
+            Alcotest.fail "Skip: stato inaspettatamente BottomEnv" );
 
     ( "Skip in mezzo a una sequenza non altera i valori",
       `Quick,
       fun () ->
-        let final_env = make_test_state () in
+        let st = make_test_state () in
         let prog = Sequence (Assign ("x", Const 42), Skip) in
-        let res = SignInterp.eval_cmd prog final_env in
-        Alcotest.(check sign_testable) "x resta Pos" Pos (Hashtbl.find res "x") );
+        let res = SignInterp.eval_cmd prog (Env st) in
+        match res with
+        | Env tbl ->
+            Alcotest.(check sign_testable) "x resta Pos" Pos (Hashtbl.find tbl "x")
+        | BottomEnv ->
+            Alcotest.fail "Skip: stato inaspettatamente BottomEnv" );
   ]
 
 let envtests = List.map make_prog_case_with_env [
@@ -250,6 +269,24 @@ let envtests = List.map make_prog_case_with_env [
    [ ("z", SignTop) ]);
 ]
 
+(* Test dedicato per il caso BottomEnv: qui non ha senso controllare
+   variabili singole, perché l'intero stato collassa a BottomEnv. *)
+let condtest =
+  [ ( "Filter(false); x=10 -> stato finale BottomEnv",
+      `Quick,
+      fun () ->
+        let st = make_test_state () in
+        let prog =
+          Sequence (Filter (Boolean false), Assign ("x", Const 10))
+        in
+        let res = SignInterp.eval_cmd prog (Env st) in
+        match res with
+        | BottomEnv -> ()
+        | Env _ ->
+            Alcotest.fail
+              "Test Prog: atteso BottomEnv, ottenuto Env" )
+  ]
+
 (* ------------------------------------------------------------------ *)
 (* 4. Esportazione unica di tutti i gruppi                            *)
 (* ------------------------------------------------------------------ *)
@@ -266,4 +303,5 @@ let tests = [
   "Overwrite", overwritetests;
   "Skip", skiptests;
   "Stato precompilato", envtests;
+  "Test Prog", condtest
 ]

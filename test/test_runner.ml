@@ -13,5 +13,5 @@ let () =
     "Signs - Overwrite", List.assoc "Overwrite" Test_alcosigns.tests;
     "Signs - Skip", List.assoc "Skip" Test_alcosigns.tests;
     "Signs - Stato precompilato", List.assoc "Stato precompilato" Test_alcosigns.tests;
-
-  ] @ Test_alcointervals.tests)
+    "Signs - Test Prog", List.assoc "Test Prog" Test_alcosigns.tests;
+  ])
