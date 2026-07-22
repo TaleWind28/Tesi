@@ -51,7 +51,10 @@ module AbsInterp (D : DOMAIN) = struct
     let rec eval_cond (cond : cond) (env : state) :  state = 
         match cond with
         | Boolean true -> env
-        | Boolean false -> failwith "not implemented"
+        | Boolean false -> 
+            let env' = Hashtbl.copy env in
+            Hashtbl.iter (fun key _ -> Hashtbl.replace env' key D.bottom) env;
+            env'
         | Not cd -> 
             eval_cond (negate_cond cd) env
         | And (cd1,cd2) -> 
@@ -72,12 +75,11 @@ module AbsInterp (D : DOMAIN) = struct
         | Sequence(c1,c2) -> 
             let env1  = eval_cmd c1 env in 
             eval_cmd c2 env1
+
+        | Filter(cd) -> eval_cond cd env 
+        
         | Skip -> env
-        | Filter(cd,c) -> failwith "not implemented"
-            (*
-            let env' = eval_cond cd env in 
-            eval_cmd c env'
-            *)
+    
     let eval (prog : cmd) : state =
         let initial_env = Hashtbl.create 10 in
         eval_cmd prog initial_env
