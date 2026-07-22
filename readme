@@ -1,7 +1,7 @@
 per eseguire l'interprete:
 1)opam exec -- dune utop lib
 2)#use "bin/main.ml";;     
-3)ignore (run_sign_tests()) ;; 
+3)ignore (run_sign_tests()) ;;
 In alternativa per provare solo i test:
 opam exec -- dune runtest -f -w //esegue i test anche se cachati mentre -w li riesegue appena cambia un file
 pkill -9 dune //ammazza tutti i processi rimasti vivi
