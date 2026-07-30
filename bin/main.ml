@@ -2,21 +2,19 @@ open Syntax
 open Interpeters
 open Abstract_domains.Signs
 
-let test_prog =  Sequence(
+let test_prog =
+  Sequence(
     Sequence(
-      Assign ("x", Const(0)),Assign("y", Const (-9))
+      Assign ("x", Const(0)), Assign("y", Const (-9))
     ),
     Sequence(
-      Assign("z",BinaryOperation(Var "x", Add, Var "y")),
+      Assign("z", BinaryOperation(Var "x", Add, Var "y")),
       Sequence(
-        Filter(Or(Boolean true,Boolean false)),
-        Assign("z",BinaryOperation(Var "x", Add, Var "y"))
+        Filter(Comparison(Var "x",Equals,Var "y")),
+        Assign("z", BinaryOperation(Var "x", Add, Var "y"))
       )
     )
   )
-
-(* Salva il risultato in una variabile di tipo state *)
-let risultato : SignInterp.state = SignInterp.eval test_prog
 
 let string_of_sign v =
   match v with
@@ -28,9 +26,13 @@ let string_of_sign v =
   | NonZero -> "!=0"
   | SignTop -> "T (Top)"
   | SignBottom -> "_|_ (Bottom)"
-(*
+
 let () =
-  Hashtbl.iter (fun var v ->
-    Printf.printf "%s : %s\n" var (string_of_sign v)
-  ) risultato
-   *)
+  let risultato : SignInterp.state = SignInterp.eval test_prog in
+  match risultato with
+  | SignInterp.BottomEnv ->
+      print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
+  | SignInterp.Env tbl ->
+      Hashtbl.iter (fun var v ->
+        Printf.printf "%s : %s\n" var (string_of_sign v)
+      ) tbl

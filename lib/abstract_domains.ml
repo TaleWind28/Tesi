@@ -6,6 +6,7 @@ module type DOMAIN = sig
   val lub    : t -> t -> t
   val leq    : t -> t -> bool
   val glb    : t-> t -> t
+  val compare_type : t -> t -> int
 
   val abstract_int   : int -> t
   val abstract_range : int -> int -> t
@@ -22,6 +23,8 @@ module Signs = struct
   let top    = SignTop
   let bottom = SignBottom
 
+  let compare_type x y = failwith "not implemented"
+  
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
     | x, y when x = y              -> x
@@ -104,7 +107,7 @@ module Intervals = struct
   
   let bottom = Bottom
   let top = Interval (NegInf,PosInf)
-
+  
   let min_bound x y = match x,y with
   | _,NegInf | NegInf,_ -> NegInf
   | PosInf,a | a,PosInf -> a
@@ -121,6 +124,7 @@ module Intervals = struct
   | _,NegInf | PosInf,_ -> 1
   | Int x, Int y -> compare x y
 
+  let compare_type x y =  failwith "not implemented"
   
   let leq  c1 c2 = match c1,c2 with
     |Bottom,_ -> true

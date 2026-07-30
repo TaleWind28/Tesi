@@ -5,10 +5,24 @@ open Syntax
 module AbsInterp (D : DOMAIN) = struct
 
     type state =
-        | Env of (string, D.t) Hashtbl.t
-        | BottomEnv 
+    | Env of (string, D.t) Hashtbl.t
+    | BottomEnv 
 
-    let lub_env e1 e2 : state = failwith "not implemented"
+    let lub_env e1 e2 : state = match e1,e2 with 
+    | BottomEnv, e | e, BottomEnv -> e
+    | Env t1, Env t2 -> 
+        let result = Hashtbl.create (Hashtbl.length t1 + Hashtbl.length t2) in
+        Hashtbl.iter(
+        fun var v1 -> 
+            match Hashtbl.find_opt t2 var with 
+                | Some v2 -> Hashtbl.replace result var (D.lub v1 v2)
+                | None -> Hashtbl.replace result var v1
+        )
+        t1;
+
+        Hashtbl.iter(fun var v2 -> if not (Hashtbl.mem result var) then Hashtbl.replace result var v2)
+        t2;
+        Env(result)
 
     let negate_comp comp = match comp with
     | Bigger -> Smaller
@@ -68,7 +82,16 @@ module AbsInterp (D : DOMAIN) = struct
                 let env1 = eval_cond cd1 (Env(Hashtbl.copy env)) in
                 let env2 = eval_cond cd2 (Env(Hashtbl.copy env)) in
                 lub_env env1 env2
-            | Comparison (e1,comp,e2) -> failwith "not implemented"
+            | Comparison (e1,comp,e2) -> 
+                let val1 = eval_exp e1 (Env(env)) in 
+                let val2 = eval_exp e2 (Env(env)) in 
+                match comp with
+                | Equals -> eval_cond (Boolean((D.compare_type val1 val2) == 0)) (Env(env))
+                | Bigger -> eval_cond (Boolean((D.compare_type val1 val2) == 1)) (Env(env))
+                | BiggerEquals -> eval_cond(Or(Comparison(e1,Bigger,e2),Comparison(e1,Equals,e2))) (Env(env))
+                | Smaller -> eval_cond (Not(Comparison(e1,Bigger,e2))) (Env(env))
+                | SmallerEquals -> eval_cond(Or(Comparison(e1,Smaller,e2),Comparison(e1,Equals,e2))) (Env(env))
+                | NotEquals -> eval_cond (Not(Comparison(e1,Equals,e2))) (Env(env))
 
     let rec eval_cmd (command : cmd) (env : state) : state =
          match env with 
