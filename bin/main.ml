@@ -10,12 +10,12 @@ let test_prog =
     Sequence(
       Assign("z", BinaryOperation(Var "x", Add, Var "y")),
       Sequence(
-        Filter(Comparison(Var "x",Equals,Var "y")),
+        Filter(Comparison(Var "x",Smaller,Var "y")),
         Assign("z", BinaryOperation(Var "x", Add, Var "y"))
       )
     )
   )
-
+  
 let string_of_sign v =
   match v with
   | Pos -> "+"

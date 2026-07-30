@@ -23,8 +23,30 @@ module Signs = struct
   let top    = SignTop
   let bottom = SignBottom
 
-  let compare_type x y = failwith "not implemented"
-  
+  let compare_type x y = match x,y with 
+    | SignTop, _ -> 1
+    | _,SignTop -> -1
+    | SignBottom,_ -> -1
+    | _,SignBottom -> 1
+    | x,y when x = y -> 0
+    | NonZero,_ -> 2
+    | _,NonZero -> 2
+    | PosZero,Pos -> 2
+    | PosZero,NegZero -> 2
+    | PosZero,_ -> 1
+    | Pos,PosZero -> 2
+    | NegZero, PosZero -> 2
+    | _,PosZero -> -1
+    | Pos,_ -> 1
+    | _,Pos -> -1
+    | Zero,NegZero | NegZero,Zero -> 2
+    | Zero,_ -> 1
+    | _,Zero -> -1
+    | NegZero,Neg -> 2
+    | Neg,NegZero -> 2
+    | NegZero, NegZero -> 0
+    | Neg,Neg -> 0
+
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
     | x, y when x = y              -> x
@@ -107,7 +129,7 @@ module Intervals = struct
   
   let bottom = Bottom
   let top = Interval (NegInf,PosInf)
-  
+
   let min_bound x y = match x,y with
   | _,NegInf | NegInf,_ -> NegInf
   | PosInf,a | a,PosInf -> a
@@ -124,13 +146,18 @@ module Intervals = struct
   | _,NegInf | PosInf,_ -> 1
   | Int x, Int y -> compare x y
 
-  let compare_type x y =  failwith "not implemented"
+
   
   let leq  c1 c2 = match c1,c2 with
     |Bottom,_ -> true
     |_,Bottom -> false
     |Interval (a,b), Interval(c,d)-> compare_bound a c >= 0 && compare_bound d b >= 0
 
+  let compare_type x y =  match x,y with
+    | Interval(a,b),Interval(c,d) -> if compare_bound a c >= 0 && compare_bound d b >= 0 then 1 else -1 
+    | Bottom,_ -> -1
+    | _,Bottom -> 1
+    
   let lub c1 c2 = match c1,c2 with 
     | Bottom,x | x,Bottom -> x
     | Interval(a,b), Interval(c,d) -> Interval(min_bound a c ,max_bound b d )
