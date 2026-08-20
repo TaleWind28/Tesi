@@ -288,6 +288,192 @@ let condtest =
   ]
 
 (* ------------------------------------------------------------------ *)
+(* 3bis. Test dedicati a Filter / eval_cond                           *)
+(* ------------------------------------------------------------------ *)
+
+(* Helper: si aspetta BottomEnv da un programma con stato precompilato *)
+let expect_bottom_with_env desc prog =
+  ( desc,
+    `Quick,
+    fun () ->
+      let st = make_test_state () in
+      let res = SignInterp.eval_cmd prog (Env st) in
+      match res with
+      | BottomEnv -> ()
+      | Env _ ->
+          Alcotest.fail
+            (Printf.sprintf "%s: atteso BottomEnv, ottenuto Env" desc) )
+
+(* --- Casi certi: il confronto ha esito deciso senza ambiguità --- *)
+let filter_certain_tests = List.map make_prog_case_with_env [
+  ("Filter certo vero: x > y (Pos > Neg)",
+   Filter (Comparison (Var "x", Bigger, Var "y")),
+   [ ("x", Pos); ("y", Neg) ]);
+
+  ("Filter certo vero: y < x (Neg < Pos)",
+   Filter (Comparison (Var "y", Smaller, Var "x")),
+   [ ("x", Pos); ("y", Neg) ]);
+
+  ("Filter certo vero: z = z (Zero = Zero, stessa var)",
+   Filter (Comparison (Var "z", Equals, Var "z")),
+   [ ("z", Zero) ]);
+
+  ("Filter certo vero: x != y (Pos disgiunto da Neg)",
+   Filter (Comparison (Var "x", NotEquals, Var "y")),
+   [ ("x", Pos); ("y", Neg) ]);
+]
+
+let filter_certain_bottom_tests = [
+  expect_bottom_with_env
+    "Filter certo falso: y > x (Neg > Pos, impossibile)"
+    (Filter (Comparison (Var "y", Bigger, Var "x")));
+
+  expect_bottom_with_env
+    "Filter certo falso: x < y (Pos < Neg, impossibile)"
+    (Filter (Comparison (Var "x", Smaller, Var "y")));
+
+  expect_bottom_with_env
+    "Filter certo falso: x = y (Pos disgiunto da Neg)"
+    (Filter (Comparison (Var "x", Equals, Var "y")));
+
+  expect_bottom_with_env
+    "Filter certo falso: z != z (Zero != Zero, impossibile)"
+    (Filter (Comparison (Var "z", NotEquals, Var "z")));
+]
+
+(* --- Casi ambigui: i segni si sovrappongono, Filter non deve tagliare --- *)
+let filter_ambiguous_tests = List.map make_prog_case_with_env [
+  ("Filter ambiguo: x > w (Pos vs PosZero si sovrappongono) -> passa, non restringe",
+   Filter (Comparison (Var "x", Bigger, Var "w")),
+   [ ("x", Pos); ("w", PosZero) ]);
+
+  ("Filter ambiguo: x = w (Pos vs PosZero) -> passa",
+   Filter (Comparison (Var "x", Equals, Var "w")),
+   [ ("x", Pos); ("w", PosZero) ]);
+
+  ("Filter ambiguo: x > n (Pos vs NonZero) -> passa",
+   Filter (Comparison (Var "x", Bigger, Var "n")),
+   [ ("x", Pos); ("n", NonZero) ]);
+
+  ("Filter ambiguo: y < w (Neg vs PosZero, comunque si controlla) -> passa",
+   Filter (Comparison (Var "y", Smaller, Var "w")),
+   [ ("y", Neg); ("w", PosZero) ]);
+]
+
+(* --- Test di simmetria: stessa coppia ambigua, ordine invertito --- *)
+let filter_symmetry_tests = List.map make_prog_case_with_env [
+  ("Simmetria ambiguo A: x > w (Pos, PosZero)",
+   Filter (Comparison (Var "x", Bigger, Var "w")),
+   [ ("x", Pos); ("w", PosZero) ]);
+
+  ("Simmetria ambiguo B: w > x (PosZero, Pos) - deve comportarsi come sopra",
+   Filter (Comparison (Var "w", Bigger, Var "x")),
+   [ ("x", Pos); ("w", PosZero) ]);
+
+  ("Simmetria Equals A: x = w (Pos, PosZero)",
+   Filter (Comparison (Var "x", Equals, Var "w")),
+   [ ("x", Pos); ("w", PosZero) ]);
+
+  ("Simmetria Equals B: w = x (PosZero, Pos)",
+   Filter (Comparison (Var "w", Equals, Var "x")),
+   [ ("x", Pos); ("w", PosZero) ]);
+]
+
+(* --- Operatori derivati: BiggerEquals / SmallerEquals --- *)
+let filter_derived_ops_tests = List.map make_prog_case_with_env [
+  ("BiggerEquals certo vero: x >= z (Pos >= Zero)",
+   Filter (Comparison (Var "x", BiggerEquals, Var "z")),
+   [ ("x", Pos); ("z", Zero) ]);
+
+  ("SmallerEquals certo vero: z <= z (Zero <= Zero, caso limite)",
+   Filter (Comparison (Var "z", SmallerEquals, Var "z")),
+   [ ("z", Zero) ]);
+
+  ("BiggerEquals ambiguo: w >= x (PosZero >= Pos) -> passa",
+   Filter (Comparison (Var "w", BiggerEquals, Var "x")),
+   [ ("w", PosZero); ("x", Pos) ]);
+]
+
+let filter_derived_ops_bottom_tests = [
+  expect_bottom_with_env
+    "SmallerEquals certo falso: x <= y (Pos <= Neg, impossibile)"
+    (Filter (Comparison (Var "x", SmallerEquals, Var "y")));
+
+  expect_bottom_with_env
+    "BiggerEquals certo falso: y >= x (Neg >= Pos, impossibile)"
+    (Filter (Comparison (Var "y", BiggerEquals, Var "x")));
+]
+
+(* --- Composizione: And, Or, Not --- *)
+let filter_composition_tests = List.map make_prog_case_with_env [
+  ("And di due certi veri: x>y And y<x",
+   Filter (And (
+     Comparison (Var "x", Bigger, Var "y"),
+     Comparison (Var "y", Smaller, Var "x"))),
+   [ ("x", Pos); ("y", Neg) ]);
+
+  ("Or con un ramo impossibile e uno vero: passa comunque",
+   Filter (Or (
+     Comparison (Var "x", Smaller, Var "y"),   (* falso *)
+     Comparison (Var "y", Smaller, Var "x"))), (* vero *)
+   [ ("x", Pos); ("y", Neg) ]);
+
+  ("Not su un confronto certo falso: diventa vero, passa",
+   Filter (Not (Comparison (Var "x", Smaller, Var "y"))),
+   [ ("x", Pos); ("y", Neg) ]);
+
+  ("Or di due Boolean: false Or true -> passa",
+   Filter (Or (Boolean false, Boolean true)),
+   [ ("x", Pos) ]);
+]
+
+let filter_composition_bottom_tests = [
+  expect_bottom_with_env
+    "And con un ramo falso: x>y And x<y -> BottomEnv"
+    (Filter (And (
+       Comparison (Var "x", Bigger, Var "y"),
+       Comparison (Var "x", Smaller, Var "y"))));
+
+  expect_bottom_with_env
+    "Not su un confronto certo vero: diventa falso -> BottomEnv"
+    (Filter (Not (Comparison (Var "x", Bigger, Var "y"))));
+
+  expect_bottom_with_env
+    "Or di due Boolean false: false Or false -> BottomEnv"
+    (Filter (Or (Boolean false, Boolean false)));
+]
+
+(* --- Caso limite: confronto che coinvolge SignBottom --- *)
+let filter_bottom_value_tests = List.map make_prog_case_with_env [
+  ("Confronto b = b (SignBottom = SignBottom, stessa var) -> certo uguale, passa",
+   Filter (Comparison (Var "b", Equals, Var "b")),
+   [ ("b", SignBottom) ]);
+]
+
+(* --- Filter incatenato con Assign, per verificare propagazione --- *)
+let filter_chained_tests = List.map make_prog_case_with_env [
+  ("Filter ambiguo poi Assign: lo stato prosegue e z viene ricalcolata",
+   Sequence (
+     Filter (Comparison (Var "x", Bigger, Var "w")),  (* ambiguo, passa *)
+     Assign ("z", BinaryOperation (Var "x", Add, Var "y"))),
+   [ ("x", Pos); ("z", SignTop) ]);
+]
+
+let filter_chained_bottom_tests = [
+  expect_bottom_with_env
+    "Filter certo falso poi Assign: BottomEnv si propaga, Assign non ha effetto"
+    (Sequence (
+       Filter (Comparison (Var "y", Bigger, Var "x")), (* certo falso *)
+       Assign ("x", Const 999)));
+
+  expect_bottom_with_env
+    "Doppio Filter: prima passa (ambiguo), poi taglia (certo falso)"
+    (Sequence (
+       Filter (Comparison (Var "x", Bigger, Var "w")),  (* ambiguo, passa *)
+       Filter (Comparison (Var "y", Bigger, Var "x")))); (* certo falso *)
+]
+
+(* ------------------------------------------------------------------ *)
 (* 4. Esportazione unica di tutti i gruppi                            *)
 (* ------------------------------------------------------------------ *)
 
@@ -303,5 +489,13 @@ let tests = [
   "Overwrite", overwritetests;
   "Skip", skiptests;
   "Stato precompilato", envtests;
-  "Test Prog", condtest
+  "Test Prog", condtest;
+  "Filter - casi certi", filter_certain_tests;
+   (* @ filter_certain_bottom_tests; *)
+  "Filter - casi ambigui", filter_ambiguous_tests;
+  "Filter - simmetria", filter_symmetry_tests;
+  "Filter - operatori derivati", filter_derived_ops_tests @ filter_derived_ops_bottom_tests;
+  "Filter - composizione And/Or/Not", filter_composition_tests @ filter_composition_bottom_tests;
+  "Filter - valore Bottom", filter_bottom_value_tests;
+  "Filter - incatenato", filter_chained_tests @ filter_chained_bottom_tests;
 ]

@@ -14,4 +14,15 @@ let () =
     "Signs - Skip", List.assoc "Skip" Test_alcosigns.tests;
     "Signs - Stato precompilato", List.assoc "Stato precompilato" Test_alcosigns.tests;
     "Signs - Test Prog", List.assoc "Test Prog" Test_alcosigns.tests;
-  ] @ Test_alcointervals.tests)
+
+    "Sign - Filter - Certain", List.assoc "Filter - casi certi" Test_alcosigns.tests;
+    "Sign - Filter - Uncertain", List.assoc "Filter - casi ambigui" Test_alcosigns.tests;
+    "Sign - Filter - Simmetric", List.assoc "Filter - simmetria" Test_alcosigns.tests;
+    "Sign - Filter - Derived", List.assoc "Filter - operatori derivati" Test_alcosigns.tests;
+    "Sign - Filter - Composition", List.assoc "Filter - composizione And/Or/Not" Test_alcosigns.tests;
+    "Sign - Filter - Bottom", List.assoc "Filter - valore Bottom" Test_alcosigns.tests;
+   "Sign - Filter - Chaining", List.assoc "Filter - incatenato" Test_alcosigns.tests
+
+  ] 
+  (* @ Test_alcointervals.tests*)
+  )

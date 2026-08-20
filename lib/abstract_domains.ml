@@ -24,11 +24,12 @@ module Signs = struct
   let bottom = SignBottom
 
   let compare_type x y = match x,y with 
+    | x,y when x = y -> 0
     | SignTop, _ -> 1
     | _,SignTop -> -1
     | SignBottom,_ -> -1
     | _,SignBottom -> 1
-    | x,y when x = y -> 0
+
     | NonZero,_ -> 2
     | _,NonZero -> 2
     | PosZero,Pos -> 2
@@ -99,7 +100,7 @@ module Signs = struct
     | NegZero,NegZero -> NegZero
     | _,_ -> SignTop
   
-    (*Non del tutto corretta in quanto dovrebbe essere divisione intera*)
+  (*Non del tutto corretta in quanto dovrebbe essere divisione intera*)
   let div s1 s2 = match s1, s2 with
     (*Errore/Irraggiungibile*)
     | SignBottom, _ | _, SignBottom -> SignBottom
@@ -146,8 +147,6 @@ module Intervals = struct
   | _,NegInf | PosInf,_ -> 1
   | Int x, Int y -> compare x y
 
-
-  
   let leq  c1 c2 = match c1,c2 with
     |Bottom,_ -> true
     |_,Bottom -> false
