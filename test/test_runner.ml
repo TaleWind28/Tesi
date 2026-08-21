@@ -21,7 +21,7 @@ let () =
     "Sign - Filter - Derived", List.assoc "Filter - operatori derivati" Test_alcosigns.tests;
     "Sign - Filter - Composition", List.assoc "Filter - composizione And/Or/Not" Test_alcosigns.tests;
     "Sign - Filter - Bottom", List.assoc "Filter - valore Bottom" Test_alcosigns.tests;
-   "Sign - Filter - Chaining", List.assoc "Filter - incatenato" Test_alcosigns.tests
+    "Sign - Filter - Chaining", List.assoc "Filter - incatenato" Test_alcosigns.tests
 
   ] 
   (* @ Test_alcointervals.tests*)

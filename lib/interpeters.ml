@@ -98,7 +98,7 @@ module AbsInterp (D : DOMAIN) = struct
         |BottomEnv -> BottomEnv
         | Env env -> 
             match command with
-            | Assign( ide,exp) -> 
+            | Assign(ide,exp) -> 
                 let v =  eval_exp exp (Env(env)) in 
                 Hashtbl.replace env ide v;
                 Env(env)
@@ -107,9 +107,27 @@ module AbsInterp (D : DOMAIN) = struct
                 eval_cmd c2 env1
 
             | Filter(cd) -> eval_cond cd (Env(env)) 
-            
+
             | Skip -> Env(env)
-    
+
+            | If(cond,thencmd,elsecmd) -> 
+                let filteredState = eval_cmd (Filter(cond)) (Env(env)) in
+                (
+                    match filteredState with
+                    | Env(env') -> eval_cmd thencmd filteredState
+                    | BottomEnv -> eval_cmd elsecmd (Env(env))
+                )
+            | While(cond,cmd) -> 
+                let filteredState = eval_cmd (Filter(cond)) (Env(env)) in 
+                (
+                    match filteredState with
+                    | BottomEnv -> eval_cmd Skip (Env(env))
+                    | Env(env') -> 
+                        let iteratedState = eval_cmd cmd filteredState 
+                        in eval_cmd (While(cond,cmd)) (iteratedState)
+                )
+
+
     let eval (prog : cmd) : state =
         let initial_env = Env(Hashtbl.create 10) in
         eval_cmd prog initial_env
