@@ -21,7 +21,16 @@ let () =
     "Sign - Filter - Derived", List.assoc "Filter - operatori derivati" Test_alcosigns.tests;
     "Sign - Filter - Composition", List.assoc "Filter - composizione And/Or/Not" Test_alcosigns.tests;
     "Sign - Filter - Bottom", List.assoc "Filter - valore Bottom" Test_alcosigns.tests;
-    "Sign - Filter - Chaining", List.assoc "Filter - incatenato" Test_alcosigns.tests
+    "Sign - Filter - Chaining", List.assoc "Filter - incatenato" Test_alcosigns.tests;
+    (*Test Su IF*)
+    "Sign - IF - Ramo Then", List.assoc "IF - Ramo Then" Test_alcosigns.tests;
+    "Sign - IF - Ramo Else", List.assoc "IF - Ramo Else" Test_alcosigns.tests;
+    "Sign - IF - Ambiguità", List.assoc "IF - Ambiguità" Test_alcosigns.tests;
+    "Sign - IF - Assegnamento Parziale", List.assoc "IF - Assegnamento parziale" Test_alcosigns.tests;
+    "Sign - IF - Ambiente Indipendente", List.assoc "IF - Ambiente Indipendente" Test_alcosigns.tests;
+    "Sign - IF - Annidazioni", List.assoc "IF - Annidazioni" Test_alcosigns.tests;
+    "Sign - IF - Condizioni Composte", List.assoc "IF - Condizioni Composte" Test_alcosigns.tests;
+    "Sign - IF - Propagazione di BottomEnv", List.assoc "IF - Propagazione di BottomEnv" Test_alcosigns.tests
 
   ] 
   (* @ Test_alcointervals.tests*)

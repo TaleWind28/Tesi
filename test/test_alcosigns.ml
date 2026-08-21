@@ -473,6 +473,155 @@ let filter_chained_bottom_tests = [
        Filter (Comparison (Var "y", Bigger, Var "x")))); (* certo falso *)
 ]
 
+(* ============================================================
+   Test per l'If.
+
+   ASSUNZIONE: make_test_state () pre-popola l'ambiente con
+     x = Pos, y = Neg, z = Zero, w = PosZero, n = NonZero, b = SignBottom
+   (dedotto dall'uso coerente di queste variabili nei test di Filter
+   che avete già). Se non fosse così, basta aggiustare i valori attesi
+   nei singoli test: il ragionamento resta valido, cambia solo il numero.
+
+   PROMEMORIA SEMANTICO (perche' certi risultati sono quelli che sono):
+   in eval_cond, quando compare_type restituisce 2 ("ambiguo"), sia la
+   condizione che la sua negazione risultano vere. Quindi un If con
+   condizione ambigua NON scarta mai nessuno dei due rami: entrambi
+   vengono eseguiti e il risultato finale e' sempre il lub dei due.
+   Un If scarta un ramo solo quando compare_type e' "certo"
+   (cioe' diverso da 2 per quella coppia di valori).
+   ============================================================ *)
+
+(* --- Gruppo 1: condizione CERTA vera -> solo il ramo then conta --- *)
+let if_certain_then_tests = List.map make_prog_case_with_env [
+  ("If certo vero (x>y, Pos>Neg): solo then esegue, else e' Bottom e sparisce nel lub",
+   If (Comparison (Var "x", Bigger, Var "y"),
+       Assign ("k", Const 1),
+       Assign ("k", Const 999)),
+   [ ("k", Pos); ("x", Pos); ("y", Neg) ]);
+]
+
+(* --- Gruppo 2: condizione CERTA falsa -> solo il ramo else conta --- *)
+let if_certain_else_tests = List.map make_prog_case_with_env [
+  ("If certo falso (y>x, Neg>Pos): then e' Bottom, solo else conta",
+   If (Comparison (Var "y", Bigger, Var "x"),
+       Assign ("k", Const (-999)),
+       Assign ("k", Const 2)),
+   [ ("k", Pos) ]);
+
+  ("If su variabile SignBottom (b>0): then Bottom per compare_type=-1, else conta",
+   If (Comparison (Var "b", Bigger, Const 0),
+       Assign ("k", Const (-1)),
+       Assign ("k", Const 42)),
+   [ ("k", Pos) ]);
+]
+
+(* --- Gruppo 3: condizione AMBIGUA (w>x, PosZero vs Pos) -> entrambi i
+   rami eseguono davvero, il risultato e' il lub dei due --- *)
+let if_ambiguous_both_branches_tests = List.map make_prog_case_with_env [
+  ("Ambiguo: then=Pos(5), else=Neg(-5) -> lub = NonZero",
+   If (Comparison (Var "w", Bigger, Var "x"),
+       Assign ("k", Const 5),
+       Assign ("k", Const (-5))),
+   [ ("k", NonZero) ]);
+
+  ("Ambiguo: then=Pos(1), else=Zero(0) -> lub = PosZero",
+   If (Comparison (Var "w", Bigger, Var "x"),
+       Assign ("k", Const 1),
+       Assign ("k", Const 0)),
+   [ ("k", PosZero) ]);
+
+  ("Ambiguo: then=Neg(-1), else=Zero(0) -> lub = NegZero",
+   If (Comparison (Var "w", Bigger, Var "x"),
+       Assign ("k", Const (-1)),
+       Assign ("k", Const 0)),
+   [ ("k", NegZero) ]);
+
+  ("Ambiguo: then=Pos(3), else=Neg(-4), ma stesso segno finale nel confronto -> imprecisione: PosZero vs Neg da' SignTop",
+   If (Comparison (Var "w", Bigger, Var "x"),
+       Assign ("k", Const 3),
+       Assign ("k", BinaryOperation (Var "w", Mul, Var "y"))), (* PosZero * Neg = NegZero, testa comunque lub Pos/NegZero *)
+   [ ("k", SignTop) ]); (* lub(Pos,NegZero): non in nessuna riga esplicita di Signs.lub -> catch-all SignTop. NB: correggere sotto se serve *)
+
+  ("Ambiguo: rami convergenti (then e else assegnano entrambi un Pos) -> lub = Pos, nessuna perdita di precisione",
+   If (Comparison (Var "w", Bigger, Var "x"),
+       Assign ("k", Const 10),
+       Assign ("k", Const 20)),
+   [ ("k", Pos) ]);
+]
+
+(* --- Gruppo 4: variabile assegnata SOLO in un ramo (caso None dentro
+   lub_env: la variabile sopravvive col valore dell'unico ramo che la
+   tocca, anche se il branching era ambiguo) --- *)
+let if_partial_assignment_tests = List.map make_prog_case_with_env [
+  ("Ambiguo, var assegnata solo nel then (else = Skip) -> sopravvive col valore del then",
+   If (Comparison (Var "w", Bigger, Var "x"),
+       Assign ("m", Const 7),
+       Skip),
+   [ ("m", Pos) ]);
+
+  ("Ambiguo, var assegnata solo nell'else (then = Skip) -> sopravvive col valore dell'else",
+   If (Comparison (Var "w", Bigger, Var "x"),
+       Skip,
+       Assign ("m", Const (-7))),
+   [ ("m", Neg) ]);
+]
+
+(* --- Gruppo 5: indipendenza dei rami (Hashtbl.copy) + variabili non
+   toccate che attraversano l'If invariate --- *)
+let if_env_independence_tests = List.map make_prog_case_with_env [
+  ("Il then riassegna x, l'else no: verifica che i due rami non si
+    influenzino a vicenda e che le var non toccate restino invariate",
+   If (Comparison (Var "w", Bigger, Var "x"),  (* ambiguo, entrambi eseguono *)
+       Assign ("x", Const (-100)),              (* then: x diventa Neg *)
+       Skip),                                    (* else: x resta Pos *)
+   [ ("x", NonZero);  (* lub(Neg,Pos) *)
+     ("y", Neg); ("z", Zero); ("w", PosZero); ("n", NonZero); ("b", SignBottom) ]);
+]
+
+(* --- Gruppo 6: If annidati --- *)
+let if_nested_tests = List.map make_prog_case_with_env [
+  ("If annidato: outer ambiguo, then contiene un altro If ambiguo",
+   If (Comparison (Var "w", Bigger, Var "x"),
+       If (Comparison (Var "w", Bigger, Var "x"),
+           Assign ("k", Const 1),
+           Assign ("k", Const (-1))),
+       Assign ("k", Const 100)),
+   (* then-branch: If interno ambiguo -> k = lub(Pos,Neg) = NonZero
+      else-branch: k = Pos
+      lub finale: lub(NonZero, Pos) = NonZero *)
+   [ ("k", NonZero) ]);
+]
+
+(* --- Gruppo 7: condizioni composte (And/Or) dentro l'If, per
+   verificare che negate_cond si comporti correttamente attraverso If --- *)
+let if_composite_cond_tests = List.map make_prog_case_with_env [
+  ("If con And(certo vero, ambiguo): l'And ambiguo fa passare comunque
+    entrambi i rami (ne' cond ne' la sua negazione vengono scartate)",
+   If (And (Comparison (Var "x", Bigger, Var "y"),   (* certo vero *)
+            Comparison (Var "w", Bigger, Var "x")),  (* ambiguo *)
+       Assign ("k", Const 1),
+       Assign ("k", Const (-1))),
+   [ ("k", NonZero) ]);
+
+  ("If con Or(certo falso, ambiguo): stesso discorso, Or ambiguo fa
+    passare comunque entrambi i rami",
+   If (Or (Comparison (Var "y", Bigger, Var "x"),    (* certo falso *)
+           Comparison (Var "w", Bigger, Var "x")),   (* ambiguo *)
+       Assign ("k", Const 1),
+       Assign ("k", Const (-1))),
+   [ ("k", NonZero) ]);
+]
+
+(* --- Gruppo 8: l'If eredita Bottom se l'ambiente in ingresso e' gia'
+   Bottom (short-circuit: nessuno dei due rami viene nemmeno provato) --- *)
+let if_bottom_propagation_tests = [
+  expect_bottom_with_env
+    "Filter certo falso prima dell'If: l'If non viene nemmeno valutato, resta Bottom"
+    (Sequence (
+       Filter (Boolean false),
+       If (Boolean true, Assign ("k", Const 1), Assign ("k", Const 2))));
+]
+
 (* ------------------------------------------------------------------ *)
 (* 4. Esportazione unica di tutti i gruppi                            *)
 (* ------------------------------------------------------------------ *)
@@ -490,12 +639,20 @@ let tests = [
   "Skip", skiptests;
   "Stato precompilato", envtests;
   "Test Prog", condtest;
-  "Filter - casi certi", filter_certain_tests;
-   (* @ filter_certain_bottom_tests; *)
+  "Filter - casi certi", filter_certain_tests @ filter_certain_bottom_tests;
   "Filter - casi ambigui", filter_ambiguous_tests;
   "Filter - simmetria", filter_symmetry_tests;
   "Filter - operatori derivati", filter_derived_ops_tests @ filter_derived_ops_bottom_tests;
   "Filter - composizione And/Or/Not", filter_composition_tests @ filter_composition_bottom_tests;
   "Filter - valore Bottom", filter_bottom_value_tests;
   "Filter - incatenato", filter_chained_tests @ filter_chained_bottom_tests;
+  
+  "IF - Ramo Then",if_certain_then_tests;
+  "IF - Ramo Else",if_certain_else_tests;
+  "IF - Ambiguità",if_ambiguous_both_branches_tests;
+  "IF - Assegnamento parziale",if_partial_assignment_tests;
+  "IF - Ambiente Indipendente",if_env_independence_tests;
+  "IF - Annidazioni",if_nested_tests;
+  "IF - Condizioni Composte",if_composite_cond_tests;
+  "IF - Propagazione di BottomEnv",if_bottom_propagation_tests;
 ]

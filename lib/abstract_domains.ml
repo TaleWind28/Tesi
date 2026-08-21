@@ -44,7 +44,7 @@ module Signs = struct
     | _,Zero -> -1
     | NegZero,Neg -> 2
     | Neg,NegZero -> 2
-    | NegZero, NegZero -> 0
+    | NegZero, NegZero -> 2
     | Neg,Neg -> 2
 
   let lub s1 s2 = match s1, s2 with

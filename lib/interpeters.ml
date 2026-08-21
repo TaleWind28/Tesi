@@ -87,7 +87,7 @@ module AbsInterp (D : DOMAIN) = struct
                 let val2 = eval_exp e2 (Env(env)) in 
                 match comp with
                 | Equals -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == 0 || condition == 2)) (Env(env))
-                | NotEquals -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition != 0 )) (Env(env))
+                | NotEquals -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition != 2 && condition != 0)) (Env(env))
                 | Bigger -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == 1 || condition == 2)) (Env(env))
                 | Smaller -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == -1 || condition == 2)) (Env(env))
                 | BiggerEquals -> eval_cond(Or(Comparison(e1,Bigger,e2),Comparison(e1,Equals,e2))) (Env(env))
