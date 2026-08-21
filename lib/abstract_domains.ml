@@ -24,12 +24,11 @@ module Signs = struct
   let bottom = SignBottom
 
   let compare_type x y = match x,y with 
-    | x,y when x = y -> 0
+    | x,y when x = y -> 2
     | SignTop, _ -> 1
     | _,SignTop -> -1
     | SignBottom,_ -> -1
     | _,SignBottom -> 1
-
     | NonZero,_ -> 2
     | _,NonZero -> 2
     | PosZero,Pos -> 2
@@ -46,7 +45,7 @@ module Signs = struct
     | NegZero,Neg -> 2
     | Neg,NegZero -> 2
     | NegZero, NegZero -> 0
-    | Neg,Neg -> 0
+    | Neg,Neg -> 2
 
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
