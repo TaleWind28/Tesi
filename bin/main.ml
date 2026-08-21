@@ -23,10 +23,9 @@ let test_prog =(
       Sequence(
         Assign ("x", Const(1)), Assign("y", Const (2))
       ),
-      If(
+      While(
         Comparison(Var"x",Equals,Var"y"),
-        Assign("x",BinaryOperation(Var("x"),Add,Const (-1))),
-        Assign("y",BinaryOperation(Var("y"),Add,Const (1)))
+        Assign("x",BinaryOperation(Var("x"),Add,Const (-1)))
         )
     )
   )

@@ -116,14 +116,11 @@ module AbsInterp (D : DOMAIN) = struct
                 lub_env e1 e2
                     
             | While(cond,cmd) -> 
-                let filteredState = eval_cmd (Filter(cond)) (Env(env)) in 
-                (
-                    match filteredState with
-                    | BottomEnv -> eval_cmd Skip (Env(env))
-                    | Env(env') -> 
-                        let iteratedState = eval_cmd cmd filteredState 
-                        in eval_cmd (While(cond,cmd)) (iteratedState)
-                )
+                let e1 = eval_cmd (Sequence(Filter(cond),cmd)) (Env(env)) in 
+                match e1 with
+                | Env(env') -> eval_cmd (While(cond,cmd)) e1
+                | BottomEnv -> Env(env)
+
 
 
     let eval (prog : cmd) : state =
