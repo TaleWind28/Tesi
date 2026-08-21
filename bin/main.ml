@@ -21,11 +21,12 @@ let test_prog =(
     (* If(Comparison(Var "x", NotEquals, Var "y"),Assign ("x", Const(-9)),Assign ("y", Const(0))) *)
     Sequence(
       Sequence(
-        Assign ("x", Const(1)), Assign("y", Const (-9))
+        Assign ("x", Const(1)), Assign("y", Const (-1))
       ),
-      While(
+      If(
         Comparison(Var"x",Bigger,Var"y"),
-        Assign("x",BinaryOperation(Var("x"),Sub,Const 1))
+        Assign("x",BinaryOperation(Var("x"),Add,Const (-1))),
+        Assign("x",BinaryOperation(Var("y"),Add,Const 1))
         )
     )
   )
