@@ -42,15 +42,18 @@ let string_of_sign v =
   | SignTop -> "T (Top)"
   | SignBottom -> "_|_ (Bottom)"
 
-let () =
-  let risultato : SignInterp.state = SignInterp.eval test_prog in
-  match risultato with
+let outputStatePrinter state = 
+  match state with
   | SignInterp.BottomEnv ->
       print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
   | SignInterp.Env tbl ->
       Hashtbl.iter (fun var v ->
         Printf.printf "%s : %s\n" var (string_of_sign v)
       ) tbl
+
+let () =
+  let risultato : SignInterp.state = SignInterp.eval test_prog in
+  outputStatePrinter risultato
 
 (* let () =
   let env = Hashtbl.create 10 in
