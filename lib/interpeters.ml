@@ -24,6 +24,33 @@ module AbsInterp (D : DOMAIN) = struct
         t2;
         Env(result)
 
+    let widen_env e1 e2 =
+        match e1, e2 with
+        | BottomEnv, e | e, BottomEnv -> e
+        | Env(t1), Env(t2) ->
+            let result = Hashtbl.create (Hashtbl.length t1) in
+            Hashtbl.iter (fun var v1 ->
+                let v2 = try Hashtbl.find t2 var with Not_found -> D.bottom in
+                Hashtbl.add result var (D.widen v1 v2)
+            ) t1;
+            (* eventuali variabili presenti solo in env2 *)
+            Hashtbl.iter (fun var v2 ->
+                if not (Hashtbl.mem result var) then
+                Hashtbl.add result var (D.widen D.bottom v2)
+            ) t2;
+        Env(result)
+
+    let leq_env e1 e2 =
+        match e1, e2 with
+        | BottomEnv, _ -> true
+        | _, BottomEnv -> false
+        | Env(t1),Env(t2) ->
+            Hashtbl.fold (fun var v1 acc ->
+                acc &&
+                let v2 = try Hashtbl.find t2 var with Not_found -> D.bottom in
+                D.leq v1 v2
+            ) t1 true
+
     let negate_comp comp = match comp with
     | Bigger -> Smaller
     | Smaller -> Bigger
@@ -87,7 +114,7 @@ module AbsInterp (D : DOMAIN) = struct
                 let val2 = eval_exp e2 (Env(env)) in 
                 match comp with
                 | Equals -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == 0 || condition == 2)) (Env(env))
-                | NotEquals -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition != 2 && condition != 0)) (Env(env))
+                | NotEquals -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition != 0)) (Env(env))
                 | Bigger -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == 1 || condition == 2)) (Env(env))
                 | Smaller -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == -1 || condition == 2)) (Env(env))
                 | BiggerEquals -> eval_cond(Or(Comparison(e1,Bigger,e2),Comparison(e1,Equals,e2))) (Env(env))
@@ -117,11 +144,20 @@ module AbsInterp (D : DOMAIN) = struct
                     
             | While(cond,cmd) -> 
                 let e1 = eval_cmd (Sequence(Filter(cond),cmd)) (Env(env)) in 
-                match e1 with
+                (match e1 with
                 | Env(env') -> eval_cmd (While(cond,cmd)) e1
                 | BottomEnv -> Env(env)
-
-
+                )
+            
+            |WhileInf(cond,cmd) -> 
+                let f x = lub_env (Env(env)) (eval_cmd cmd (eval_cond cond x)) in
+                let lfp f = 
+                    let rec iterate x = 
+                        let x' = widen_env x (f x) in 
+                            if leq_env x' x then x
+                            else iterate x'
+                        in iterate BottomEnv
+                in eval_cond (Not(cond)) (lfp f)
 
     let eval (prog : cmd) : state =
         let initial_env = Env(Hashtbl.create 10) in

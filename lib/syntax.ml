@@ -30,3 +30,4 @@ type cmd =
   | If of cond * cmd * cmd
   | Skip
   | While of cond * cmd
+  | WhileInf of cond * cmd

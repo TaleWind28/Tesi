@@ -6,6 +6,7 @@ module type DOMAIN = sig
   val lub    : t -> t -> t
   val leq    : t -> t -> bool
   val glb    : t-> t -> t
+  val widen  : t -> t -> t 
   val compare_type : t -> t -> int
 
   val abstract_int   : int -> t
@@ -24,6 +25,7 @@ module Signs = struct
   let bottom = SignBottom
 
   let compare_type x y = match x,y with 
+    | Zero,Zero -> 0
     | x,y when x = y -> 2
     | SignTop, _ -> 1
     | _,SignTop -> -1
@@ -58,6 +60,8 @@ module Signs = struct
     | Zero, Neg | Neg, Zero | NegZero,Neg | Neg, NegZero -> NegZero
     | _,_ -> SignTop
 
+  let widen x y = lub x y
+  
   let glb s1 s2 = match s1,s2 with
   | _,SignBottom | SignBottom,_ -> SignBottom
   | x,SignTop | SignTop,x -> x
@@ -159,6 +163,8 @@ module Intervals = struct
   let lub c1 c2 = match c1,c2 with 
     | Bottom,x | x,Bottom -> x
     | Interval(a,b), Interval(c,d) -> Interval(min_bound a c ,max_bound b d )
+
+  let widen c1 c2 = failwith "not implemented" 
 
   let glb c1 c2 = match c1,c2 with
   | Bottom,_ | _,Bottom -> Bottom
