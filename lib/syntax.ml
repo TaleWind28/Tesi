@@ -26,7 +26,6 @@ type cond =
 type cmd = 
   | Assign of ide * exp 
   | Sequence of cmd * cmd
-  | Filter of cond
   | If of cond * cmd * cmd
   | Skip
   | While of cond * cmd
