@@ -30,8 +30,16 @@ let () =
     "Sign - IF - Ambiente Indipendente", List.assoc "IF - Ambiente Indipendente" Test_alcosigns.tests;
     "Sign - IF - Annidazioni", List.assoc "IF - Annidazioni" Test_alcosigns.tests;
     "Sign - IF - Condizioni Composte", List.assoc "IF - Condizioni Composte" Test_alcosigns.tests;
-    "Sign - IF - Propagazione di BottomEnv", List.assoc "IF - Propagazione di BottomEnv" Test_alcosigns.tests
-
-  ] 
+    "Sign - IF - Propagazione di BottomEnv", List.assoc "IF - Propagazione di BottomEnv" Test_alcosigns.tests;
+    (* Test su While *)
+    "Sign - While - Non Eseguito",List.assoc "While - non eseguito" Test_alcosigns.tests;
+    "Sign - While - Converge",List.assoc "While - converge" Test_alcosigns.tests;
+    "Sign - While - Perdita Precisione",List.assoc "While - perdita precisione" Test_alcosigns.tests;
+    "Sign - While - Loop Infinito",List.assoc "While - loop infinito" Test_alcosigns.tests;
+    "Sign - While - Propagazione Bottom",List.assoc "While - propagazione bottom" Test_alcosigns.tests;
+    "Sign - While - Boundary Uguaglianza",List.assoc "While - boundary uguaglianza" Test_alcosigns.tests;
+    "Sign - While - Annidati",List.assoc "While - annidati" Test_alcosigns.tests;
+    "Sign - While - Personalizzati",List.assoc "While - Personali" Test_alcosigns.tests;
+  ]
   (* @ Test_alcointervals.tests*)
   )

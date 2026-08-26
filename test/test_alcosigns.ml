@@ -622,6 +622,194 @@ let if_bottom_propagation_tests = [
        If (Boolean true, Assign ("k", Const 1), Assign ("k", Const 2))));
 ]
 
+
+(* ============================================================
+   Test per il comando While.
+ 
+   Tutti i valori attesi in questi test sono stati verificati
+   eseguendo realmente SignInterp (non dedotti a mano), perche'
+   il fixpoint del While usa Hashtbl mutabili condivise tra
+   iterazioni e la semantica esatta e' delicata da tracciare
+   "sulla carta".
+ 
+   NOTA IMPORTANTE (comportamento scoperto durante la verifica):
+   negate_comp mappa Bigger <-> Smaller in modo diretto, SENZA
+   passare per l'operatore "equals-inclusive" corretto (la
+   negazione logica di "x > y" sarebbe "x <= y", non "x < y").
+   Questo significa che un while con guardia "x > 0" e x = Zero
+   (falso fin dall'inizio, quindi il corpo non viene mai eseguito)
+   produce comunque BottomEnv in uscita, invece di preservare lo
+   stato con x = Zero. Vedi il test "guardia mai vera ma boundary
+   sull'uguaglianza" piu' sotto: e' un test che DOCUMENTA questo
+   comportamento reale del codice attuale, non necessariamente
+   quello "ideale". Se vuoi correggere negate_comp, questo test
+   andra' aggiornato di conseguenza.
+ 
+   Un'altra asimmetria osservata: compare_type tratta SignTop come
+   sempre "maggiore" (SignTop,_ -> 1) e sempre "minore" quando e'
+   il secondo argomento (_,SignTop -> -1). Questo fa si' che due
+   loop strutturalmente identici (uno con guardia ">" e uno con
+   guardia "<") che perdono precisione fino a SignTop possano
+   avere esiti diversi in uscita (uno BottomEnv, l'altro un vero
+   Env con SignTop). Sono entrambi documentati sotto.
+   ============================================================ *)
+ 
+(* Helper: verifica che un programma SENZA stato iniziale precompilato
+   (si parte da ambiente vuoto, tramite SignInterp.eval) atterri su
+   BottomEnv. *)
+let expect_bottom desc prog =
+  ( desc,
+    `Quick,
+    fun () ->
+      let res = SignInterp.eval prog in
+      match res with
+      | BottomEnv -> ()
+      | Env _ ->
+          Alcotest.fail
+            (Printf.sprintf "%s: atteso BottomEnv, ottenuto Env" desc) )
+ 
+(* --- Gruppo 1: guardia falsa fin dall'inizio -> corpo mai eseguito,
+   lo stato (incluse variabili non toccate dal while) e' preservato --- *)
+let while_not_entered_tests = List.map make_prog_case [
+  ("While mai eseguito (x=5, guardia x<0): x resta Pos, z non toccata resta Neg",
+   Sequence (
+     Sequence (Assign ("x", Const 5), Assign ("z", Const (-3))),
+     While (Comparison (Var "x", Smaller, Const 0),
+            Assign ("x", BinaryOperation (Var "x", Sub, Const 1)))),
+   [ ("x", Pos); ("z", Neg) ]);
+ 
+  ("While mai eseguito (x=5, guardia x==0): x resta Pos",
+   Sequence (
+     Assign ("x", Const 5),
+     While (Comparison (Var "x", Equals, Const 0), Assign ("x", Const 0))),
+   [ ("x", Pos) ]);
+]
+ 
+(* --- Gruppo 2: guardia vera almeno una volta -> il corpo esegue e,
+   se il dominio non perde precisione, il while converge a un
+   risultato preciso e decidibile in uscita --- *)
+let while_converges_tests = List.map make_prog_case [
+  ("While converge: x=5, while(x!=0) x=0 -> termina con x=Zero",
+   Sequence (
+     Assign ("x", Const 5),
+     While (Comparison (Var "x", NotEquals, Const 0), Assign ("x", Const 0))),
+   [ ("x", Zero) ]);
+]
+ 
+(* --- Gruppo 3: il corpo del while fa perdere precisione (x=x-1 da Pos
+   da' SignTop). L'esito in uscita dipende dalla direzione della
+   guardia, per via di come compare_type tratta SignTop --- *)
+let while_precision_loss_tests = List.map make_prog_case [
+  ("Guardia '<': x=-5, while(x<0) x=x+1 -> perde precisione a SignTop
+    ma l'uscita resta un Env valido con x=SignTop",
+   Sequence (
+     Assign ("x", Const (-5)),
+     While (Comparison (Var "x", Smaller, Const 0),
+            Assign ("x", BinaryOperation (Var "x", Add, Const 1)))),
+   [ ("x", SignTop) ]
+   );
+]
+ 
+let while_precision_loss_bottom_tests = [
+  expect_bottom
+    "Guardia '>': x=5, while(x>0) x=x-1 -> perde precisione a SignTop
+     e qui l'uscita e' BottomEnv (analisi non riesce a provare la
+     terminazione, asimmetria rispetto al caso con '<')"
+    (Sequence (
+       Assign ("x", Const 5),
+       While (Comparison (Var "x", Bigger, Const 0),
+              Assign ("x", BinaryOperation (Var "x", Sub, Const 1)))));
+]
+ 
+(* --- Gruppo 4: il corpo non modifica affatto la variabile testata
+   dalla guardia (o non fa nulla) -> la guardia resta vera per
+   sempre, il ciclo e' astrattamente "infinito" -> BottomEnv --- *)
+let while_infinite_loop_tests = [
+  expect_bottom
+    "Corpo = Skip: x=5, while(x>0) skip -> non termina mai (x resta
+     Pos), uscita BottomEnv"
+    (Sequence (
+       Assign ("x", Const 5),
+       While (Comparison (Var "x", Bigger, Const 0), Skip)));
+ 
+  expect_bottom
+    "Corpo modifica una var non correlata: x=5, while(x>0) y=1 -> x
+     non cambia mai, uscita BottomEnv"
+    (Sequence (
+       Assign ("x", Const 5),
+       While (Comparison (Var "x", Bigger, Const 0), Assign ("y", Const 1))));
+]
+ 
+(* --- Gruppo 5: propagazione di BottomEnv in ingresso al While.
+   Se lo stato e' gia' BottomEnv prima del while (per es. per un
+   Filter fallito), il while non viene nemmeno valutato. --- *)
+let while_bottom_propagation_tests = [
+  expect_bottom
+    "Filter(false) prima del while: il while non viene valutato,
+     resta BottomEnv"
+    (Sequence (
+       Filter (Boolean false),
+       While (Boolean true, Assign ("x", Const 1))));
+]
+ 
+(* --- Gruppo 6: boundary sull'uguaglianza + negate_comp.
+   Documenta il comportamento reale discusso in testa al file: una
+   guardia "x > 0" con x = Zero e' falsa fin dall'inizio (il corpo
+   non esegue mai), ma l'uscita risulta comunque BottomEnv invece di
+   preservare lo stato con x = Zero, perche' Not(x>0) viene calcolato
+   come "x<0" e non come il corretto "x<=0". *)
+let while_equality_boundary_tests = [
+  expect_bottom
+    "Guardia mai vera ma boundary sull'uguaglianza: x=0, while(x>0)
+     x=x-1 -> ci si aspetterebbe x=Zero preservato (il corpo non
+     esegue mai), ma per come e' scritto negate_comp l'uscita risulta
+     BottomEnv"
+    (Sequence (
+       Assign ("x", Const 0),
+       While (Comparison (Var "x", Bigger, Const 0),
+              Assign ("x", BinaryOperation (Var "x", Sub, Const 1)))));
+]
+ 
+(* --- Gruppo 7: While annidati. Anche qui, siccome il while esterno
+   perde la capacita' di provare la terminazione (stesso meccanismo
+   del Gruppo 3/4), l'intero programma atterra su BottomEnv. --- *)
+let while_nested_tests = [
+  expect_bottom
+    "While annidati: x=5, while(x>0) { y=1; while(y>0) y=y-1 } ->
+     l'esterno non termina mai in astratto, uscita BottomEnv"
+    (Sequence (
+       Assign ("x", Const 5),
+       While (Comparison (Var "x", Bigger, Const 0),
+              Sequence (
+                Assign ("y", Const 1),
+                While (Comparison (Var "y", Bigger, Const 0),
+                       Assign ("y", BinaryOperation (Var "y", Sub, Const 1)))))));
+]
+
+let personal_while_test = List.map make_prog_case [
+  (
+    "Guardia Sempre vera ",
+  Sequence(
+      Sequence(
+        Assign ("x", Const(1)),
+        Sequence(
+          Assign("y", Const (2)),
+          Assign("z", Random((-3),5) )
+        ) 
+      ),
+      While(
+        Comparison(Var"x",Equals,Var"y"),
+        If( 
+          Comparison(Var"y",Bigger,Var "z"),
+          Assign("x",BinaryOperation(Var("x"),Add,Const(-2))),
+          Assign("y",BinaryOperation(Var("x"),Add,Var("y")))
+        )
+        
+      )
+    ),
+    [ ("x", Pos);("y",Pos);("z",SignTop) ]);
+]
+
 (* ------------------------------------------------------------------ *)
 (* 4. Esportazione unica di tutti i gruppi                            *)
 (* ------------------------------------------------------------------ *)
@@ -655,4 +843,13 @@ let tests = [
   "IF - Annidazioni",if_nested_tests;
   "IF - Condizioni Composte",if_composite_cond_tests;
   "IF - Propagazione di BottomEnv",if_bottom_propagation_tests;
+
+  "While - non eseguito",        while_not_entered_tests;
+  "While - converge",            while_converges_tests;
+  "While - perdita precisione",  while_precision_loss_tests @ while_precision_loss_bottom_tests;
+  "While - loop infinito",       while_infinite_loop_tests;
+  "While - propagazione bottom", while_bottom_propagation_tests;
+  "While - boundary uguaglianza",while_equality_boundary_tests;
+  "While - annidati",            while_nested_tests;
+  "While - Personali", personal_while_test;
 ]

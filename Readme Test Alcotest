@@ -1,0 +1,49 @@
+(* ============================================================
+   Test per l'If.
+
+   ASSUNZIONE: make_test_state () pre-popola l'ambiente con
+     x = Pos, y = Neg, z = Zero, w = PosZero, n = NonZero, b = SignBottom
+   (dedotto dall'uso coerente di queste variabili nei test di Filter
+   che avete già). Se non fosse così, basta aggiustare i valori attesi
+   nei singoli test: il ragionamento resta valido, cambia solo il numero.
+
+   PROMEMORIA SEMANTICO (perche' certi risultati sono quelli che sono):
+   in eval_cond, quando compare_type restituisce 2 ("ambiguo"), sia la
+   condizione che la sua negazione risultano vere. Quindi un If con
+   condizione ambigua NON scarta mai nessuno dei due rami: entrambi
+   vengono eseguiti e il risultato finale e' sempre il lub dei due.
+   Un If scarta un ramo solo quando compare_type e' "certo"
+   (cioe' diverso da 2 per quella coppia di valori).
+   ============================================================ *)
+
+(* ============================================================
+   Test per il comando While.
+ 
+   Tutti i valori attesi in questi test sono stati verificati
+   eseguendo realmente SignInterp (non dedotti a mano), perche'
+   il fixpoint del While usa Hashtbl mutabili condivise tra
+   iterazioni e la semantica esatta e' delicata da tracciare
+   "sulla carta".
+ 
+   NOTA IMPORTANTE (comportamento scoperto durante la verifica):
+   negate_comp mappa Bigger <-> Smaller in modo diretto, SENZA
+   passare per l'operatore "equals-inclusive" corretto (la
+   negazione logica di "x > y" sarebbe "x <= y", non "x < y").
+   Questo significa che un while con guardia "x > 0" e x = Zero
+   (falso fin dall'inizio, quindi il corpo non viene mai eseguito)
+   produce comunque BottomEnv in uscita, invece di preservare lo
+   stato con x = Zero. Vedi il test "guardia mai vera ma boundary
+   sull'uguaglianza" piu' sotto: e' un test che DOCUMENTA questo
+   comportamento reale del codice attuale, non necessariamente
+   quello "ideale". Se vuoi correggere negate_comp, questo test
+   andra' aggiornato di conseguenza.
+ 
+   Un'altra asimmetria osservata: compare_type tratta SignTop come
+   sempre "maggiore" (SignTop,_ -> 1) e sempre "minore" quando e'
+   il secondo argomento (_,SignTop -> -1). Questo fa si' che due
+   loop strutturalmente identici (uno con guardia ">" e uno con
+   guardia "<") che perdono precisione fino a SignTop possano
+   avere esiti diversi in uscita (uno BottomEnv, l'altro un vero
+   Env con SignTop). Sono entrambi documentati sotto.
+   ============================================================ *)
+ 
