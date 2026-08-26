@@ -170,5 +170,7 @@ end
 (* Istanza concreta con il dominio dei segni *)
 module SignInterp = AbsInterp (Signs)
 
+module SimpleSignInterp = AbsInterp (SimpleSigns)
+
 (* Istanza concreta con il dominio degli Intervalli *)
 module IntervalInterp = AbsInterp (Intervals)

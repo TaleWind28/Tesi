@@ -126,6 +126,89 @@ module Signs = struct
     | x          -> x   (* Zero, SignTop, SignBottom, NonZero invariati *)
 end
 
+module SimpleSigns = struct
+  type t = SignTop | Pos | Zero | Neg | SignBottom
+  
+  let top    = SignTop
+  let bottom = SignBottom
+
+  let compare_type x y = match x,y with 
+    | Zero,Zero -> 0
+    | x,y when x = y -> 2
+    | SignTop, _ -> 1
+    | _,SignTop -> -1
+    | SignBottom,_ -> -1
+    | _,SignBottom -> 1
+    | Pos,_ -> 1
+    | _,Pos -> -1
+    | Zero,_ -> 1
+    | _,Zero -> -1
+    | Neg,Neg -> 2
+
+  let lub s1 s2 = match s1, s2 with
+    | SignBottom, x | x, SignBottom -> x
+    | x, y when x = y              -> x
+    | Neg, Neg -> Neg
+    | Pos, Pos -> Pos
+    | _,_ -> SignTop
+
+  let widen x y = lub x y
+  
+  let glb s1 s2 = match s1, s2 with
+  (* 1. Elemento Assorbente (Bottom) *)
+  | SignBottom, _ | _, SignBottom -> SignBottom
+  (* 2. Elemento Neutro (Top) *)
+  | x, SignTop | SignTop, x -> x
+  (* 3. Idempotenza (stesso elemento con se stesso) *)
+  | x, y when x = y -> x
+  (* 4. Tutti gli altri casi sono disgiunti (es. Pos con Neg, Zero con Pos, ecc.) *)
+  | _, _ -> SignBottom
+
+  let leq s1 s2 = (glb s1 s2) = s1
+
+  let abstract_int n =
+    if n > 0 then Pos
+    else if n < 0 then Neg
+    else Zero
+
+  let abstract_range a b = 
+    if a > b then SignBottom
+  else if a < 0 && b > 0 then SignTop
+  else lub (abstract_int a) (abstract_int b)
+
+  let mul s1 s2 = match s1, s2 with
+    | SignBottom, _ | _, SignBottom -> SignBottom
+    | Zero, _       | _, Zero      -> Zero
+    | Pos, Pos | Neg,Neg -> Pos
+    | Neg,Pos | Pos,Neg -> Neg
+    | _,_ -> SignTop
+
+  let sum s1 s2 = match s1, s2 with
+    | SignBottom, _ | _, SignBottom  -> SignBottom
+    | x,y when x == y -> x
+    | Zero, n       | n, Zero      -> n
+    | _,_ -> SignTop
+  
+  (*Non del tutto corretta in quanto dovrebbe essere divisione intera*)
+  let div s1 s2 = match s1, s2 with
+    (*Errore/Irraggiungibile*)
+    | SignBottom, _ | _, SignBottom -> SignBottom
+    (* divisione per zero *)
+    | _, Zero -> SignBottom
+    | Zero,(Pos | Neg ) -> Zero
+    (*Unici casi noti della tabella della divisione*)
+    | Pos, Pos    | Neg, Neg     -> Pos
+    | Pos, Neg    | Neg, Pos     -> Neg
+    (*Casi con possibili divisioni per 0 oppure divisioni con NonZero*)
+    | _ -> SignTop
+
+  let negate = function
+    | Pos        -> Neg
+    | Neg        -> Pos
+    | x          -> x   (* Zero, SignTop, SignBottom*)
+
+end
+
 (*Dominio degli Intervalli*)
 module Intervals = struct
   type bound = NegInf | Int of int | PosInf 

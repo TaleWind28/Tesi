@@ -1,6 +1,8 @@
 open Syntax
 open Interpeters
-open Abstract_domains.Signs
+(* open Abstract_domains.Signs *)
+open Abstract_domains.SimpleSigns
+
 
 let test_prog =(
   (* Sequence(
@@ -38,9 +40,8 @@ let test_prog =(
       )
     )
   )
-  (* ) *)
   
-let string_of_sign v =
+(* let string_of_sign v =
   match v with
   | Pos -> "+"
   | Neg -> "-"
@@ -49,19 +50,27 @@ let string_of_sign v =
   | NegZero -> "<=0"
   | NonZero -> "!=0"
   | SignTop -> "T (Top)"
+  | SignBottom -> "_|_ (Bottom)" *)
+
+let string_of_simple_sign v =
+  match v with
+  | Pos -> "+"
+  | Neg -> "-"
+  | Zero -> "0"
+  | SignTop -> "T (Top)"
   | SignBottom -> "_|_ (Bottom)"
 
 let outputStatePrinter state = 
   match state with
-  | SignInterp.BottomEnv ->
+  | SimpleSignInterp.BottomEnv ->
       print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
-  | SignInterp.Env tbl ->
+  | SimpleSignInterp.Env tbl ->
       Hashtbl.iter (fun var v ->
-        Printf.printf "%s : %s\n" var (string_of_sign v)
+        Printf.printf "%s : %s\n" var (string_of_simple_sign v)
       ) tbl
 
 let () =
-  let risultato : SignInterp.state = SignInterp.eval test_prog in
+  let risultato : SimpleSignInterp.state = SimpleSignInterp.eval test_prog in
   outputStatePrinter risultato
 
 (* let () =
