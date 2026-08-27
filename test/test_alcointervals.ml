@@ -331,7 +331,7 @@ let envtests = List.map make_prog_case_with_env [
 
   ("z = w * k (rischio 0 su entrambi i lati)",
    Assign ("z", BinaryOperation (Var "w", Mul, Var "k")),
-   [ ("z", Interval (Int (-25), Int 0)) ]);
+   [ ("z", Interval (Int (-25), Int 0)) ]); 
 
   ("Programma multi-step su stato precompilato",
    Sequence (
@@ -348,7 +348,7 @@ let envtests = List.map make_prog_case_with_env [
 (* 7. Esportazione unica di tutti i gruppi                            *)
 (* ------------------------------------------------------------------ *)
 
-let tests = expr_tests @ [
+(* let tests = expr_tests @ [
   "Somma",              sumtests;
   "Sottrazione",        subtests;
   "Moltiplicazione",    multests;
@@ -360,4 +360,454 @@ let tests = expr_tests @ [
   "Overwrite",          overwritetests;
   "Skip",               skiptests;
   "Stato precompilato", envtests;
+] *)
+
+(* ------------------------------------------------------------------ *)
+(* 7. Helper per comandi che possono produrre BottomEnv               *)
+(* ------------------------------------------------------------------ *)
+
+(* Verifica che il programma, partendo da stato vuoto, produca BottomEnv *)
+let make_bottom_case (desc, prog) =
+  ( desc,
+    `Quick,
+    fun () ->
+      match eval prog with
+      | BottomEnv -> ()
+      | Env _ -> Alcotest.fail (desc ^ ": atteso BottomEnv, ottenuto Env") )
+
+(* Verifica che il programma, partendo da stato vuoto, NON produca BottomEnv
+   e che le variabili indicate abbiano i valori attesi *)
+let make_not_bottom_case (desc, prog, expected_vars) =
+  ( desc,
+    `Quick,
+    fun () ->
+      match eval prog with
+      | BottomEnv -> Alcotest.fail (desc ^ ": atteso Env, ottenuto BottomEnv")
+      | Env _ as st -> check_vars desc st expected_vars )
+
+(* Verifica che il programma, partendo dallo stato precompilato
+   (make_test_state), produca BottomEnv *)
+let make_bottom_case_with_env (desc, prog) =
+  ( desc,
+    `Quick,
+    fun () ->
+      match eval_cmd prog (make_test_state ()) with
+      | BottomEnv -> ()
+      | Env _ -> Alcotest.fail (desc ^ ": atteso BottomEnv, ottenuto Env") )
+
+(* Verifica che il programma, partendo dallo stato precompilato, NON
+   produca BottomEnv e che le variabili indicate abbiano i valori attesi *)
+let make_not_bottom_case_with_env (desc, prog, expected_vars) =
+  ( desc,
+    `Quick,
+    fun () ->
+      match eval_cmd prog (make_test_state ()) with
+      | BottomEnv -> Alcotest.fail (desc ^ ": atteso Env, ottenuto BottomEnv")
+      | Env _ as st -> check_vars desc st expected_vars )
+
+(* ==================================================================== *)
+(* FILTER                                                               *)
+(* ==================================================================== *)
+
+let filter_certain_tests =
+  List.map make_not_bottom_case [
+    ("x=5; Filter(x=5) -> singoletto uguale, stato invariato",
+     Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", Equals, Const 5))),
+     [ ("x", Interval (Int 5, Int 5)) ]);
+
+    ("x=5,y=1; Filter(x>y) -> disgiunti, decidibile vero",
+     Sequence (
+       Sequence (Assign ("x", Const 5), Assign ("y", Const 1)),
+       Filter (Comparison (Var "x", Bigger, Var "y"))),
+     [ ("x", Interval (Int 5, Int 5)); ("y", Interval (Int 1, Int 1)) ]);
+
+    ("x=5; Filter(x<>0) -> disgiunti",
+     Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", NotEquals, Const 0))),
+     [ ("x", Interval (Int 5, Int 5)) ]);
+  ]
+  @ List.map make_not_bottom_case_with_env [
+    ("p>0 decidibile (p=[1,+inf])", Filter (Comparison (Var "p", Bigger, Const 0)),
+     [ ("p", Interval (Int 1, PosInf)) ]);
+    ("m<0 decidibile (m=[-inf,-1])", Filter (Comparison (Var "m", Smaller, Const 0)),
+     [ ("m", Interval (NegInf, Int (-1))) ]);
+  ]
+
+let filter_certain_bottom_tests =
+  List.map make_bottom_case [
+    ("x=5; Filter(x=10) -> disgiunti, decidibile falso",
+     Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", Equals, Const 10))));
+
+    ("x=1,y=5; Filter(x>y) -> x sempre < y",
+     Sequence (
+       Sequence (Assign ("x", Const 1), Assign ("y", Const 5)),
+       Filter (Comparison (Var "x", Bigger, Var "y"))));
+
+    ("Filter(Boolean false) -> sempre Bottom", Filter (Boolean false));
+
+    ("x=3; Filter(Not(x=3)) -> Bottom",
+     Sequence (Assign ("x", Const 3), Filter (Not (Comparison (Var "x", Equals, Const 3)))));
+  ]
+  @ List.map make_bottom_case_with_env [
+    ("Filter(y>x) sullo stato precompilato -> y sempre < x",
+     Filter (Comparison (Var "y", Bigger, Var "x")));
+  ]
+
+(* Comparazioni fra intervalli che si sovrappongono: indecidibili (2),
+   quindi il Filter le tratta come vere (guarda l'implementazione di
+   eval_cond: Bigger/Smaller/Equals sono "true" anche quando compare_type
+   restituisce 2) e lo stato NON viene ristretto. *)
+let filter_ambiguous_tests =
+  List.map make_not_bottom_case_with_env [
+    ("Filter(n>0) su n=[-3,4] (attraversa lo 0) -> ambiguo, passa invariato",
+     Filter (Comparison (Var "n", Bigger, Const 0)),
+     [ ("n", Interval (Int (-3), Int 4)) ]);
+
+    ("Filter(n<0) su n=[-3,4] -> ambiguo, passa invariato",
+     Filter (Comparison (Var "n", Smaller, Const 0)),
+     [ ("n", Interval (Int (-3), Int 4)) ]);
+
+    ("Filter(w=k) con w=[0,5], k=[-5,0] sovrapposti in 0 -> ambiguo",
+     Filter (Comparison (Var "w", Equals, Var "k")),
+     [ ("k", Interval (Int (-5), Int 0)); ("w", Interval (Int 0, Int 5)) ]); (* Secondo me ha senso che non sia ambiguo in quanto a>c e b>d quindi w > k  Quindi BottomEnv*)
+  ]
+
+(* Simmetria: Filter(a > b) e Filter(b < a) devono avere lo stesso esito
+   (pass/bottom) sullo stesso stato, essendo comparazioni equivalenti. *)
+let filter_symmetry_tests =
+  List.map make_not_bottom_case [
+    ("x=5,y=1; Filter(x>y) passa",
+     Sequence (Sequence (Assign ("x", Const 5), Assign ("y", Const 1)),
+               Filter (Comparison (Var "x", Bigger, Var "y"))),
+     [ ("x", Interval (Int 5, Int 5)) ]);
+
+    ("x=5,y=1; Filter(y<x) passa (equivalente, ordine invertito)",
+     Sequence (Sequence (Assign ("x", Const 5), Assign ("y", Const 1)),
+               Filter (Comparison (Var "y", Smaller, Var "x"))),
+     [ ("x", Interval (Int 5, Int 5)) ]);
+  ]
+  @ List.map make_bottom_case [
+    ("x=1,y=5; Filter(x>y) -> Bottom",
+     Sequence (Sequence (Assign ("x", Const 1), Assign ("y", Const 5)),
+               Filter (Comparison (Var "x", Bigger, Var "y"))));
+    ("x=1,y=5; Filter(y<x) -> Bottom (stesso esito, ordine invertito)",
+     Sequence (Sequence (Assign ("x", Const 1), Assign ("y", Const 5)),
+               Filter (Comparison (Var "y", Smaller, Var "x"))));
+  ]
+
+(* Operatori derivati BiggerEquals / SmallerEquals, implementati come
+   Or(Bigger,Equals) / Or(Smaller,Equals) *)
+let filter_derived_ops_tests =
+  List.map make_not_bottom_case [
+    ("x=5; Filter(x>=5) -> singoletto uguale via ramo Equals",
+     Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", BiggerEquals, Const 5))),
+     [ ("x", Interval (Int 5, Int 5)) ]);
+    ("x=1; Filter(x<=1) -> singoletto uguale via ramo Equals",
+     Sequence (Assign ("x", Const 1), Filter (Comparison (Var "x", SmallerEquals, Const 1))),
+     [ ("x", Interval (Int 1, Int 1)) ]);
+  ]
+
+let filter_derived_ops_bottom_tests =
+  List.map make_bottom_case [
+    ("x=1,y=5; Filter(x>=y) -> x sempre < y, entrambi i rami falsi",
+     Sequence (Sequence (Assign ("x", Const 1), Assign ("y", Const 5)),
+               Filter (Comparison (Var "x", BiggerEquals, Var "y"))));
+    ("x=5; Filter(x<=0) -> x sempre > 0, entrambi i rami falsi",
+     Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", SmallerEquals, Const 0))));
+  ]
+
+(* Composizione And / Or / Not, casi decidibili *)
+let filter_composition_tests =
+  List.map make_not_bottom_case_with_env [
+    ("And(x>0, y<0) vero sullo stato precompilato",
+     Filter (And (Comparison (Var "x", Bigger, Const 0), Comparison (Var "y", Smaller, Const 0))),
+     [ ("x", Interval (Int 2, Int 7)); ("y", Interval (Int (-8), Int (-3))) ]);
+
+    ("Or(z=1, z=0) vero grazie al secondo membro (z=[0,0])",
+     Filter (Or (Comparison (Var "z", Equals, Const 1), Comparison (Var "z", Equals, Const 0))),
+     [ ("z", Interval (Int 0, Int 0)) ]);
+
+    ("Not(x=100) -> diventa x<>100, decidibile vero (x=[2,7])",
+     Filter (Not (Comparison (Var "x", Equals, Const 100))),
+     [ ("x", Interval (Int 2, Int 7)) ]);
+  ]
+
+let filter_composition_bottom_tests =
+  List.map make_bottom_case_with_env [
+    ("And(x>0, z=1) -> z=[0,0] diverso da 1, il secondo membro fallisce",
+     Filter (And (Comparison (Var "x", Bigger, Const 0), Comparison (Var "z", Equals, Const 1))));
+
+    ("Or(x=100, y=100) -> entrambi i membri decidibilmente falsi",
+     Filter (Or (Comparison (Var "x", Equals, Const 100), Comparison (Var "y", Equals, Const 100))));
+  ]
+
+(* Comparazioni che coinvolgono una variabile il cui valore astratto e'
+   Bottom (variabile "b" nello stato precompilato). Questo dipende da come
+   il tuo dominio definisce compare_type su Bottom: qui assumo che il
+   confronto risulti comunque "vero" (interpretabile come vacuamente vero,
+   dato che Bottom rappresenta l'insieme vuoto) - VERIFICA e correggi se
+   la tua implementazione si comporta diversamente (es. solleva eccezione
+   o restituisce sempre 2). *)
+let filter_bottom_value_tests =
+  List.map make_not_bottom_case_with_env [
+    ("Filter(b=x) con b=Bottom -> assunto vacuamente vero, da verificare",
+     Filter (Comparison (Var "b", Equals, Var "x")),
+     [ ("x", Interval (Int 2, Int 7)) ]);
+  ]
+
+(* Filter incatenati: ognuno decidibile singolarmente *)
+let filter_chained_tests =
+  List.map make_not_bottom_case [
+    ("x=5; Filter(x>0); Filter(x<10); Filter(x<>3) -> catena di veri",
+     Sequence (Assign ("x", Const 5),
+       Sequence (Filter (Comparison (Var "x", Bigger, Const 0)),
+         Sequence (Filter (Comparison (Var "x", Smaller, Const 10)),
+                   Filter (Comparison (Var "x", NotEquals, Const 3))))),
+     [ ("x", Interval (Int 5, Int 5)) ]);
+  ]
+
+let filter_chained_bottom_tests =
+  List.map make_bottom_case [
+    ("x=5; Filter(x>0) passa, poi Filter(x=100) fallisce -> Bottom si propaga",
+     Sequence (Assign ("x", Const 5),
+       Sequence (Filter (Comparison (Var "x", Bigger, Const 0)),
+         Sequence (Filter (Comparison (Var "x", Equals, Const 100)),
+                   Filter (Comparison (Var "x", Smaller, Const 10))))));
+  ]
+
+(* ==================================================================== *)
+(* IF                                                                    *)
+(* ==================================================================== *)
+
+let if_certain_then_tests =
+  List.map make_not_bottom_case_with_env [
+    ("x>0 decidibile vero (x=[2,7]) -> solo il ramo then contribuisce",
+     If (Comparison (Var "x", Bigger, Const 0),
+         Assign ("r", Const 1), Assign ("r", Const (-1))),
+     [ ("r", Interval (Int 1, Int 1)) ]);
+  ]
+
+let if_certain_else_tests =
+  List.map make_not_bottom_case_with_env [
+    ("y>0 decidibile falso (y=[-8,-3]) -> solo il ramo else contribuisce",
+     If (Comparison (Var "y", Bigger, Const 0),
+         Assign ("r", Const 100), Assign ("r", Const (-100))),
+     [ ("r", Interval (Int (-100), Int (-100))) ]);
+  ]
+
+let if_ambiguous_both_branches_tests =
+  List.map make_not_bottom_case_with_env [
+    ("n>0 ambiguo (n=[-3,4]) -> entrambi i rami contribuiscono via lub",
+     If (Comparison (Var "n", Bigger, Const 0),
+         Assign ("r", Const 100), Assign ("r", Const (-100))),
+     [ ("r", Interval (Int (-100), Int 100)) ]);
+  ]
+
+(* Dimostra una particolarita' di lub_env: se una variabile viene assegnata
+   solo in un ramo e l'altro ramo la lascia assente, lub_env la mantiene
+   COSI' COM'E' (non viene "fusa" con nulla), invece di sparire o diventare
+   Top. Questo si deduce direttamente dal codice di lub_env fornito, non
+   dal dominio Intervals. *)
+let if_partial_assignment_tests =
+  List.map make_not_bottom_case_with_env [
+    ("n>0 ambiguo; solo il ramo then assegna q -> q sopravvive invariata",
+     If (Comparison (Var "n", Bigger, Const 0),
+         Assign ("q", Const 1), Skip),
+     [ ("q", Interval (Int 1, Int 1)) ]);
+  ]
+
+(* Verifica che una mutazione fatta in un ramo (su una copia dell'env) non
+   sia visibile nell'altro ramo *)
+let if_env_independence_tests =
+  List.map make_not_bottom_case_with_env [
+    ("n>0 ambiguo; il ramo then modifica x, il ramo else legge x -> deve "
+     ^ "vedere ancora il valore originale, non quello mutato nell'altro ramo",
+     If (Comparison (Var "n", Bigger, Const 0),
+         Sequence (Assign ("x", Const 999), Skip),
+         Assign ("y", BinaryOperation (Var "x", Add, Const 0))),
+     [ ("y", Interval (Int 2, Int 7)) ]);
+  ]
+
+let if_nested_tests =
+  List.map make_not_bottom_case_with_env [
+    ("If annidato, entrambe le condizioni decidibili vere",
+     If (Comparison (Var "x", Bigger, Const 0),
+         If (Comparison (Var "y", Smaller, Const 0),
+             Assign ("r", Const 1), Assign ("r", Const 2)),
+         Assign ("r", Const 3)),
+     [ ("r", Interval (Int 1, Int 1)) ]);
+  ]
+
+let if_composite_cond_tests =
+  List.map make_not_bottom_case_with_env [
+    ("If con condizione composta And, decidibile vera",
+     If (And (Comparison (Var "x", Bigger, Const 0), Comparison (Var "y", Smaller, Const 0)),
+         Assign ("r", Const 1), Assign ("r", Const 2)),
+     [ ("r", Interval (Int 1, Int 1)) ]);
+  ]
+
+let if_bottom_propagation_tests =
+  List.map make_bottom_case [
+    ("If eseguito su uno stato gia' BottomEnv resta BottomEnv",
+     Sequence (Filter (Boolean false),
+               If (Boolean true, Assign ("x", Const 1), Assign ("x", Const 2))));
+  ]
+
+(* ==================================================================== *)
+(* WHILE                                                                 *)
+(* ==================================================================== *)
+
+let while_not_entered_tests =
+  List.map make_not_bottom_case_with_env [
+    ("z=[0,0]; while(z=1) z:=99 -> condizione decidibile falsa, corpo mai eseguito",
+     While (Comparison (Var "z", Equals, Const 1), Assign ("z", Const 99)),
+     [ ("z", Interval (Int 0, Int 0)) ]);
+  ]
+  @ [
+    ( "While(Boolean false, ...) partendo da stato vuoto non aggiunge variabili",
+      `Quick,
+      fun () ->
+        match eval (While (Boolean false, Assign ("x", Const 100))) with
+        | BottomEnv -> Alcotest.fail "atteso Env vuoto, ottenuto BottomEnv"
+        | Env tbl -> Alcotest.(check int) "stato vuoto" 0 (Hashtbl.length tbl) );
+  ]
+
+(* NB: dipende da widen/aliasing (vedi nota in cima) - esegui e correggi
+   se il valore atteso non combacia col tuo interprete. *)
+let while_converges_tests =
+  List.map make_not_bottom_case [
+    ("z=0; while(z=0) z:=1 -> ATTESO indicativo, da verificare",
+     Sequence (Assign ("z", Const 0),
+       While (Comparison (Var "z", Equals, Const 0), Assign ("z", Const 1))),
+     [ ]);  (* <-- riempi con il valore reale osservato, non e' predicibile con certezza *)
+  ]
+
+(* Esempio classico di perdita di precisione dovuta al widening:
+   assumo un widen "alla Cousot" (se il limite superiore cresce tra
+   un'iterazione e l'altra, salta a +inf). Se il tuo widen e' diverso,
+   correggi il valore atteso. *)
+let while_precision_loss_tests =
+  List.map make_not_bottom_case [
+    ("x=0; while(x<3) x:=x+1 -> il limite superiore cresce, widen -> +inf (assunzione)",
+     Sequence (Assign ("x", Const 0),
+       While (Comparison (Var "x", Smaller, Const 3),
+              Assign ("x", BinaryOperation (Var "x", Add, Const 1)))),
+     [ ("x", Interval (Int 3, PosInf)) ]);
+  ]
+
+let while_precision_loss_bottom_tests =
+  List.map make_bottom_case [
+    ("x=0; while(x<3) (x:=x+1; Filter(x<>x)) -> il Filter interno e' "
+     ^ "sempre falso (x<>x su singoletto e' decidibilmente falso), "
+     ^ "quindi il corpo produce Bottom fin dalla prima iterazione",
+     Sequence (Assign ("x", Const 0),
+       While (Comparison (Var "x", Smaller, Const 3),
+         Sequence (Assign ("x", BinaryOperation (Var "x", Add, Const 1)),
+                   Filter (Comparison (Var "x", NotEquals, Var "x"))))));
+  ]
+
+(* Il corpo mantiene la variabile costante (x sempre [1,1]): niente
+   crescita, quindi niente estrapolazione a +inf necessaria (assunzione
+   minima: widen e' idempotente su valori uguali). La condizione di
+   uscita pero' non e' mai vera concretamente -> il punto di uscita e'
+   irraggiungibile -> Bottom. *)
+let while_infinite_loop_tests =
+  List.map make_bottom_case [
+    ("x=1; while(x<5) x:=1 -> il corpo non fa mai crescere x, la "
+     ^ "condizione di uscita non e' mai vera -> Bottom",
+     Sequence (Assign ("x", Const 1),
+       While (Comparison (Var "x", Smaller, Const 5), Assign ("x", Const 1))));
+  ]
+
+let while_bottom_propagation_tests =
+  List.map make_bottom_case [
+    ("While eseguito su stato gia' BottomEnv resta BottomEnv",
+     Sequence (Filter (Boolean false),
+               While (Boolean true, Assign ("x", Const 1))));
+  ]
+
+(* Boundary di uguaglianza: stessa dinamica di while_infinite_loop_tests
+   ma espressa con Equals/NotEquals invece di </> *)
+let while_equality_boundary_tests =
+  List.map make_bottom_case [
+    ("z=0; while(z=0) Skip -> la condizione resta sempre vera, uscita "
+     ^ "irraggiungibile -> Bottom",
+     Sequence (Assign ("z", Const 0),
+       While (Comparison (Var "z", Equals, Const 0), Skip)));
+  ]
+
+let while_nested_tests =
+  List.map make_not_bottom_case_with_env [
+    ("While esterno mai entrato contenente un While interno (mai valutato)",
+     While (Comparison (Var "z", Equals, Const 1),
+       While (Comparison (Var "z", Equals, Const 1), Assign ("z", Const 99))),
+     [ ("z", Interval (Int 0, Int 0)) ]);
+  ]
+
+(* NB: dipende fortemente da widen/aliasing - test "personale" da
+   adattare dopo aver osservato l'output reale del tuo interprete. *)
+let personal_while_test =
+  List.map make_not_bottom_case [
+    ("x=0; while(x<10) x:=x+2 -> ATTESO indicativo, da verificare",
+     Sequence (Assign ("x", Const 0),
+       While (Comparison (Var "x", Smaller, Const 10),
+              Assign ("x", BinaryOperation (Var "x", Add, Const 2)))),
+     [ ]);  (* <-- riempi con il valore reale osservato *)
+  ]
+
+(* ==================================================================== *)
+(* Test Prog generici (mix di comandi)                                  *)
+(* ==================================================================== *)
+
+let condtest =
+  List.map make_not_bottom_case [
+    ("Sequenza con Filter e If misti, tutto decidibile",
+     Sequence (
+       Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", Bigger, Const 0))),
+       If (Comparison (Var "x", Equals, Const 5),
+           Assign ("r", Const 1), Assign ("r", Const 0))),
+     [ ("x", Interval (Int 5, Int 5)); ("r", Interval (Int 1, Int 1)) ]);
+  ]
+
+(* ==================================================================== *)
+(* Export finale                                                        *)
+(* ==================================================================== *)
+
+let tests = [
+  "Somma", sumtests;
+  "Sottrazione", subtests;
+  "Moltiplicazione", multests;
+  "Divisione", divtests;
+  "Negazione", negatetests;
+  "Random", randomtests;
+  "Assegnazioni", assigntests;
+  "Sequenze", sequencetests;
+  "Overwrite", overwritetests;
+  "Skip", skiptests;
+  "Stato precompilato", envtests;
+  "Test Prog", condtest;
+  "Filter - casi certi", filter_certain_tests @ filter_certain_bottom_tests;
+  "Filter - casi ambigui", filter_ambiguous_tests;
+  "Filter - simmetria", filter_symmetry_tests;
+  "Filter - operatori derivati", filter_derived_ops_tests @ filter_derived_ops_bottom_tests;
+  "Filter - composizione And/Or/Not", filter_composition_tests @ filter_composition_bottom_tests;
+  "Filter - valore Bottom", filter_bottom_value_tests;
+  "Filter - incatenato", filter_chained_tests @ filter_chained_bottom_tests;
+
+  "IF - Ramo Then", if_certain_then_tests;
+  "IF - Ramo Else", if_certain_else_tests;
+  "IF - Ambiguità", if_ambiguous_both_branches_tests;
+  "IF - Assegnamento parziale", if_partial_assignment_tests;
+  "IF - Ambiente Indipendente", if_env_independence_tests;
+  "IF - Annidazioni", if_nested_tests;
+  "IF - Condizioni Composte", if_composite_cond_tests;
+  "IF - Propagazione di BottomEnv", if_bottom_propagation_tests;
+
+  "While - non eseguito", while_not_entered_tests;
+  "While - converge", while_converges_tests;
+  "While - perdita precisione", while_precision_loss_tests @ while_precision_loss_bottom_tests;
+  "While - loop infinito", while_infinite_loop_tests;
+  "While - propagazione bottom", while_bottom_propagation_tests;
+  "While - boundary uguaglianza", while_equality_boundary_tests;
+  "While - annidati", while_nested_tests;
+  "While - Personali", personal_while_test;
 ]

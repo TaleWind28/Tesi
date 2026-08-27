@@ -1,9 +1,8 @@
 open Syntax
 open Interpeters
-(* open Abstract_domains.Signs *)
-open Abstract_domains.SimpleSigns
-
-
+(* open Abstract_domains.Signs-- *)
+(* open Abstract_domains.SimpleSigns *)
+open Abstract_domains.Intervals
 let test_prog =(
   (* Sequence(
     Sequence(
@@ -21,7 +20,7 @@ let test_prog =(
     ) *)
     (* Filter (Comparison (Var "x", Bigger, Var "y")) *)
     (* If(Comparison(Var "x", NotEquals, Var "y"),Assign ("x", Const(-9)),Assign ("y", Const(0))) *)
-    Sequence(
+    (* Sequence(
       Sequence(
         Assign ("x", Const(1)),
         Sequence(
@@ -38,8 +37,15 @@ let test_prog =(
         )
         
       )
+    ) *)
+    Sequence (
+      Assign ("b", Bottom),
+      Sequence(
+        Assign("z",Random (0,0)), 
+        Filter (Comparison (Var "b", Equals, Var "x"))
+      )
     )
-  )
+)
   
 (* let string_of_sign v =
   match v with
@@ -52,26 +58,36 @@ let test_prog =(
   | SignTop -> "T (Top)"
   | SignBottom -> "_|_ (Bottom)" *)
 
-let string_of_simple_sign v =
+(* let string_of_simple_sign v =
   match v with
   | Pos -> "+"
   | Neg -> "-"
   | Zero -> "0"
   | SignTop -> "T (Top)"
-  | SignBottom -> "_|_ (Bottom)"
+  | SignBottom -> "_|_ (Bottom)" *)
+
+  let bound_to_string = function
+    | NegInf -> "-inf"
+    | PosInf -> "+inf"
+    | Int n -> string_of_int n
+
+  let interval_to_string = function
+    | Bottom -> "Bottom"
+    | Interval (a, b) ->
+        Printf.sprintf "[%s, %s]" (bound_to_string a) (bound_to_string b)
 
 let outputStatePrinter state = 
   match state with
-  | SimpleSignInterp.BottomEnv ->
+  | IntervalInterp.BottomEnv ->
       print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
-  | SimpleSignInterp.Env tbl ->
+  | IntervalInterp.Env tbl ->
       Hashtbl.iter (fun var v ->
-        Printf.printf "%s : %s\n" var (string_of_simple_sign v)
+        Printf.printf "%s : %s\n" var (interval_to_string v)
       ) tbl
 
 let () =
-  let risultato : SimpleSignInterp.state = SimpleSignInterp.eval test_prog in
-  outputStatePrinter risultato
+  let risultato : IntervalInterp.state = IntervalInterp.eval test_prog in
+  outputStatePrinter risultato;;
 
 (* let () =
   let env = Hashtbl.create 10 in

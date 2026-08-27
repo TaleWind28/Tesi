@@ -26,5 +26,5 @@ let sign_testable =
   let pp fmt s = Format.fprintf fmt "%s" (sign_to_string s) in
   Alcotest.testable pp ( = )
 
-let interval_testanble = 
+let interval_testable = 
   let pp fmt s = Format.fprintf fmt "%s" (interval_to_string s) in Alcotest.testable pp ( = )

@@ -239,9 +239,19 @@ module Intervals = struct
     |Interval (a,b), Interval(c,d)-> compare_bound a c >= 0 && compare_bound d b >= 0
 
   let compare_type x y =  match x,y with
-    | Interval(a,b),Interval(c,d) -> if compare_bound a c >= 0 && compare_bound d b >= 0 then 1 else -1 
     | Bottom,_ -> -1
     | _,Bottom -> 1
+    | Interval(a,b),Interval(c,d) -> 
+      let lower_bound = compare_bound a c in
+      let higher_bound = compare_bound b d in 
+
+      match lower_bound,higher_bound with
+      | 0,0 -> 0
+      | 1,1 -> 1
+      | -1,-1 -> -1
+      | 0,x | x,0 -> x
+      | _,_ -> 2
+      (* if compare_bound a c >= 0 && compare_bound b d >= 0 then 1 else -1  *)
     
   let lub c1 c2 = match c1,c2 with 
     | Bottom,x | x,Bottom -> x
