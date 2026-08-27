@@ -247,7 +247,12 @@ module Intervals = struct
     | Bottom,x | x,Bottom -> x
     | Interval(a,b), Interval(c,d) -> Interval(min_bound a c ,max_bound b d )
 
-  let widen c1 c2 = failwith "not implemented" 
+  let widen c1 c2 = match c1,c2 with
+  | Bottom,x | x,Bottom -> x
+  | Interval(a,b), Interval(c,d) -> 
+    let min = if compare_bound a c <= 0 then a else NegInf in 
+    let max = if compare_bound d b <= 0 then b else PosInf in
+    Interval(min,max)
 
   let glb c1 c2 = match c1,c2 with
   | Bottom,_ | _,Bottom -> Bottom
@@ -327,6 +332,4 @@ module Intervals = struct
       if c >= Int 1 then Interval(min_bound (div_bound a c) (div_bound a d), max_bound (div_bound b c) (div_bound b d))
       else if d <= Int(-1) then  Interval(min_bound (div_bound b c) (div_bound b d), max_bound (div_bound a c) (div_bound a d))
       else div_helper a b c d
-end
-
-  
+end 
