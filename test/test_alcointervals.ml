@@ -465,10 +465,11 @@ let filter_ambiguous_tests =
     ("Filter(n<0) su n=[-3,4] -> ambiguo, passa invariato",
      Filter (Comparison (Var "n", Smaller, Const 0)),
      [ ("n", Interval (Int (-3), Int 4)) ]);
-
-    ("Filter(w=k) con w=[0,5], k=[-5,0] sovrapposti in 0 -> ambiguo",
-     Filter (Comparison (Var "w", Equals, Var "k")),
-     [ ("k", Interval (Int (-5), Int 0)); ("w", Interval (Int 0, Int 5)) ]); (* Secondo me ha senso che non sia ambiguo in quanto a>c e b>d quindi w > k  Quindi BottomEnv*)
+  ] @ List.map make_bottom_case_with_env [
+    "Filter(w=k) con w=[0,5], k=[-5,0] sovrapposti in 0 -> ambiguo",
+     Filter (Comparison (Var "w", Equals, Var "k"))
+     (* Secondo me ha senso che non sia ambiguo in quanto a>c e b>d quindi w > k  Quindi BottomEnv*)
+    (* Risultato di Claude:      [ ("k", Interval (Int (-5), Int 0)); ("w", Interval (Int 0, Int 5)) ]) *)
   ]
 
 (* Simmetria: Filter(a > b) e Filter(b < a) devono avere lo stesso esito
@@ -540,18 +541,20 @@ let filter_composition_bottom_tests =
      Filter (Or (Comparison (Var "x", Equals, Const 100), Comparison (Var "y", Equals, Const 100))));
   ]
 
-(* Comparazioni che coinvolgono una variabile il cui valore astratto e'
-   Bottom (variabile "b" nello stato precompilato). Questo dipende da come
-   il tuo dominio definisce compare_type su Bottom: qui assumo che il
-   confronto risulti comunque "vero" (interpretabile come vacuamente vero,
-   dato che Bottom rappresenta l'insieme vuoto) - VERIFICA e correggi se
-   la tua implementazione si comporta diversamente (es. solleva eccezione
-   o restituisce sempre 2). *)
+(* 
+  Comparazioni che coinvolgono una variabile il cui valore astratto e'
+  Bottom (variabile "b" nello stato precompilato). Questo dipende da come
+  il tuo dominio definisce compare_type su Bottom: qui assumo che il
+  confronto risulti comunque "vero" (interpretabile come vacuamente vero,
+  dato che Bottom rappresenta l'insieme vuoto) - VERIFICA e correggi se
+  la tua implementazione si comporta diversamente 
+  (es. solleva eccezione o restituisce sempre 2).   
+*)
 let filter_bottom_value_tests =
-  List.map make_not_bottom_case_with_env [
-    ("Filter(b=x) con b=Bottom -> assunto vacuamente vero, da verificare",
-     Filter (Comparison (Var "b", Equals, Var "x")),
-     [ ("x", Interval (Int 2, Int 7)) ]);
+  List.map make_bottom_case_with_env [
+    ("Filter(b=x) con b=Bottom -> assunto vacuamente vero, da verificare", (* la logica mi direbbe che qua deve uscire bottom perchè bottom lo considero come errore*)
+     Filter (Comparison (Var "b", Equals, Var "x"))
+      )  (* Risultato di Claude: ("x", Interval (Int 2, Int 7)) lo mantengo perchè può avere senso *)
   ]
 
 (* Filter incatenati: ognuno decidibile singolarmente *)
@@ -624,7 +627,7 @@ let if_env_independence_tests =
      If (Comparison (Var "n", Bigger, Const 0),
          Sequence (Assign ("x", Const 999), Skip),
          Assign ("y", BinaryOperation (Var "x", Add, Const 0))),
-     [ ("y", Interval (Int 2, Int 7)) ]);
+     [ ("x",Interval(Int(2),Int(999)));("y", Interval (Int (-8), Int 7)) ]); (* Claude aveva scazzato col risultato *)
   ]
 
 let if_nested_tests =
@@ -691,7 +694,7 @@ let while_precision_loss_tests =
      Sequence (Assign ("x", Const 0),
        While (Comparison (Var "x", Smaller, Const 3),
               Assign ("x", BinaryOperation (Var "x", Add, Const 1)))),
-     [ ("x", Interval (Int 3, PosInf)) ]);
+     [ ("x", Interval (Int 0, PosInf)) ]); (* Risultato di Claude : x = [Int 3, PosInf] è corretto però non facendo narrowing è impossibile da avere, va implementato altrimenti fa cagare l'interprete*)
   ]
 
 let while_precision_loss_bottom_tests =

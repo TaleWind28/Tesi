@@ -38,14 +38,21 @@ let test_prog =(
         
       )
     ) *)
-    Sequence (
-      Assign ("b", Bottom),
-      Sequence(
-        Assign("z",Random (0,0)), 
+     (* If (Comparison (Var "n", Bigger, Const 0),
+         Sequence (Assign ("x", Const 999), Skip),
+         Assign("y",Var "x") *)
+         (* Assign ("y", BinaryOperation (Var "x", Add, Const 0))) *)
+    (* Sequence (
+      (* Assign ("b", Bottom),
+      Sequence( *)
+        Assign("x",Random (2,7)), 
         Filter (Comparison (Var "b", Equals, Var "x"))
-      )
-    )
-)
+      (* ) *)
+    ) *)
+    Sequence (Assign ("x", Const 0),
+       While (Comparison (Var "x", Smaller, Const 10),
+              Assign ("x", BinaryOperation (Var "x", Add, Const 2))))
+  )
   
 (* let string_of_sign v =
   match v with
@@ -85,8 +92,20 @@ let outputStatePrinter state =
         Printf.printf "%s : %s\n" var (interval_to_string v)
       ) tbl
 
+
 let () =
-  let risultato : IntervalInterp.state = IntervalInterp.eval test_prog in
+  let env = Hashtbl.create 10 in 
+  Hashtbl.replace env "x" (Interval (Int 2, Int 7));
+  Hashtbl.replace env "y" (Interval (Int (-8), Int (-3)));
+  Hashtbl.replace env "z" (Interval (Int 0, Int 0));
+  Hashtbl.replace env "w" (Interval (Int 0, Int 5));
+  Hashtbl.replace env "k" (Interval (Int (-5), Int 0));
+  Hashtbl.replace env "n" (Interval (Int (-3), Int 4));
+  Hashtbl.replace env "t" top;
+  Hashtbl.replace env "p" (Interval (Int 1, PosInf));
+  Hashtbl.replace env "m" (Interval (NegInf, Int (-1)));
+  Hashtbl.replace env "b" bottom;
+  let risultato : IntervalInterp.state = IntervalInterp.eval_cmd test_prog (Env(env)) in
   outputStatePrinter risultato;;
 
 (* let () =

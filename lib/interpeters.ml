@@ -152,7 +152,11 @@ module AbsInterp (D : DOMAIN) = struct
                 lub_env e1 e2
                     
             | While(cond,cmd) -> (* Ciclo che tramite Least Fixpoint valuta  *)
-                let f x = lub_env (Env(env)) (eval_cmd cmd (eval_cond cond x)) in (* Funzione che si occupa di valutare lo stato aggiornandolo ad ogni iterazione *)
+                (* let copy_state = function
+                    | BottomEnv -> BottomEnv
+                    | Env tbl -> Env (Hashtbl.copy tbl) in  *)
+                let e1 = Env(Hashtbl.copy(env)) in 
+                let f x = lub_env e1 (eval_cmd cmd (eval_cond cond x)) in (* Funzione che si occupa di valutare lo stato aggiornandolo ad ogni iterazione *)
                 let lfp f = (* Tramite funzione ausiliaria iterate lfp restituisce, se possibile, il punto dopo il quale il ciclo smette di produrre risultati che espandono lo stato corrente *)
                     let rec iterate x = 
                         let x' = widen_env x (f x) in (* Viene effettuato un Widening sullo stato attuale e lo stato dopo aver applicato f *) 

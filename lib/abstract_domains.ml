@@ -244,7 +244,6 @@ module Intervals = struct
     | Interval(a,b),Interval(c,d) -> 
       let lower_bound = compare_bound a c in
       let higher_bound = compare_bound b d in 
-
       match lower_bound,higher_bound with
       | 0,0 -> 0
       | 1,1 -> 1
