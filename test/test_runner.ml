@@ -57,7 +57,7 @@ let () =
     "SimpleSign - Skip", List.assoc "Skip" Test_alcosimplesigns.tests;
     "SimpleSign - Stato precompilato", List.assoc "Stato precompilato" Test_alcosimplesigns.tests;
     "SimpleSign - Test Prog", List.assoc "Test Prog" Test_alcosimplesigns.tests;
-
+    (* Test su Filter *)
     "SimpleSign - Filter - Certain", List.assoc "Filter - casi certi" Test_alcosimplesigns.tests;
     "SimpleSign - Filter - Uncertain", List.assoc "Filter - casi ambigui" Test_alcosimplesigns.tests;
     "SimpleSign - Filter - Simmetric", List.assoc "Filter - simmetria" Test_alcosimplesigns.tests;
@@ -65,7 +65,7 @@ let () =
     "SimpleSign - Filter - Composition", List.assoc "Filter - composizione And/Or/Not" Test_alcosimplesigns.tests;
     "SimpleSign - Filter - Bottom", List.assoc "Filter - valore Bottom" Test_alcosimplesigns.tests;
     "SimpleSign - Filter - Chaining", List.assoc "Filter - incatenato" Test_alcosimplesigns.tests;
-    (*Test Su IF*)
+    (* Test Su IF *)
     "SimpleSign - IF - Ramo Then", List.assoc "IF - Ramo Then" Test_alcosimplesigns.tests;
     "SimpleSign - IF - Ramo Else", List.assoc "IF - Ramo Else" Test_alcosimplesigns.tests;
     "SimpleSign - IF - Ambiguità", List.assoc "IF - Ambiguità" Test_alcosimplesigns.tests;
@@ -83,7 +83,6 @@ let () =
     "SimpleSign - While - Boundary Uguaglianza",List.assoc "While - boundary uguaglianza" Test_alcosimplesigns.tests;
     "SimpleSign - While - Annidati",List.assoc "While - annidati" Test_alcosimplesigns.tests;
     "SimpleSign - While - Personalizzati",List.assoc "While - Personali" Test_alcosimplesigns.tests;
-
   ]
   (* @ Test_alcointervals.tests*)
   )
