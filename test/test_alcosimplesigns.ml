@@ -1,40 +1,45 @@
 open Syntax
-open Abstract_domains.Signs
+open Abstract_domains.SimpleSigns
 open Interpeters
 
 (* ------------------------------------------------------------ *)
-(* 1. Setup                                                      *)
+(* Setup                                                         *)
 (* ------------------------------------------------------------ *)
 
 let sign_to_string = function
-  | SignTop -> "Top" 
-  | Pos -> "Pos" 
-  | Neg -> "Neg" 
+  | SignTop -> "Top"
+  | Pos -> "Pos"
+  | Neg -> "Neg"
   | Zero -> "Zero"
-  | SignBottom -> "Bottom" 
-  | PosZero -> "PosZero"
-  | NegZero -> "NegZero" 
-  | NonZero -> "NonZero"
+  | SignBottom -> "Bottom"
 
 let sign_testable =
   Alcotest.testable (fun fmt s -> Format.fprintf fmt "%s" (sign_to_string s)) ( = )
 
-(* Stato "grezzo": va wrappato in Env(...) da chi lo usa *)
+(* Stato "grezzo": va wrappato in Env(...) da chi lo usa.
+   Solo i 5 segni del dominio ridotto: niente w/k/n (PosZero/NegZero/NonZero
+   non esistono in SimpleSigns), restano x,y,z,t,b. *)
 let make_test_state () =
   let st = Hashtbl.create 10 in
   List.iter (fun (k, v) -> Hashtbl.add st k v)
-    [ "x", Pos; "y", Neg; "z", Zero; "w", PosZero;
-      "k", NegZero; "n", NonZero; "t", SignTop; "b", SignBottom ];
+    [ 
+      "x", Pos;
+      "x2",Pos;
+      "y", Neg;
+      "z", Zero; 
+      "t", SignTop;
+      "b", SignBottom 
+    ];
   st
 
 let make_case (desc, expr, expected) =
   ( desc, `Quick,
     fun () ->
-      let res = SignInterp.eval_exp expr (Env (make_test_state ())) in
+      let res = SimpleSignInterp.eval_exp expr (Env (make_test_state ())) in
       Alcotest.(check sign_testable) desc expected res )
 
 (* Verifica una o più variabili in uno stato finale; fallisce se BottomEnv *)
-let check_vars desc (final_env : Interpeters.SignInterp.state) expected_vars =
+let check_vars desc (final_env : Interpeters.SimpleSignInterp.state) expected_vars =
   match final_env with
   | BottomEnv ->
       Alcotest.fail (Printf.sprintf "%s: stato finale è BottomEnv, impossibile verificare variabili" desc)
@@ -51,22 +56,21 @@ let check_vars desc (final_env : Interpeters.SignInterp.state) expected_vars =
 
 (* Stato iniziale VUOTO *)
 let make_prog_case (desc, prog, expected_vars) =
-  (desc, `Quick, fun () -> check_vars desc (SignInterp.eval prog) expected_vars)
+  (desc, `Quick, fun () -> check_vars desc (SimpleSignInterp.eval prog) expected_vars)
 
 (* Stato iniziale PRECOMPILATO *)
 let make_prog_case_with_env (desc, prog, expected_vars) =
   ( desc, `Quick,
-    fun () -> check_vars desc (SignInterp.eval_cmd prog (Env (make_test_state ()))) expected_vars )
+    fun () -> check_vars desc (SimpleSignInterp.eval_cmd prog (Env (make_test_state ()))) expected_vars )
 
 (* Si aspetta BottomEnv. Se [with_env] è true parte dallo stato precompilato
-   (eval_cmd), altrimenti da stato vuoto (eval). Sostituisce le due funzioni
-   duplicate expect_bottom / expect_bottom_with_env della versione originale. *)
+   (eval_cmd), altrimenti da stato vuoto (eval). *)
 let expect_bottom ?(with_env = false) desc prog =
   ( desc, `Quick,
     fun () ->
       let res =
-        if with_env then SignInterp.eval_cmd prog (Env (make_test_state ()))
-        else SignInterp.eval prog
+        if with_env then SimpleSignInterp.eval_cmd prog (Env (make_test_state ()))
+        else SimpleSignInterp.eval prog
       in
       match res with
       | BottomEnv -> ()
@@ -74,26 +78,12 @@ let expect_bottom ?(with_env = false) desc prog =
 
 let expect_bottom_with_env desc prog = expect_bottom ~with_env:true desc prog
 
-(* ------------------------------------------------------------ *)
-(* 2. Espressioni (eval_exp)                                     *)
-(* ------------------------------------------------------------ *)
-
 let sumtests = List.map make_case [
   "Sum: Pos + Pos", BinaryOperation (Var "x", Add, Var "x"), Pos;
   "Sum: Pos + Neg", BinaryOperation (Var "x", Add, Var "y"), SignTop;
   "Sum: Neg + Neg", BinaryOperation (Var "y", Add, Var "y"), Neg;
   "Sum: Pos + Zero", BinaryOperation (Var "x", Add, Var "z"), Pos;
   "Sum: Zero + Zero", BinaryOperation (Var "z", Add, Var "z"), Zero;
-  "Sum: PosZero + PosZero", BinaryOperation (Var "w", Add, Var "w"), PosZero;
-  "Sum: NegZero + NegZero", BinaryOperation (Var "k", Add, Var "k"), NegZero;
-  "Sum: PosZero + NegZero", BinaryOperation (Var "w", Add, Var "k"), SignTop;
-  "Sum: PosZero + Pos", BinaryOperation (Var "w", Add, Var "x"), Pos;
-  "Sum: PosZero + Neg", BinaryOperation (Var "w", Add, Var "y"), SignTop;
-  "Sum: NegZero + Pos", BinaryOperation (Var "k", Add, Var "x"), SignTop;
-  "Sum: NegZero + Neg", BinaryOperation (Var "k", Add, Var "y"), Neg;
-  "Sum: NonZero + Pos", BinaryOperation (Var "n", Add, Var "x"), SignTop;
-  "Sum: NonZero + Zero", BinaryOperation (Var "n", Add, Var "z"), NonZero;
-  "Sum: NonZero + NonZero", BinaryOperation (Var "n", Add, Var "n"), SignTop;
   "Sum: Top + Pos", BinaryOperation (Var "t", Add, Var "x"), SignTop;
   "Sum: Bottom + Pos", BinaryOperation (Var "b", Add, Var "x"), SignBottom;
   "Sum: 10 + (-20)", BinaryOperation (Const 10, Add, Const (-20)), SignTop;
@@ -112,36 +102,21 @@ let multests = List.map make_case [
   "Mul: Pos * Neg", BinaryOperation (Var "x", Mul, Var "y"), Neg;
   "Mul: Neg * Neg", BinaryOperation (Var "y", Mul, Var "y"), Pos;
   "Mul: Pos * Zero", BinaryOperation (Var "x", Mul, Var "z"), Zero;
-  "Mul: PosZero * Neg", BinaryOperation (Var "w", Mul, Var "y"), NegZero;
-  "Mul: NegZero * Pos", BinaryOperation (Var "k", Mul, Var "x"), NegZero;
-  "Mul: NonZero * Zero", BinaryOperation (Var "n", Mul, Var "z"), Zero;
-  "Mul: NonZero * NonZero", BinaryOperation (Var "n", Mul, Var "n"), NonZero;
   "Mul: Top * Zero", BinaryOperation (Var "t", Mul, Var "z"), Zero;
   "Mul: Bottom * Pos", BinaryOperation (Var "b", Mul, Var "x"), SignBottom;
 ]
 
 let divtests = List.map make_case [
-  "Div: Pos / Pos", BinaryOperation (Var "x", Div, Var "x"), PosZero;
-  "Div: Pos / Neg", BinaryOperation (Var "x", Div, Var "y"), NegZero;
-  "Div: Neg / Neg", BinaryOperation (Var "y", Div, Var "y"), PosZero;
   "Div: Costante / Zero", BinaryOperation (Const 10, Div, Var "z"), SignBottom;
-  "Div: Pos / PosZero (rischio 0)", BinaryOperation (Var "x", Div, Var "w"), SignTop;
-  "Div: Pos / NegZero (rischio 0)", BinaryOperation (Var "x", Div, Var "k"), SignTop;
-  "Div: Pos / NonZero", BinaryOperation (Var "x", Div, Var "n"), SignTop;
   "Div: Zero / Pos", BinaryOperation (Var "z", Div, Var "x"), Zero;
   "Div: Zero / Neg", BinaryOperation (Var "z", Div, Var "y"), Zero;
   "Div: Top / Pos", BinaryOperation (Var "t", Div, Var "x"), SignTop;
-  "Div: PosZero / Neg", BinaryOperation (Var "w", Div, Var "y"), NegZero;
-  "Div: NegZero / Pos", BinaryOperation (Var "k", Div, Var "x"), NegZero;
 ]
 
 let negatetests = List.map make_case [
   "Negate: Pos", UnaryOperation (Negation, Var "x"), Neg;
   "Negate: Neg", UnaryOperation (Negation, Var "y"), Pos;
   "Negate: Zero", UnaryOperation (Negation, Var "z"), Zero;
-  "Negate: PosZero", UnaryOperation (Negation, Var "w"), NegZero;
-  "Negate: NegZero", UnaryOperation (Negation, Var "k"), PosZero;
-  "Negate: NonZero", UnaryOperation (Negation, Var "n"), NonZero;
   "Negate: Top", UnaryOperation (Negation, Var "t"), SignTop;
   "Negate: Bottom", UnaryOperation (Negation, Var "b"), SignBottom;
   "Doppia negazione: --Pos", UnaryOperation (Negation, UnaryOperation (Negation, Var "x")), Pos;
@@ -152,8 +127,8 @@ let randomtests = List.map make_case [
   "Random(-1,10)", Random (-1, 10), SignTop;
   "Random(1,10)", Random (1, 10), Pos;
   "Random(-10,-1)", Random (-10, -1), Neg;
-  "Random(0,10)", Random (0, 10), PosZero;
-  "Random(-10,0)", Random (-10, 0), NegZero;
+  "Random(0,10)", Random (0, 10), SignTop;
+  "Random(-10,0)", Random (-10, 0), SignTop;
   "Random(0,0)", Random (0, 0), Zero;
 ]
 
@@ -223,7 +198,7 @@ let skiptests = [
   ( "Skip in mezzo a una sequenza non altera i valori", `Quick,
     fun () ->
       let prog = Sequence (Assign ("x", Const 42), Skip) in
-      match SignInterp.eval_cmd prog (Env (make_test_state ())) with
+      match SimpleSignInterp.eval_cmd prog (Env (make_test_state ())) with
       | Env tbl -> Alcotest.(check sign_testable) "x resta Pos" Pos (Hashtbl.find tbl "x")
       | BottomEnv -> Alcotest.fail "Skip: stato inaspettatamente BottomEnv" );
 ]
@@ -231,9 +206,6 @@ let skiptests = [
 let envtests = List.map make_prog_case_with_env [
   "Riassegna x usando y già presente (y=Neg): x = y + y -> Neg",
     Assign ("x", BinaryOperation (Var "y", Add, Var "y")), [ "x", Neg ];
-
-  "z = w * k (PosZero*NegZero)",
-    Assign ("z", BinaryOperation (Var "w", Mul, Var "k")), [ "z", NegZero ];
 
   "Programma multi-step su stato precompilato",
     Sequence (
@@ -255,7 +227,6 @@ let condtest = [
 (* 3bis. Filter / eval_cond                                      *)
 (* ------------------------------------------------------------ *)
 
-(* Casi certi: il confronto ha esito deciso senza ambiguità *)
 let filter_certain_tests = List.map make_prog_case_with_env [
   "Filter certo vero: x > y (Pos > Neg)",
     Filter (Comparison (Var "x", Bigger, Var "y")), [ "x", Pos; "y", Neg ];
@@ -278,28 +249,28 @@ let filter_certain_bottom_tests = [
     (Filter (Comparison (Var "z", NotEquals, Var "z")));
 ]
 
-(* Casi ambigui: i segni si sovrappongono, Filter non deve tagliare *)
+(* Casi ambigui: in SimpleSigns nascono solo da coppie con lo STESSO segno *)
 let filter_ambiguous_tests = List.map make_prog_case_with_env [
-  "Filter ambiguo: x > w (Pos vs PosZero si sovrappongono) -> passa, non restringe",
-    Filter (Comparison (Var "x", Bigger, Var "w")), [ "x", Pos; "w", PosZero ];
-  "Filter ambiguo: x = w (Pos vs PosZero) -> passa",
-    Filter (Comparison (Var "x", Equals, Var "w")), [ "x", Pos; "w", PosZero ];
-  "Filter ambiguo: x > n (Pos vs NonZero) -> passa",
-    Filter (Comparison (Var "x", Bigger, Var "n")), [ "x", Pos; "n", NonZero ];
-  "Filter ambiguo: y < w (Neg vs PosZero, comunque si controlla) -> passa",
-    Filter (Comparison (Var "y", Smaller, Var "w")), [ "y", Neg; "w", PosZero ];
+  "Filter ambiguo: x > x2 (Pos vs Pos, stesso segno) -> passa, non restringe",
+    Filter (Comparison (Var "x", Bigger, Var "x2")), [ "x", Pos; "x2", Pos ];
+  "Filter ambiguo: x = x2 (Pos vs Pos) -> passa",
+    Filter (Comparison (Var "x", Equals, Var "x2")), [ "x", Pos; "x2", Pos ];
+  "Filter ambiguo: x < x2 (Pos vs Pos) -> passa",
+    Filter (Comparison (Var "x", Smaller, Var "x2")), [ "x", Pos; "x2", Pos ];
+  "Filter ambiguo: t = t (Top vs Top, stessa var) -> passa",
+    Filter (Comparison (Var "t", Equals, Var "t")), [ "t", SignTop ];
 ]
 
 (* Simmetria: stessa coppia ambigua, ordine invertito *)
 let filter_symmetry_tests = List.map make_prog_case_with_env [
-  "Simmetria ambiguo A: x > w (Pos, PosZero)",
-    Filter (Comparison (Var "x", Bigger, Var "w")), [ "x", Pos; "w", PosZero ];
-  "Simmetria ambiguo B: w > x (PosZero, Pos) - deve comportarsi come sopra",
-    Filter (Comparison (Var "w", Bigger, Var "x")), [ "x", Pos; "w", PosZero ];
-  "Simmetria Equals A: x = w (Pos, PosZero)",
-    Filter (Comparison (Var "x", Equals, Var "w")), [ "x", Pos; "w", PosZero ];
-  "Simmetria Equals B: w = x (PosZero, Pos)",
-    Filter (Comparison (Var "w", Equals, Var "x")), [ "x", Pos; "w", PosZero ];
+  "Simmetria ambiguo A: x > x2 (Pos, Pos)",
+    Filter (Comparison (Var "x", Bigger, Var "x2")), [ "x", Pos; "x2", Pos ];
+  "Simmetria ambiguo B: x2 > x (Pos, Pos) - deve comportarsi come sopra",
+    Filter (Comparison (Var "x2", Bigger, Var "x")), [ "x", Pos; "x2", Pos ];
+  "Simmetria Equals A: x = x2 (Pos, Pos)",
+    Filter (Comparison (Var "x", Equals, Var "x2")), [ "x", Pos; "x2", Pos ];
+  "Simmetria Equals B: x2 = x (Pos, Pos)",
+    Filter (Comparison (Var "x2", Equals, Var "x")), [ "x", Pos; "x2", Pos ];
 ]
 
 (* Operatori derivati: BiggerEquals / SmallerEquals *)
@@ -308,8 +279,8 @@ let filter_derived_ops_tests = List.map make_prog_case_with_env [
     Filter (Comparison (Var "x", BiggerEquals, Var "z")), [ "x", Pos; "z", Zero ];
   "SmallerEquals certo vero: z <= z (Zero <= Zero, caso limite)",
     Filter (Comparison (Var "z", SmallerEquals, Var "z")), [ "z", Zero ];
-  "BiggerEquals ambiguo: w >= x (PosZero >= Pos) -> passa",
-    Filter (Comparison (Var "w", BiggerEquals, Var "x")), [ "w", PosZero; "x", Pos ];
+  "BiggerEquals ambiguo: x >= x2 (Pos >= Pos) -> passa",
+    Filter (Comparison (Var "x", BiggerEquals, Var "x2")), [ "x", Pos; "x2", Pos ];
 ]
 
 let filter_derived_ops_bottom_tests = [
@@ -319,7 +290,7 @@ let filter_derived_ops_bottom_tests = [
     (Filter (Comparison (Var "y", BiggerEquals, Var "x")));
 ]
 
-(* Composizione: And, Or, Not *)
+(* Composizione: And, Or, Not — nessun riferimento a PosZero/NonZero, invariati *)
 let filter_composition_tests = List.map make_prog_case_with_env [
   "And di due certi veri: x>y And y<x",
     Filter (And (Comparison (Var "x", Bigger, Var "y"), Comparison (Var "y", Smaller, Var "x"))),
@@ -342,9 +313,14 @@ let filter_composition_bottom_tests = [
     (Filter (Or (Boolean false, Boolean false)));
 ]
 
-(* Caso limite: confronto che coinvolge SignBottom *)
+(* Caso limite: SignBottom = SignBottom. ATTENZIONE: in SimpleSigns
+   compare_type(SignBottom,SignBottom) rientra nella guardia generica
+   "x,y when x=y -> 2", quindi e' AMBIGUO (non "certo uguale" come in
+   Signs). L'esito pratico non cambia (il Filter passa comunque), ma
+   il motivo e' diverso: non e' una certezza, e' un'ambiguità che non
+   viene mai risolta perché SignBottom rappresenta uno stato irraggiungibile. *)
 let filter_bottom_value_tests = List.map make_prog_case_with_env [
-  "Confronto b = b (SignBottom = SignBottom, stessa var) -> certo uguale, passa",
+  "Confronto b = b (SignBottom = SignBottom, stessa var) -> ambiguo per compare_type, ma passa comunque",
     Filter (Comparison (Var "b", Equals, Var "b")), [ "b", SignBottom ];
 ]
 
@@ -352,8 +328,8 @@ let filter_bottom_value_tests = List.map make_prog_case_with_env [
 let filter_chained_tests = List.map make_prog_case_with_env [
   "Filter ambiguo poi Assign: lo stato prosegue e z viene ricalcolata",
     Sequence (
-      Filter (Comparison (Var "x", Bigger, Var "w")),  (* ambiguo, passa *)
-      Assign ("z", BinaryOperation (Var "x", Add, Var "y"))),
+      Filter (Comparison (Var "x", Bigger, Var "x2")),  (* ambiguo (Pos,Pos), passa *)
+      Assign ("z", BinaryOperation (Var "x", Add, Var "y"))),   (* sum(Pos,Neg) = SignTop *)
     [ "x", Pos; "z", SignTop ];
 ]
 
@@ -362,16 +338,28 @@ let filter_chained_bottom_tests = [
     (Sequence (Filter (Comparison (Var "y", Bigger, Var "x")), Assign ("x", Const 999)));
   expect_bottom_with_env "Doppio Filter: prima passa (ambiguo), poi taglia (certo falso)"
     (Sequence (
-       Filter (Comparison (Var "x", Bigger, Var "w")),
+       Filter (Comparison (Var "x", Bigger, Var "x2")),
        Filter (Comparison (Var "y", Bigger, Var "x"))));
 ]
 
 (* ------------------------------------------------------------ *)
-(* If: ricorda che make_test_state pre-popola
-     x=Pos, y=Neg, z=Zero, w=PosZero, n=NonZero, b=SignBottom.
-   Quando eval_cond restituisce "ambiguo" (2), entrambi i rami vengono
-   eseguiti e il risultato è il lub dei due; un ramo viene scartato solo
-   quando il confronto è certo. *)
+(* If per SimpleSigns.
+   La condizione "ambigua" standard qui e' x > x2 (Pos vs Pos, stesso
+   segno): come in Signs, quando compare_type e' ambiguo entrambi i
+   rami eseguono davvero e il risultato e' lub(then, else).
+
+   ATTENZIONE al lub di questo dominio (diverso da quello di Signs):
+     lub s1 s2 =
+       | SignBottom,x | x,SignBottom -> x
+       | x,y when x=y -> x
+       | Neg,Neg -> Neg
+       | Pos,Pos -> Pos
+       | _,_ -> SignTop
+   Cioe' l'UNICO modo di ottenere un risultato preciso (diverso da
+   SignTop) unendo due rami e' che i due rami producano ESATTAMENTE
+   lo stesso segno. Qualsiasi lub tra segni diversi (anche solo
+   Pos e Zero, che in Signs davano PosZero) collassa direttamente a
+   SignTop: qui non esistono valori intermedi. *)
 (* ------------------------------------------------------------ *)
 
 let if_certain_then_tests = List.map make_prog_case_with_env [
@@ -390,56 +378,63 @@ let if_certain_else_tests = List.map make_prog_case_with_env [
 ]
 
 let if_ambiguous_both_branches_tests = List.map make_prog_case_with_env [
-  "Ambiguo: then=Pos(5), else=Neg(-5) -> lub = NonZero",
-    If (Comparison (Var "w", Bigger, Var "x"), Assign ("k", Const 5), Assign ("k", Const (-5))),
-    [ "k", NonZero ];
-  "Ambiguo: then=Pos(1), else=Zero(0) -> lub = PosZero",
-    If (Comparison (Var "w", Bigger, Var "x"), Assign ("k", Const 1), Assign ("k", Const 0)),
-    [ "k", PosZero ];
-  "Ambiguo: then=Neg(-1), else=Zero(0) -> lub = NegZero",
-    If (Comparison (Var "w", Bigger, Var "x"), Assign ("k", Const (-1)), Assign ("k", Const 0)),
-    [ "k", NegZero ];
-  "Ambiguo: lub(Pos,NegZero) non ha riga esplicita in Signs.lub -> catch-all SignTop",
-    If (Comparison (Var "w", Bigger, Var "x"),
-        Assign ("k", Const 3),
-        Assign ("k", BinaryOperation (Var "w", Mul, Var "y"))),
+  "Ambiguo: then=Pos(5), else=Neg(-5) -> lub(Pos,Neg) = SignTop (non esiste NonZero in questo dominio)",
+    If (Comparison (Var "x", Bigger, Var "x2"), Assign ("k", Const 5), Assign ("k", Const (-5))),
     [ "k", SignTop ];
-  "Ambiguo: rami convergenti (entrambi Pos) -> lub = Pos, nessuna perdita di precisione",
-    If (Comparison (Var "w", Bigger, Var "x"), Assign ("k", Const 10), Assign ("k", Const 20)),
+
+  "Ambiguo: then=Pos(1), else=Zero(0) -> lub(Pos,Zero) = SignTop (non esiste PosZero in questo dominio)",
+    If (Comparison (Var "x", Bigger, Var "x2"), Assign ("k", Const 1), Assign ("k", Const 0)),
+    [ "k", SignTop ];
+
+  "Ambiguo: then=Neg(-1), else=Zero(0) -> lub(Neg,Zero) = SignTop (non esiste NegZero in questo dominio)",
+    If (Comparison (Var "x", Bigger, Var "x2"), Assign ("k", Const (-1)), Assign ("k", Const 0)),
+    [ "k", SignTop ];
+
+  "Ambiguo: then=Pos(3), else=t (SignTop) -> lub(Pos,Top) = SignTop, catch-all",
+    If (Comparison (Var "x", Bigger, Var "x2"),
+        Assign ("k", Const 3),
+        Assign ("k", Var "t")),
+    [ "k", SignTop ];
+
+  "Ambiguo: rami convergenti (entrambi Pos) -> lub(Pos,Pos) = Pos, nessuna perdita di precisione",
+    If (Comparison (Var "x", Bigger, Var "x2"), Assign ("k", Const 10), Assign ("k", Const 20)),
     [ "k", Pos ];
 ]
 
 let if_partial_assignment_tests = List.map make_prog_case_with_env [
   "Ambiguo, var assegnata solo nel then (else = Skip) -> sopravvive col valore del then",
-    If (Comparison (Var "w", Bigger, Var "x"), Assign ("m", Const 7), Skip), [ "m", Pos ];
+    If (Comparison (Var "x", Bigger, Var "x2"), Assign ("m", Const 7), Skip), [ "m", Pos ];
   "Ambiguo, var assegnata solo nell'else (then = Skip) -> sopravvive col valore dell'else",
-    If (Comparison (Var "w", Bigger, Var "x"), Skip, Assign ("m", Const (-7))), [ "m", Neg ];
+    If (Comparison (Var "x", Bigger, Var "x2"), Skip, Assign ("m", Const (-7))), [ "m", Neg ];
 ]
 
 let if_env_independence_tests = List.map make_prog_case_with_env [
   "Il then riassegna x, l'else no: i rami non si influenzano e le var non toccate restano invariate",
-    If (Comparison (Var "w", Bigger, Var "x"), Assign ("x", Const (-100)), Skip),
-    [ "x", NonZero; "y", Neg; "z", Zero; "w", PosZero; "n", NonZero; "b", SignBottom ];
+    If (Comparison (Var "x", Bigger, Var "x2"), Assign ("x", Const (-100)), Skip),
+    [ "x", SignTop;  (* lub(Neg,Pos) = SignTop qui, non NonZero *)
+      "y", Neg; "z", Zero; "x2", Pos; "t", SignTop; "b", SignBottom ];
 ]
 
 let if_nested_tests = List.map make_prog_case_with_env [
   "If annidato: outer ambiguo, then contiene un altro If ambiguo",
-    If (Comparison (Var "w", Bigger, Var "x"),
-        If (Comparison (Var "w", Bigger, Var "x"), Assign ("k", Const 1), Assign ("k", Const (-1))),
+    If (Comparison (Var "x", Bigger, Var "x2"),
+        If (Comparison (Var "x", Bigger, Var "x2"), Assign ("k", Const 1), Assign ("k", Const (-1))),
         Assign ("k", Const 100)),
-    (* then: lub(Pos,Neg)=NonZero, else: Pos -> lub finale = NonZero *)
-    [ "k", NonZero ];
+    (* then-branch: If interno ambiguo -> k = lub(Pos,Neg) = SignTop
+       else-branch: k = Pos
+       lub finale: lub(SignTop, Pos) = SignTop *)
+    [ "k", SignTop ];
 ]
 
 let if_composite_cond_tests = List.map make_prog_case_with_env [
   "If con And(certo vero, ambiguo): l'ambiguità fa passare comunque entrambi i rami",
-    If (And (Comparison (Var "x", Bigger, Var "y"), Comparison (Var "w", Bigger, Var "x")),
+    If (And (Comparison (Var "x", Bigger, Var "y"), Comparison (Var "x", Bigger, Var "x2")),
         Assign ("k", Const 1), Assign ("k", Const (-1))),
-    [ "k", NonZero ];
+    [ "k", SignTop ];
   "If con Or(certo falso, ambiguo): stesso discorso",
-    If (Or (Comparison (Var "y", Bigger, Var "x"), Comparison (Var "w", Bigger, Var "x")),
+    If (Or (Comparison (Var "y", Bigger, Var "x"), Comparison (Var "x", Bigger, Var "x2")),
         Assign ("k", Const 1), Assign ("k", Const (-1))),
-    [ "k", NonZero ];
+    [ "k", SignTop ];
 ]
 
 let if_bottom_propagation_tests = [
@@ -448,20 +443,16 @@ let if_bottom_propagation_tests = [
 ]
 
 (* ------------------------------------------------------------ *)
-(* While.
-   I valori attesi sono stati verificati eseguendo davvero SignInterp
-   (il fixpoint usa Hashtbl mutabili condivise tra iterazioni).
-
-   Comportamenti reali documentati dai test:
-   - negate_comp mappa Bigger <-> Smaller direttamente, senza passare per
-     l'operatore "equals-inclusive" corretto (la negazione di "x > y"
-     dovrebbe essere "x <= y", non "x < y"). Quindi un while con guardia
-     "x > 0" e x = Zero (falsa da subito) produce comunque BottomEnv
-     invece di preservare x = Zero.
-   - compare_type tratta SignTop come sempre "maggiore" (SignTop,_ -> 1)
-     e sempre "minore" come secondo argomento (_,SignTop -> -1): due loop
-     strutturalmente identici con guardia ">" o "<" che perdono precisione
-     possono avere esiti diversi (uno BottomEnv, l'altro un Env con SignTop). *)
+(* While per SimpleSigns.
+   Nessuna modifica strutturale rispetto a Signs: questi test non
+   usano mai PosZero/NegZero/NonZero, e l'asimmetria di compare_type
+   su SignTop ("SignTop,_ -> 1" / "_,SignTop -> -1") e' identica in
+   entrambi i domini, quindi il comportamento delle guardie che
+   perdono precisione dovrebbe essere lo stesso.
+   ATTENZIONE: non ho potuto eseguire questi test contro il vero
+   AbsInterp/SimpleSignInterp (non ho il sorgente dell'interprete),
+   quindi conviene lanciare `dune runtest` e correggere i valori
+   attesi se qualche assert fallisce. *)
 (* ------------------------------------------------------------ *)
 
 let while_not_entered_tests = List.map make_prog_case [
@@ -490,7 +481,7 @@ let while_precision_loss_tests = List.map make_prog_case [
 ]
 
 let while_precision_loss_bottom_tests = [
-  expect_bottom "Guardia '>': x=5, while(x>0) x=x-1 -> perde precisione, uscita BottomEnv (asimmetria rispetto a '<')"
+  expect_bottom "Guardia '>': x=5, while(x>0) x=x-1 -> perde precisione, uscita BottomEnv (stessa asimmetria di Signs)"
     (Sequence (
        Assign ("x", Const 5),
        While (Comparison (Var "x", Bigger, Const 0), Assign ("x", BinaryOperation (Var "x", Sub, Const 1)))));
@@ -537,12 +528,9 @@ let personal_while_test = List.map make_prog_case [
         If (Comparison (Var "y", Bigger, Var "z"),
             Assign ("x", BinaryOperation (Var "x", Add, Const (-2))),
             Assign ("y", BinaryOperation (Var "x", Add, Var "y"))))),
+    (* Random(-3,5): a<0<b -> abstract_range da' SignTop, identico a Signs *)
     [ "x", Pos; "y", Pos; "z", SignTop ];
 ]
-
-(* ------------------------------------------------------------ *)
-(* 4. Esportazione unica di tutti i gruppi                       *)
-(* ------------------------------------------------------------ *)
 
 let tests = [
   "Somma", sumtests;
