@@ -25,6 +25,24 @@ module AbsInterp (D : DOMAIN) = struct
         t2;
         Env(result)
 
+    let refine_vars e1 e2 v1 v2 env =
+        let common_val = D.glb v1 v2 in
+        if common_val = D.bottom then 
+            BottomEnv
+        else
+            let new_env = Hashtbl.copy env in
+            (* Aggiorna e1 se è una variabile *)
+            (match e1 with 
+            | Var s1 -> Hashtbl.replace new_env s1 common_val 
+            | _ -> ());
+            
+            (* Aggiorna e2 se è una variabile *)
+            (match e2 with 
+            | Var s2 -> Hashtbl.replace new_env s2 common_val 
+            | _ -> ());
+            
+            Env new_env
+
     let widen_env e1 e2 =
         match e1, e2 with
         | BottomEnv, e | e, BottomEnv -> e
@@ -132,6 +150,7 @@ module AbsInterp (D : DOMAIN) = struct
             | Comparison (e1,comp,e2) -> (* Comparazione tra espressioni mediante un comparatore*) 
                 let val1 = eval_exp e1 (Env(env)) in (* Valuto e1 *)
                 let val2 = eval_exp e2 (Env(env)) in (* Valuto e2 *)
+                let cond = D.compare_type val1 val2 in 
                 match comp with (* Pattern Matching per applicare il comparatore richiesto *)
                 (* compare_type viene implementato dal dominio in analisi restituisce:
                     1 con val1 > val2
@@ -139,7 +158,17 @@ module AbsInterp (D : DOMAIN) = struct
                     0 in caso di uguaglianza 
                     2 in caso di indecidibilità  (es: nei segni pos > pos)
                 *)
-                | Equals -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == 0 || condition == 2)) (Env(env))
+                | Equals -> 
+                                (* Se l'uguaglianza è possibile (0) o indecidibile (2) *)
+                    if cond = 0 || cond = 2 then
+                    match e1 with
+                    | Var s ->
+                        (* Raffiniamo la variabile 's' facendo il GLB col valore di e2 *)
+                        refine_vars e1 e2 val1 val2 env
+                    | _ -> Env(env) (* Se e1 non è una variabile semplice, manteniamo l'ambiente *)
+                    else
+                    BottomEnv (* Se la condizione è impossibile, il ramo è irraggiungibile *)
+                    (* eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == 0 || condition == 2)) (Env(env)) *)
                 | NotEquals -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition != 0)) (Env(env))
                 | Bigger -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == 1 || condition == 2)) (Env(env))
                 | Smaller -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == -1 || condition == 2)) (Env(env))
@@ -149,7 +178,7 @@ module AbsInterp (D : DOMAIN) = struct
     (* Valutazione Comandi *)
     let rec eval_cmd (command : cmd) (env : state) : state =
          match env with 
-        |BottomEnv -> BottomEnv (* Se sono in bottomEnv si è verificato un'errore => restituisco BottomEnv *)
+        | BottomEnv -> BottomEnv (* Se sono in bottomEnv si è verificato un'errore => restituisco BottomEnv *)
         | Env env -> 
             match command with
             | Assign(ide,exp) -> (* Assegnamento di un valore ad un identificatore *)
@@ -157,12 +186,13 @@ module AbsInterp (D : DOMAIN) = struct
                 let env' = Hashtbl.copy env in 
                 Hashtbl.replace env' ide v; (* Rimpiazzo il valore se presente, altrimenti viene creata una nuova entry*)
                 Env(env') (* Restituisco lo stato aggiornato *)
+            
             | Sequence(c1,c2) -> (* Sequenza di Comandi *)
                 let env1  = eval_cmd c1 (Env(env)) in  (* Valuto il primo memorizzando l'ambiente risultante *)
                 eval_cmd c2 env1 (* Valuto il secondo utilizzando l'ambiente risultante dalla valutazione del primo *)
 
             | Filter(cd) -> eval_cond cd (Env(env)) (* Controllo se una condizione è rispettata *)
-
+                        
             | Skip -> Env(env) (* Skip *)
 
             | If(cond,thencmd,elsecmd) -> (* Istruzione Condizionale i cui rami then ed else vengono sempre valutati e successivamente tramite lub si restringe lo stato *)
@@ -172,12 +202,12 @@ module AbsInterp (D : DOMAIN) = struct
                     
             | While(cond,cmd) -> (* Ciclo che tramite Least Fixpoint valuta  *)
                 let f x = lub_env (Env(env)) (eval_cmd cmd (eval_cond cond x)) in (* Funzione che si occupa di valutare lo stato aggiornandolo ad ogni iterazione *)
-                let lfp f = (*Tramite funzione ausiliaria iterate lfp restituisce, se possibile, il punto dopo il quale il ciclo smette di produrre risultati che espandono lo stato corrente *)
-                    let rec iterate x = 
+                let lfp f = (*Tramite funzione ausiliaria kleene lfp restituisce, se possibile, il punto dopo il quale il ciclo smette di produrre risultati che espandono lo stato corrente *)
+                    let rec kleene x = 
                         let x' = widen_env x (f x) in (* Viene effettuato un Widening sullo stato attuale e lo stato dopo aver applicato f *) 
                             if leq_env x' x then x (* Se gli stati sono uguali allora ho raggiunto il Least Fixpoint, altrimenti continuo ad iterare *)
-                            else iterate x' 
-                    in iterate BottomEnv (* Parto dallo stato Vuoto e vado a "salire" *)
+                            else kleene x' 
+                    in kleene BottomEnv (* Parto dallo stato Vuoto e vado a "salire" *)
                 in eval_cmd (Filter((Not(cond)))) (lfp f) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*)
 
     (* Funzione eval generale *)
