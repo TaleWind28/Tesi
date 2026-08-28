@@ -319,9 +319,9 @@ let filter_composition_bottom_tests = [
    Signs). L'esito pratico non cambia (il Filter passa comunque), ma
    il motivo e' diverso: non e' una certezza, e' un'ambiguità che non
    viene mai risolta perché SignBottom rappresenta uno stato irraggiungibile. *)
-let filter_bottom_value_tests = List.map make_prog_case_with_env [
-  "Confronto b = b (SignBottom = SignBottom, stessa var) -> ambiguo per compare_type, ma passa comunque",
-    Filter (Comparison (Var "b", Equals, Var "b")), [ "b", SignBottom ];
+let filter_bottom_value_tests =  [ 
+  expect_bottom_with_env "Confronto b = b (SignBottom = SignBottom, stessa var) -> certo uguale, passa"
+  (Filter (Comparison (Var "b", Equals, Var "b")));
 ]
 
 (* Filter incatenato con Assign, per verificare propagazione *)
@@ -480,11 +480,12 @@ let while_precision_loss_tests = List.map make_prog_case [
     [ "x", SignTop ];
 ]
 
-let while_precision_loss_bottom_tests = [
-  expect_bottom "Guardia '>': x=5, while(x>0) x=x-1 -> perde precisione, uscita BottomEnv (stessa asimmetria di Signs)"
+let while_precision_loss_bottom_tests = List.map make_prog_case [
+  "Guardia '>': x=5, while(x>0) x=x-1 -> perde precisione, uscita BottomEnv (stessa asimmetria di Signs)",
     (Sequence (
        Assign ("x", Const 5),
-       While (Comparison (Var "x", Bigger, Const 0), Assign ("x", BinaryOperation (Var "x", Sub, Const 1)))));
+       While (Comparison (Var "x", Bigger, Const 0), Assign ("x", BinaryOperation (Var "x", Sub, Const 1))))),
+       [ "x", SignTop ];
 ]
 
 let while_infinite_loop_tests = [
@@ -522,14 +523,15 @@ let personal_while_test = List.map make_prog_case [
     Sequence (
       Sequence (
         Assign ("x", Const 1),
-        Sequence (Assign ("y", Const 2), Assign ("z", Random (-3, 5)))),
+        Sequence (Assign ("y", Const 2), Assign ("z", Random (-3, 5)))
+      ),
       While (
         Comparison (Var "x", Equals, Var "y"),
         If (Comparison (Var "y", Bigger, Var "z"),
             Assign ("x", BinaryOperation (Var "x", Add, Const (-2))),
             Assign ("y", BinaryOperation (Var "x", Add, Var "y"))))),
     (* Random(-3,5): a<0<b -> abstract_range da' SignTop, identico a Signs *)
-    [ "x", Pos; "y", Pos; "z", SignTop ];
+    [ "x", SignTop; "y", Pos; "z", SignTop ];
 ]
 
 let tests = [

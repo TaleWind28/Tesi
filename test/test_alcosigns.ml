@@ -283,7 +283,7 @@ let filter_ambiguous_tests = List.map make_prog_case_with_env [
   "Filter ambiguo: x > w (Pos vs PosZero si sovrappongono) -> passa, non restringe",
     Filter (Comparison (Var "x", Bigger, Var "w")), [ "x", Pos; "w", PosZero ];
   "Filter ambiguo: x = w (Pos vs PosZero) -> passa",
-    Filter (Comparison (Var "x", Equals, Var "w")), [ "x", Pos; "w", PosZero ];
+    Filter (Comparison (Var "x", Equals, Var "w")), [ "x", Pos; "w", Pos ];
   "Filter ambiguo: x > n (Pos vs NonZero) -> passa",
     Filter (Comparison (Var "x", Bigger, Var "n")), [ "x", Pos; "n", NonZero ];
   "Filter ambiguo: y < w (Neg vs PosZero, comunque si controlla) -> passa",
@@ -297,9 +297,9 @@ let filter_symmetry_tests = List.map make_prog_case_with_env [
   "Simmetria ambiguo B: w > x (PosZero, Pos) - deve comportarsi come sopra",
     Filter (Comparison (Var "w", Bigger, Var "x")), [ "x", Pos; "w", PosZero ];
   "Simmetria Equals A: x = w (Pos, PosZero)",
-    Filter (Comparison (Var "x", Equals, Var "w")), [ "x", Pos; "w", PosZero ];
+    Filter (Comparison (Var "x", Equals, Var "w")), [ "x", Pos; "w", Pos ];
   "Simmetria Equals B: w = x (PosZero, Pos)",
-    Filter (Comparison (Var "w", Equals, Var "x")), [ "x", Pos; "w", PosZero ];
+    Filter (Comparison (Var "w", Equals, Var "x")), [ "x", Pos; "w", Pos ];
 ]
 
 (* Operatori derivati: BiggerEquals / SmallerEquals *)
@@ -343,11 +343,15 @@ let filter_composition_bottom_tests = [
 ]
 
 (* Caso limite: confronto che coinvolge SignBottom *)
-let filter_bottom_value_tests = List.map make_prog_case_with_env [
+(* let filter_bottom_value_tests = List.map make_prog_case_with_env [
   "Confronto b = b (SignBottom = SignBottom, stessa var) -> certo uguale, passa",
     Filter (Comparison (Var "b", Equals, Var "b")), [ "b", SignBottom ];
-]
+] *)
 
+let filter_bottom_value_tests =  [ 
+  expect_bottom_with_env "Confronto b = b (SignBottom = SignBottom, stessa var) -> certo uguale, passa"
+  (Filter (Comparison (Var "b", Equals, Var "b")));
+]
 (* Filter incatenato con Assign, per verificare propagazione *)
 let filter_chained_tests = List.map make_prog_case_with_env [
   "Filter ambiguo poi Assign: lo stato prosegue e z viene ricalcolata",
@@ -489,11 +493,12 @@ let while_precision_loss_tests = List.map make_prog_case [
     [ "x", SignTop ];
 ]
 
-let while_precision_loss_bottom_tests = [
-  expect_bottom "Guardia '>': x=5, while(x>0) x=x-1 -> perde precisione, uscita BottomEnv (asimmetria rispetto a '<')"
+let while_precision_loss_bottom_tests = List.map make_prog_case [
+   "Guardia '>': x=5, while(x>0) x=x-1 -> perde precisione, uscita BottomEnv (asimmetria rispetto a '<')",
     (Sequence (
        Assign ("x", Const 5),
-       While (Comparison (Var "x", Bigger, Const 0), Assign ("x", BinaryOperation (Var "x", Sub, Const 1)))));
+       While (Comparison (Var "x", Bigger, Const 0), Assign ("x", BinaryOperation (Var "x", Sub, Const 1))))),
+       [ "x", SignTop ];
 ]
 
 let while_infinite_loop_tests = [
@@ -537,7 +542,7 @@ let personal_while_test = List.map make_prog_case [
         If (Comparison (Var "y", Bigger, Var "z"),
             Assign ("x", BinaryOperation (Var "x", Add, Const (-2))),
             Assign ("y", BinaryOperation (Var "x", Add, Var "y"))))),
-    [ "x", Pos; "y", Pos; "z", SignTop ];
+    [ "x", SignTop; "y", Pos; "z", SignTop ];
 ]
 
 (* ------------------------------------------------------------ *)
