@@ -150,7 +150,7 @@ module AbsInterp (D : DOMAIN) = struct
             | Comparison (e1,comp,e2) -> (* Comparazione tra espressioni mediante un comparatore*) 
                 let val1 = eval_exp e1 (Env(env)) in (* Valuto e1 *)
                 let val2 = eval_exp e2 (Env(env)) in (* Valuto e2 *)
-                let cond = D.compare_type val1 val2 in 
+                let condition = D.compare_type val1 val2 in 
                 match comp with (* Pattern Matching per applicare il comparatore richiesto *)
                 (* compare_type viene implementato dal dominio in analisi restituisce:
                     1 con val1 > val2
@@ -158,20 +158,16 @@ module AbsInterp (D : DOMAIN) = struct
                     0 in caso di uguaglianza 
                     2 in caso di indecidibilità  (es: nei segni pos > pos)
                 *)
-                | Equals -> 
-                                (* Se l'uguaglianza è possibile (0) o indecidibile (2) *)
-                    if cond = 0 || cond = 2 then
-                    match e1 with
-                    | Var s ->
-                        (* Raffiniamo la variabile 's' facendo il GLB col valore di e2 *)
-                        refine_vars e1 e2 val1 val2 env
-                    | _ -> Env(env) (* Se e1 non è una variabile semplice, manteniamo l'ambiente *)
-                    else
-                    BottomEnv (* Se la condizione è impossibile, il ramo è irraggiungibile *)
-                    (* eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == 0 || condition == 2)) (Env(env)) *)
-                | NotEquals -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition != 0)) (Env(env))
-                | Bigger -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == 1 || condition == 2)) (Env(env))
-                | Smaller -> eval_cond (Boolean(let condition = (D.compare_type val1 val2) in condition == -1 || condition == 2)) (Env(env))
+                | Equals -> (* Se l'uguaglianza è possibile (0) o indecidibile (2) *)
+                    if condition = 0 || condition = 2 
+                        then match e1 with
+                        | Var s -> (* Raffiniamo la variabile 's' facendo il GLB col valore di e2 *)
+                            refine_vars e1 e2 val1 val2 env (* Raffino le variabili *)
+                        | _ -> Env(env) (* Se e1 non è una variabile semplice, manteniamo l'ambiente *)
+                    else BottomEnv (* Se la condizione è impossibile, il ramo è irraggiungibile *)
+                | NotEquals -> eval_cond (Boolean(condition != 0)) (Env(env))
+                | Bigger -> eval_cond (Boolean(condition == 1 || condition == 2)) (Env(env))
+                | Smaller -> eval_cond (Boolean(condition == -1 || condition == 2)) (Env(env))
                 | BiggerEquals -> eval_cond(Or(Comparison(e1,Bigger,e2),Comparison(e1,Equals,e2))) (Env(env))
                 | SmallerEquals -> eval_cond(Or(Comparison(e1,Smaller,e2),Comparison(e1,Equals,e2))) (Env(env))
 
