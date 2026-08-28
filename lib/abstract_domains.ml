@@ -28,8 +28,7 @@ module Signs = struct
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
     | x,y when x = y -> 2
-    | SignTop, _ -> 1
-    | _,SignTop -> -1
+    | SignTop, _ | _,SignTop -> 2
     | SignBottom,_ -> -1
     | _,SignBottom -> 1
     | NonZero,_ | _,NonZero -> 2
@@ -134,8 +133,8 @@ module SimpleSigns = struct
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
     | x,y when x = y -> 2
-    | SignTop, _ -> 1
-    | _,SignTop -> -1
+    | SignTop, _ -> 2
+    | _,SignTop -> 2
     | SignBottom,_ -> -1
     | _,SignBottom -> 1
     | Pos,Pos -> 2
@@ -151,7 +150,7 @@ module SimpleSigns = struct
     | Neg, Neg -> Neg
     | Pos, Pos -> Pos
     | Zero,Zero -> Zero
-    | Pos,Zero -> SignTop
+    | Pos,Zero | Zero,Pos -> SignTop
     | _,_ -> SignTop
 
 
@@ -268,7 +267,7 @@ module Intervals = struct
     Interval(min,max)
 
   let narrow x y = if leq y x then y else x
-  
+
   let glb c1 c2 = match c1,c2 with
   | Bottom,_ | _,Bottom -> Bottom
   | Interval(a,b) , Interval(c,d) -> 

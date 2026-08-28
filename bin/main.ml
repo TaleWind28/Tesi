@@ -64,13 +64,22 @@ let test_prog =(
       )
     )
   ) *)
-  Sequence (
-    Assign ("x", Const 5), 
+  (* Sequence (
+    Assign ("x", Const (-2)), 
     While (
       Comparison (Var "x", NotEquals, Const 0),
       Assign ("x", Const 0)
     )
-  )
+  ) *)
+  (
+    Sequence (
+      Assign ("x", Const 5),
+      While (
+        Comparison (Var "x", Bigger, Const 0),
+        Assign ("x", BinaryOperation (Var "x", Sub, Const 1))
+      )
+    )
+  );
 )
   
 (* let string_of_sign v =
