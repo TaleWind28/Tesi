@@ -478,7 +478,7 @@ let while_not_entered_tests = List.map make_prog_case [
 let while_converges_tests = List.map make_prog_case [
   "While converge: x=5, while(x!=0) x=0 -> termina con x=Zero",
     Sequence (Assign ("x", Const 5), While (Comparison (Var "x", NotEquals, Const 0), Assign ("x", Const 0))),
-    [ "x", Zero ];
+    [ "x", Zero ]; (* Dovrebbe dare 0 perchè per uscire x deve essere == 0 ossia not cond *)
 ]
 
 let while_precision_loss_tests = List.map make_prog_case [

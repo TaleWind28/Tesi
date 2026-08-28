@@ -7,6 +7,7 @@ module type DOMAIN = sig
   val leq    : t -> t -> bool
   val glb    : t-> t -> t
   val widen  : t -> t -> t 
+  val narrow : t -> t -> t
   val compare_type : t -> t -> int
 
   val abstract_int   : int -> t
@@ -31,23 +32,19 @@ module Signs = struct
     | _,SignTop -> -1
     | SignBottom,_ -> -1
     | _,SignBottom -> 1
-    | NonZero,_ -> 2
-    | _,NonZero -> 2
-    | PosZero,Pos -> 2
-    | PosZero,NegZero -> 2
+    | NonZero,_ | _,NonZero -> 2
+    | PosZero, (Zero | Pos | NegZero) | (Zero | Pos | NegZero), PosZero | NegZero,Neg | Neg,NegZero | NegZero, NegZero | Neg,Neg-> 2
+    (* | Pos,PosZero -> 2
+    | NegZero, PosZero | Zero,PosZero -> 2 *)
     | PosZero,_ -> 1
-    | Pos,PosZero -> 2
-    | NegZero, PosZero -> 2
     | _,PosZero -> -1
     | Pos,_ -> 1
     | _,Pos -> -1
     | Zero,NegZero | NegZero,Zero -> 2
     | Zero,_ -> 1
     | _,Zero -> -1
-    | NegZero,Neg -> 2
-    | Neg,NegZero -> 2
-    | NegZero, NegZero -> 2
-    | Neg,Neg -> 2
+
+    (* | NegZero,Neg | Neg,NegZero | NegZero, NegZero | Neg,Neg-> 2 *)
 
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
@@ -55,13 +52,11 @@ module Signs = struct
 
     | Neg, Neg -> Neg
     | Pos, Pos -> Pos
-    | NonZero, NonZero | NonZero,Pos | NonZero,Neg | Neg,NonZero | Pos,NonZero | Neg,Pos | Pos,Neg -> NonZero
-    | Zero, Pos | Pos,Zero | PosZero,Zero | Pos,PosZero  -> PosZero
-    | Zero, Neg | Neg, Zero | NegZero,Neg | Neg, NegZero -> NegZero
+    | NonZero, NonZero | NonZero,Pos | NonZero,Neg | Neg,Pos | Neg,NonZero | Pos,NonZero  | Pos,Neg -> NonZero
+    | Zero, Pos | Pos,Zero | PosZero,Zero | Pos,PosZero | Zero,PosZero | PosZero,Pos -> PosZero
+    | Zero, Neg | Neg, Zero | NegZero,Neg | Neg, NegZero | Zero,NegZero | NegZero,Zero -> NegZero
     | _,_ -> SignTop
 
-  let widen x y = lub x y
-  
   let glb s1 s2 = match s1,s2 with
   | _,SignBottom | SignBottom,_ -> SignBottom
   | x,SignTop | SignTop,x -> x
@@ -72,6 +67,10 @@ module Signs = struct
   | _,_ -> SignBottom
 
   let leq s1 s2 = (glb s1 s2) = s1
+
+  let narrow x y = if leq y x then y else x
+
+  let widen x y = lub x y
 
   let abstract_int n =
     if n > 0 then Pos
@@ -139,21 +138,23 @@ module SimpleSigns = struct
     | _,SignTop -> -1
     | SignBottom,_ -> -1
     | _,SignBottom -> 1
+    | Pos,Pos -> 2
     | Pos,_ -> 1
     | _,Pos -> -1
     | Zero,_ -> 1
     | _,Zero -> -1
     | Neg,Neg -> 2
 
+
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
-    | x, y when x = y              -> x
     | Neg, Neg -> Neg
     | Pos, Pos -> Pos
+    | Zero,Zero -> Zero
+    | Pos,Zero -> SignTop
     | _,_ -> SignTop
 
-  let widen x y = lub x y
-  
+
   let glb s1 s2 = match s1, s2 with
   (* 1. Elemento Assorbente (Bottom) *)
   | SignBottom, _ | _, SignBottom -> SignBottom
@@ -165,6 +166,9 @@ module SimpleSigns = struct
   | _, _ -> SignBottom
 
   let leq s1 s2 = (glb s1 s2) = s1
+
+  let narrow x y = if leq y x then y else x
+  let widen x y = lub x y
 
   let abstract_int n =
     if n > 0 then Pos
@@ -263,6 +267,8 @@ module Intervals = struct
     let max = if compare_bound d b <= 0 then b else PosInf in
     Interval(min,max)
 
+  let narrow x y = if leq y x then y else x
+  
   let glb c1 c2 = match c1,c2 with
   | Bottom,_ | _,Bottom -> Bottom
   | Interval(a,b) , Interval(c,d) -> 

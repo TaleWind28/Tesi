@@ -9,7 +9,8 @@ module AbsInterp (D : DOMAIN) = struct
     | BottomEnv 
 
     let lub_env e1 e2 : state = match e1,e2 with 
-    | BottomEnv, e | e, BottomEnv -> e
+    | BottomEnv,BottomEnv -> BottomEnv
+    | BottomEnv, Env e | Env e, BottomEnv -> Env(Hashtbl.copy e)
     | Env t1, Env t2 -> 
         let result = Hashtbl.create (Hashtbl.length t1 + Hashtbl.length t2) in
         Hashtbl.iter(
@@ -40,6 +41,23 @@ module AbsInterp (D : DOMAIN) = struct
             ) t2;
         Env(result)
 
+    let narrow_env e1 e2 =
+    match e1, e2 with
+    | BottomEnv, _ -> BottomEnv
+    | e, BottomEnv -> e
+    | Env(t1), Env(t2) ->
+        let result = Hashtbl.create (Hashtbl.length t1) in
+        Hashtbl.iter (fun var v1 ->
+            let v2 = try Hashtbl.find t2 var with Not_found -> v1 in
+            Hashtbl.add result var (D.narrow v1 v2)
+        ) t1;
+        (* variabili presenti solo in e2 (raro, ma per simmetria con widen_env) *)
+        Hashtbl.iter (fun var v2 ->
+            if not (Hashtbl.mem result var) then
+            Hashtbl.add result var (D.narrow D.top v2)
+        ) t2;
+        Env(result)
+    
     let leq_env e1 e2 =
         match e1, e2 with
         | BottomEnv, _ -> true
@@ -136,8 +154,9 @@ module AbsInterp (D : DOMAIN) = struct
             match command with
             | Assign(ide,exp) -> (* Assegnamento di un valore ad un identificatore *)
                 let v =  eval_exp exp (Env(env)) in (* Valuto l'espressione*)
-                Hashtbl.replace env ide v; (* Rimpiazzo il valore se presente, altrimenti viene creata una nuova entry*)
-                Env(env) (* Restituisco lo stato aggiornato *)
+                let env' = Hashtbl.copy env in 
+                Hashtbl.replace env' ide v; (* Rimpiazzo il valore se presente, altrimenti viene creata una nuova entry*)
+                Env(env') (* Restituisco lo stato aggiornato *)
             | Sequence(c1,c2) -> (* Sequenza di Comandi *)
                 let env1  = eval_cmd c1 (Env(env)) in  (* Valuto il primo memorizzando l'ambiente risultante *)
                 eval_cmd c2 env1 (* Valuto il secondo utilizzando l'ambiente risultante dalla valutazione del primo *)
@@ -152,18 +171,14 @@ module AbsInterp (D : DOMAIN) = struct
                 lub_env e1 e2
                     
             | While(cond,cmd) -> (* Ciclo che tramite Least Fixpoint valuta  *)
-                (* let copy_state = function
-                    | BottomEnv -> BottomEnv
-                    | Env tbl -> Env (Hashtbl.copy tbl) in  *)
-                let e1 = Env(Hashtbl.copy(env)) in 
-                let f x = lub_env e1 (eval_cmd cmd (eval_cond cond x)) in (* Funzione che si occupa di valutare lo stato aggiornandolo ad ogni iterazione *)
-                let lfp f = (* Tramite funzione ausiliaria iterate lfp restituisce, se possibile, il punto dopo il quale il ciclo smette di produrre risultati che espandono lo stato corrente *)
+                let f x = lub_env (Env(env)) (eval_cmd cmd (eval_cond cond x)) in (* Funzione che si occupa di valutare lo stato aggiornandolo ad ogni iterazione *)
+                let lfp f = (*Tramite funzione ausiliaria iterate lfp restituisce, se possibile, il punto dopo il quale il ciclo smette di produrre risultati che espandono lo stato corrente *)
                     let rec iterate x = 
                         let x' = widen_env x (f x) in (* Viene effettuato un Widening sullo stato attuale e lo stato dopo aver applicato f *) 
                             if leq_env x' x then x (* Se gli stati sono uguali allora ho raggiunto il Least Fixpoint, altrimenti continuo ad iterare *)
                             else iterate x' 
                     in iterate BottomEnv (* Parto dallo stato Vuoto e vado a "salire" *)
-                in eval_cond (Not(cond)) (lfp f) (* Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint *)
+                in eval_cmd (Filter((Not(cond)))) (lfp f) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*)
 
     (* Funzione eval generale *)
     let eval (prog : cmd) : state =
