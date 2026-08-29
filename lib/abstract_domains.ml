@@ -30,8 +30,8 @@ module Signs = struct
   let filter_rel comp value = match comp,value with
   | Equals,value -> value 
   (* x != value *)
-  | NotEquals, (Zero | PosZero | NegZero) -> NonZero
-  | NotEquals, (Pos | Neg | NonZero | SignTop) -> SignTop
+  | NotEquals, Zero -> NonZero
+  | NotEquals, (Pos | Neg | NonZero | PosZero | NegZero| SignTop) -> SignTop
 
 
   (* x > value *)
@@ -55,11 +55,13 @@ module Signs = struct
   |_,SignBottom -> SignBottom
 
   let compare_type x y = match x,y with 
+    | SignBottom,_ -> -1
+    | _,SignBottom -> 1  
+    
     | Zero,Zero -> 0
     | x,y when x = y -> 2
     | SignTop, _ | _,SignTop -> 2
-    | SignBottom,_ -> -1
-    | _,SignBottom -> 1
+    
     | NonZero,_ | _,NonZero -> 2
     | PosZero, (Zero | Pos | NegZero) | (Zero | Pos | NegZero), PosZero | NegZero,Neg | Neg,NegZero | NegZero, NegZero | Neg,Neg-> 2
     (* | Pos,PosZero -> 2

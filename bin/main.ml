@@ -52,7 +52,7 @@ let test_prog =(
     Sequence (Assign ("x", Const (-3)),
        While (
         Comparison (Var "x", NotEquals, Const 0),
-        Assign ("x", BinaryOperation(Var "x",Mul,Const(2)))
+        Assign ("x",Const 0)
       )
   )
    (* (
