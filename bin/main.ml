@@ -49,12 +49,12 @@ let test_prog =(
         Filter (Comparison (Var "b", Equals, Var "x"))
       (* ) *)
     ) *)
-    (* Sequence (Assign ("x", Const (-3)),
+    Sequence (Assign ("x", Const (-3)),
        While (
         Comparison (Var "x", NotEquals, Const 0),
-        Assign ("x", BinaryOperation(Var "x",Mul,Const(0)))
+        Assign ("x", BinaryOperation(Var "x",Mul,Const(2)))
       )
-  ) *)
+  )
    (* (
     Sequence (
       Assign ("x", Const 5),
@@ -71,7 +71,7 @@ let test_prog =(
       Assign ("x", Const 0)
     )
   ) *)
-  (
+  (* (
     Sequence (
       Assign ("x", Const (0)),
       While (
@@ -79,7 +79,7 @@ let test_prog =(
         Assign ("x", BinaryOperation(Var "x",Add,Const 1))
       )
     )
-  );
+  ); *)
 )
   
 let string_of_sign v =

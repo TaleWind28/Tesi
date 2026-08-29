@@ -1,4 +1,5 @@
 (* Firma del dominio astratto *)
+open Syntax
 module type DOMAIN = sig
   type t
   val top    : t
@@ -9,6 +10,7 @@ module type DOMAIN = sig
   val widen  : t -> t -> t 
   val narrow : t -> t -> t
   val compare_type : t -> t -> int
+  val filter_rel : comparator -> t -> t
 
   val abstract_int   : int -> t
   val abstract_range : int -> int -> t
@@ -24,6 +26,33 @@ module Signs = struct
   
   let top    = SignTop
   let bottom = SignBottom
+
+  let filter_rel comp value = match comp,value with
+  | Equals,value -> value 
+  (* x != value *)
+  | NotEquals, (Zero | PosZero | NegZero) -> NonZero
+  | NotEquals, (Pos | Neg | NonZero | SignTop) -> SignTop
+
+
+  (* x > value *)
+  | Bigger,( Zero | PosZero | Pos) -> Pos
+  | Bigger, (Neg | NegZero | NonZero | SignTop)  -> SignTop
+
+  (* x >= value *)
+  | BiggerEquals, Pos -> Pos
+  | BiggerEquals, ( PosZero | Zero ) -> PosZero
+  | BiggerEquals, (Neg | NegZero | NonZero | SignTop )  -> SignTop
+
+  (* x < value *)
+  | Smaller,( Neg | NegZero | Zero ) -> Neg
+  | Smaller, (PosZero | Pos | NonZero | SignTop) -> SignTop
+
+  (* x <= value *)
+  | SmallerEquals, Neg -> Neg
+  | SmallerEquals, ( NegZero | Zero) -> NegZero
+  | SmallerEquals, (Pos | PosZero | NonZero | SignTop )  -> SignTop
+
+  |_,SignBottom -> SignBottom
 
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
@@ -130,6 +159,39 @@ module SimpleSigns = struct
   let top    = SignTop
   let bottom = SignBottom
 
+  let filter_rel op value = match op, value with
+  (* 1. Caso base: se v2 è Bottom *)
+  | _, SignBottom -> SignBottom
+
+  (* 2. Uguaglianza *)
+  | Equals, value -> value
+
+  (* 3. Diversità (NotEquals: x <> v2) *)
+  | NotEquals, Zero -> SignTop (* In SimpleSigns non c'è NonZero *)
+  | NotEquals, _    -> SignTop
+
+  (* 4. Maggiore Stretto (Bigger: x > v2) *)
+  | Bigger, (Zero | Pos) -> Pos
+  | Bigger, Neg          -> SignTop
+  | Bigger, SignTop      -> SignTop
+
+  (* 5. Maggiore o Uguale (BiggerEquals: x >= v2) *)
+  | BiggerEquals, Pos     -> Pos     (* x >= Pos (es. x >= 5) => x dev'essere Pos *)
+  | BiggerEquals, Zero    -> SignTop (* In SimpleSigns non c'è PosZero, quindi include Pos e Zero *)
+  | BiggerEquals, Neg     -> SignTop
+  | BiggerEquals, SignTop -> SignTop
+
+  (* 6. Minore Stretto (Smaller: x < v2) *)
+  | Smaller, (Zero | Neg) -> Neg
+  | Smaller, Pos          -> SignTop
+  | Smaller, SignTop      -> SignTop
+
+  (* 7. Minore o Uguale (SmallerEquals: x <= v2) *)
+  | SmallerEquals, Neg     -> Neg     (* x <= Neg (es. x <= -3) => x dev'essere Neg *)
+  | SmallerEquals, Zero    -> SignTop (* In SimpleSigns non c'è NegZero, quindi include Neg e Zero *)
+  | SmallerEquals, Pos     -> SignTop
+  | SmallerEquals, SignTop -> SignTop
+
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
     | x,y when x = y -> 2
@@ -219,6 +281,8 @@ module Intervals = struct
   
   let bottom = Bottom
   let top = Interval (NegInf,PosInf)
+
+  let filter_rel comp value = failwith "not implemented"
 
   let min_bound x y = match x,y with
   | _,NegInf | NegInf,_ -> NegInf
