@@ -157,10 +157,8 @@ end
 
 module SimpleSigns = struct
   type t = SignTop | Pos | Zero | Neg | SignBottom
-  
   let top    = SignTop
   let bottom = SignBottom
-
   let filter_rel op value = match op, value with
   (* 1. Caso base: se v2 è Bottom *)
   | _, SignBottom -> SignBottom
@@ -193,7 +191,6 @@ module SimpleSigns = struct
   | SmallerEquals, Zero    -> SignTop (* In SimpleSigns non c'è NegZero, quindi include Neg e Zero *)
   | SmallerEquals, Pos     -> SignTop
   | SmallerEquals, SignTop -> SignTop
-
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
     | x,y when x = y -> 2
@@ -207,16 +204,12 @@ module SimpleSigns = struct
     | Zero,_ -> 1
     | _,Zero -> -1
     | Neg,Neg -> 2
-
-
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
     | Neg, Neg -> Neg
     | Pos, Pos -> Pos
     | Zero,Zero -> Zero
-    | Pos,Zero | Zero,Pos -> SignTop
     | _,_ -> SignTop
-
 
   let glb s1 s2 = match s1, s2 with
   (* 1. Elemento Assorbente (Bottom) *)
@@ -278,35 +271,27 @@ end
 
 module ReducedSigns = struct
   type t = SignTop | Pos | Neg | SignBottom
-  
   let top    = SignTop
   let bottom = SignBottom
-
   let filter_rel op value = match op, value with
   (* 1. Caso base: se v2 è Bottom *)
   | _, SignBottom -> SignBottom
-
   (* 2. Uguaglianza *)
   | Equals, value -> value
-
   (* 3. Diversità (NotEquals: x <> v2) *)
   | NotEquals, _    -> SignTop
-
   (* 4. Maggiore Stretto (Bigger: x > v2) *)
   | Bigger, Pos -> Pos
   | Bigger, Neg          -> SignTop
   | Bigger, SignTop      -> SignTop
-
   (* 5. Maggiore o Uguale (BiggerEquals: x >= v2) *)
   | BiggerEquals, Pos     -> Pos     (* x >= Pos (es. x >= 5) => x dev'essere Pos *)
   | BiggerEquals, Neg     -> SignTop
   | BiggerEquals, SignTop -> SignTop
-
   (* 6. Minore Stretto (Smaller: x < v2) *)
   | Smaller, Neg -> Neg
   | Smaller, Pos          -> SignTop
   | Smaller, SignTop      -> SignTop
-
   (* 7. Minore o Uguale (SmallerEquals: x <= v2) *)
   | SmallerEquals, Neg     -> Neg     (* x <= Neg (es. x <= -3) => x dev'essere Neg *)
   | SmallerEquals, Pos     -> SignTop
@@ -314,15 +299,11 @@ module ReducedSigns = struct
 
   let compare_type x y = match x,y with 
     | x,y when x = y -> 2
-    | SignTop, _ -> 2
-    | _,SignTop -> 2
+    | SignTop, _  | _,SignTop | Pos,Pos | Neg,Neg  -> 2
     | SignBottom,_ -> -1
     | _,SignBottom -> 1
-    | Pos,Pos -> 2
     | Pos,_ -> 1
     | _,Pos -> -1
-    | Neg,Neg -> 2
-
 
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
@@ -501,6 +482,123 @@ module SimplifiedSigns = struct (* a regola è questo SimpleSigns però bisogna 
   let negate = function
     | PosZero        -> NegZero
     | NegZero        -> PosZero
+    | x          -> x   (* Zero, SignTop, SignBottom*)
+
+end
+
+module StrangeSigns = struct (* a regola è questo SimpleSigns però bisogna controllare meglio*)
+  type t = SignTop | PosZero | Zero | Neg | SignBottom
+  
+  let top    = SignTop
+  let bottom = SignBottom
+
+  let filter_rel op value = match op, value with
+  (* 1. Caso base: se v2 è Bottom *)
+  | _, SignBottom -> SignBottom
+
+  (* 2. Uguaglianza *)
+  | Equals, value -> value
+
+  (* 3. Diversità (NotEquals: x <> v2) *)
+  | NotEquals, _    -> SignTop
+
+  (* 4. Maggiore Stretto (Bigger: x > v2) *)
+  | Bigger, (Zero | PosZero) -> PosZero
+  | Bigger, Neg          -> SignTop
+  | Bigger, SignTop      -> SignTop
+
+  (* 5. Maggiore o Uguale (BiggerEquals: x >= v2) *)
+  | BiggerEquals, (Zero | PosZero)    -> PosZero     (* x >= Pos (es. x >= 5) => x dev'essere Pos *)
+  | BiggerEquals, (Neg | SignTop)     -> SignTop
+
+  (* 6. Minore Stretto (Smaller: x < v2) *)
+  | Smaller, (Zero | Neg) -> Neg  
+  | Smaller, (PosZero | SignTop) -> SignTop
+  
+  (* 7. Minore o Uguale (SmallerEquals: x <= v2) *)
+  | SmallerEquals, Neg     -> Neg     (* x <= Neg (es. x <= -3) => x dev'essere Neg *)
+  | SmallerEquals, Zero     -> SignTop (* x <= 0 -> Neg, Zero o PosZero *)
+  | SmallerEquals, ( PosZero | SignTop )   -> SignTop
+  let compare_type x y = match x,y with 
+    | Zero,Zero -> 0
+    | x,y when x = y -> 2
+    | SignTop, _ -> 2
+    | _,SignTop -> 2
+    | SignBottom,_ -> -1
+    | _,SignBottom -> 1
+    | PosZero,PosZero -> 2
+    | PosZero,_ -> 1
+    | _,PosZero -> -1
+    | Zero,_ -> 1
+    | _,Zero -> -1
+    | Neg,Neg -> 2
+
+
+  let lub s1 s2 = match s1, s2 with
+    | SignBottom, x | x, SignBottom -> x
+    | Neg, Neg -> Neg
+    | PosZero, PosZero -> PosZero
+    | Zero,Zero -> Zero
+    | PosZero,Zero | Zero,PosZero -> PosZero
+    | _,_ -> SignTop
+
+
+  let glb s1 s2 = match s1, s2 with
+  (* 1. Elemento Assorbente (Bottom) *)
+  | SignBottom, _ | _, SignBottom -> SignBottom
+  (* 2. Elemento Neutro (Top) *)
+  | x, SignTop | SignTop, x -> x
+  (* 3. Idempotenza (stesso elemento con se stesso) *)
+  | x, y when x = y -> x
+  | PosZero,Zero | Zero,PosZero -> Zero
+  (* 4. Tutti gli altri casi sono disgiunti (es. PosZero con Neg, Zero con Neg, ecc.) *)
+  | _, _ -> SignBottom
+
+  let leq s1 s2 = (glb s1 s2) = s1
+
+  let narrow x y = if leq y x then y else x
+  let widen x y = lub x y
+
+  let abstract_int n =
+    if n > 0 then PosZero
+    else if n < 0 then Neg
+    else Zero
+
+  let abstract_range a b = 
+    if a > b then SignBottom
+  else if a < 0 && b > 0 then SignTop
+  else lub (abstract_int a) (abstract_int b)
+
+  let mul s1 s2 = match s1, s2 with
+    | SignBottom, _ | _, SignBottom -> SignBottom
+    | Zero, _ | _, Zero      -> Zero
+    | PosZero, PosZero | Neg,Neg -> PosZero
+    | Neg,PosZero | PosZero,Neg -> SignTop
+    | _,_ -> SignTop
+
+  let sum s1 s2 = match s1, s2 with
+    | SignBottom, _ | _, SignBottom  -> SignBottom
+    | x,y when x == y -> x
+    | Zero, n       | n, Zero      -> n
+    | _,_ -> SignTop
+  
+  (*Non del tutto corretta in quanto dovrebbe essere divisione intera*)
+  let div s1 s2 = match s1, s2 with
+    (*Errore/Irraggiungibile*)
+    | SignBottom, _ | _, SignBottom -> SignBottom
+    (* divisione per zero *)
+    | _, Zero -> SignBottom
+    | Zero, PosZero -> SignTop
+    | _ , PosZero   -> SignTop
+    | PosZero, Neg -> SignTop
+    (*Unici casi noti della tabella della divisione*)
+    | Neg, Neg     -> PosZero
+    (*Casi con possibili divisioni per 0 oppure divisioni con NonZero*)
+    | _ -> SignTop
+
+  let negate = function
+    | PosZero        -> Neg
+    | Neg        -> PosZero
     | x          -> x   (* Zero, SignTop, SignBottom*)
 
 end

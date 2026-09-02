@@ -51,7 +51,7 @@ let test_prog =(
     ) *)
     Sequence (Assign ("x", Const (-3)),
        While (
-        Comparison (Var "x", NotEquals, Const 0),
+        Comparison (Var "x", Smaller, Const 0),
         Assign ("x",Const 0)
       )
   )
