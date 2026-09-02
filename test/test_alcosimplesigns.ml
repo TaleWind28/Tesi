@@ -1,5 +1,5 @@
 open Syntax
-open Abstract_domains.SimpleSigns
+open Abstract_domains.SimplifiedSigns
 open Interpeters
 
 (* ------------------------------------------------------------ *)
@@ -35,11 +35,11 @@ let make_test_state () =
 let make_case (desc, expr, expected) =
   ( desc, `Quick,
     fun () ->
-      let res = SimpleSignInterp.eval_exp expr (Env (make_test_state ())) in
+      let res = SimplifiedSignInterp.eval_exp expr (Env (make_test_state ())) in
       Alcotest.(check sign_testable) desc expected res )
 
 (* Verifica una o più variabili in uno stato finale; fallisce se BottomEnv *)
-let check_vars desc (final_env : Interpeters.SimpleSignInterp.state) expected_vars =
+let check_vars desc (final_env : Interpeters.SimplifiedSignInterp.state) expected_vars =
   match final_env with
   | BottomEnv ->
       Alcotest.fail (Printf.sprintf "%s: stato finale è BottomEnv, impossibile verificare variabili" desc)
@@ -56,12 +56,12 @@ let check_vars desc (final_env : Interpeters.SimpleSignInterp.state) expected_va
 
 (* Stato iniziale VUOTO *)
 let make_prog_case (desc, prog, expected_vars) =
-  (desc, `Quick, fun () -> check_vars desc (SimpleSignInterp.eval prog) expected_vars)
+  (desc, `Quick, fun () -> check_vars desc (SimplifiedSignInterp.eval prog) expected_vars)
 
 (* Stato iniziale PRECOMPILATO *)
 let make_prog_case_with_env (desc, prog, expected_vars) =
   ( desc, `Quick,
-    fun () -> check_vars desc (SimpleSignInterp.eval_cmd prog (Env (make_test_state ()))) expected_vars )
+    fun () -> check_vars desc (SimplifiedSignInterp.eval_cmd prog (Env (make_test_state ()))) expected_vars )
 
 (* Si aspetta BottomEnv. Se [with_env] è true parte dallo stato precompilato
    (eval_cmd), altrimenti da stato vuoto (eval). *)
@@ -69,8 +69,8 @@ let expect_bottom ?(with_env = false) desc prog =
   ( desc, `Quick,
     fun () ->
       let res =
-        if with_env then SimpleSignInterp.eval_cmd prog (Env (make_test_state ()))
-        else SimpleSignInterp.eval prog
+        if with_env then SimplifiedSignInterp.eval_cmd prog (Env (make_test_state ()))
+        else SimplifiedSignInterp.eval prog
       in
       match res with
       | BottomEnv -> ()
@@ -198,7 +198,7 @@ let skiptests = [
   ( "Skip in mezzo a una sequenza non altera i valori", `Quick,
     fun () ->
       let prog = Sequence (Assign ("x", Const 42), Skip) in
-      match SimpleSignInterp.eval_cmd prog (Env (make_test_state ())) with
+      match SimplifiedSignInterp.eval_cmd prog (Env (make_test_state ())) with
       | Env tbl -> Alcotest.(check sign_testable) "x resta Pos" Pos (Hashtbl.find tbl "x")
       | BottomEnv -> Alcotest.fail "Skip: stato inaspettatamente BottomEnv" );
 ]
@@ -450,7 +450,7 @@ let if_bottom_propagation_tests = [
    entrambi i domini, quindi il comportamento delle guardie che
    perdono precisione dovrebbe essere lo stesso.
    ATTENZIONE: non ho potuto eseguire questi test contro il vero
-   AbsInterp/SimpleSignInterp (non ho il sorgente dell'interprete),
+   AbsInterp/SimplifiedSignInterp (non ho il sorgente dell'interprete),
    quindi conviene lanciare `dune runtest` e correggere i valori
    attesi se qualche assert fallisce. *)
 (* ------------------------------------------------------------ *)

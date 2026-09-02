@@ -18,11 +18,23 @@ module type DOMAIN = sig
   val mul    : t -> t -> t
   val div    : t -> t -> t
   val negate : t -> t
+
+  val to_string : t -> string
 end
 
 (* Dominio dei segni *)
 module Signs = struct
   type t = SignTop | Pos |PosZero | Zero | NegZero | Neg | NonZero | SignBottom
+
+  let to_string t = match t with
+  | SignTop -> "Top"
+  | Pos -> ">0"
+  | PosZero -> ">=0"
+  | Zero -> "0"
+  | NegZero -> "<=0"
+  | Neg -> "<0"
+  | NonZero -> "!=0"
+  | SignBottom -> "Bottom"
   
   let top    = SignTop
   let bottom = SignBottom
@@ -155,8 +167,14 @@ module Signs = struct
     | x          -> x   (* Zero, SignTop, SignBottom, NonZero invariati *)
 end
 
-module SimpleSigns = struct
+module SimplifiedSigns = struct
   type t = SignTop | Pos | Zero | Neg | SignBottom
+  let to_string t = match t with
+  | SignTop -> "Top"
+  | Pos -> ">0"
+  | Zero -> "0"
+  | Neg -> "<0"
+  | SignBottom -> "Bottom"
   let top    = SignTop
   let bottom = SignBottom
   let filter_rel op value = match op, value with
@@ -271,6 +289,11 @@ end
 
 module ReducedSigns = struct
   type t = SignTop | Pos | Neg | SignBottom
+  let to_string t = match t with
+  | SignTop -> "Top"
+  | Pos -> ">0"
+  | Neg -> "<0"
+  | SignBottom -> "Bottom"
   let top    = SignTop
   let bottom = SignBottom
   let filter_rel op value = match op, value with
@@ -365,8 +388,14 @@ module ReducedSigns = struct
 
 end
 
-module SimplifiedSigns = struct (* a regola è questo SimpleSigns però bisogna controllare meglio*)
+module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna controllare meglio*)
   type t = SignTop | PosZero | Zero | NegZero | SignBottom
+  let to_string t = match t with
+  | SignTop -> "Top"
+  | PosZero -> ">=0"
+  | Zero -> "0"
+  | NegZero -> "<=0"
+  | SignBottom -> "Bottom"
   
   let top    = SignTop
   let bottom = SignBottom
@@ -406,28 +435,17 @@ module SimplifiedSigns = struct (* a regola è questo SimpleSigns però bisogna 
 
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
-    | x,y when x = y -> 2
-    | SignTop, _ -> 2
-    | _,SignTop -> 2
-    | SignBottom,_ -> -1
-    | _,SignBottom -> 1
-    | PosZero,PosZero -> 2
-    | PosZero,_ -> 1
-    | _,PosZero -> -1
-    | Zero,_ -> 1
-    | _,Zero -> -1
-    | NegZero,NegZero -> 2
-
-
+    | SignTop, _ | _,SignTop | PosZero,PosZero | NegZero,NegZero | PosZero,Zero -> 2
+    | SignBottom,_ | _,PosZero | _,Zero -> -1
+    | _,SignBottom | PosZero,_  | Zero,_ -> 1
+  
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
-    | NegZero, NegZero -> NegZero
-    | PosZero, PosZero -> PosZero
+    | NegZero,Zero | NegZero, NegZero | Zero,NegZero -> NegZero
+    | PosZero,Zero | PosZero, PosZero | Zero,PosZero -> PosZero
     | Zero,Zero -> Zero
-    | PosZero,Zero | Zero,PosZero -> SignTop
     | _,_ -> SignTop
-
-
+  
   let glb s1 s2 = match s1, s2 with
   (* 1. Elemento Assorbente (Bottom) *)
   | SignBottom, _ | _, SignBottom -> SignBottom
@@ -435,6 +453,7 @@ module SimplifiedSigns = struct (* a regola è questo SimpleSigns però bisogna 
   | x, SignTop | SignTop, x -> x
   (* 3. Idempotenza (stesso elemento con se stesso) *)
   | x, y when x = y -> x
+  | PosZero,PosZero | NegZero, NegZero -> Zero
   (* 4. Tutti gli altri casi sono disgiunti (es. Pos con Neg, Zero con Pos, ecc.) *)
   | _, _ -> SignBottom
 
@@ -455,7 +474,7 @@ module SimplifiedSigns = struct (* a regola è questo SimpleSigns però bisogna 
 
   let mul s1 s2 = match s1, s2 with
     | SignBottom, _ | _, SignBottom -> SignBottom
-    | Zero, _       | _, Zero      -> Zero
+    | Zero, _       | _, Zero       -> Zero
     | PosZero, PosZero | NegZero,NegZero -> PosZero
     | NegZero,PosZero | PosZero,NegZero -> NegZero
     | _,_ -> SignTop
@@ -488,6 +507,13 @@ end
 
 module StrangeSigns = struct (* a regola è questo SimpleSigns però bisogna controllare meglio*)
   type t = SignTop | PosZero | Zero | Neg | SignBottom
+
+  let to_string t = match t with
+  | SignTop -> "Top"
+  | PosZero -> ">=0"
+  | Zero -> "0"
+  | Neg -> "<0"
+  | SignBottom -> "Bottom"
   
   let top    = SignTop
   let bottom = SignBottom
@@ -521,18 +547,9 @@ module StrangeSigns = struct (* a regola è questo SimpleSigns però bisogna con
   | SmallerEquals, ( PosZero | SignTop )   -> SignTop
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
-    | x,y when x = y -> 2
-    | SignTop, _ -> 2
-    | _,SignTop -> 2
-    | SignBottom,_ -> -1
-    | _,SignBottom -> 1
-    | PosZero,PosZero -> 2
-    | PosZero,_ -> 1
-    | _,PosZero -> -1
-    | Zero,_ -> 1
-    | _,Zero -> -1
-    | Neg,Neg -> 2
-
+    | SignTop, _ | _,SignTop | PosZero,PosZero | Neg,Neg -> 2
+    | SignBottom,_ | _,PosZero | _,Zero -> -1
+    | _,SignBottom | PosZero,_ | Zero,_ -> 1
 
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
@@ -588,11 +605,9 @@ module StrangeSigns = struct (* a regola è questo SimpleSigns però bisogna con
     | SignBottom, _ | _, SignBottom -> SignBottom
     (* divisione per zero *)
     | _, Zero -> SignBottom
-    | Zero, PosZero -> SignTop
-    | _ , PosZero   -> SignTop
-    | PosZero, Neg -> SignTop
+    | _, PosZero | PosZero, Neg -> SignTop
     (*Unici casi noti della tabella della divisione*)
-    | Neg, Neg     -> PosZero
+    | Neg, Neg -> PosZero
     (*Casi con possibili divisioni per 0 oppure divisioni con NonZero*)
     | _ -> SignTop
 
@@ -607,6 +622,16 @@ end
 module Intervals = struct
   type bound = NegInf | Int of int | PosInf 
   type t = Interval of bound * bound | Bottom
+
+  let bound_to_string bound = match bound with
+  | NegInf -> "-Inf"
+  | Int(n) -> string_of_int n
+  | PosInf -> "+Inf" 
+  let to_string t = match t with
+  | Bottom -> "Bottom"
+  | Interval (b1,b2)-> 
+    Printf.sprintf "[%s, %s]" (bound_to_string b1) (bound_to_string b2)
+
   
   let bottom = Bottom
   let top = Interval (NegInf,PosInf)

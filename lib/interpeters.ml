@@ -217,5 +217,11 @@ module SignInterp = AbsInterp (Signs)
 
 module SimpleSignInterp = AbsInterp (SimpleSigns)
 
+module ReducedSignsSignInterp = AbsInterp (ReducedSigns)
+
+module SimplifiedSignInterp = AbsInterp (SimplifiedSigns)
+
+module StrangeSignInterp = AbsInterp (StrangeSigns)
+
 (* Istanza concreta con il dominio degli Intervalli *)
 module IntervalInterp = AbsInterp (Intervals)

@@ -1,6 +1,6 @@
 open Syntax
 open Interpeters
-open Abstract_domains.Signs
+(* open Abstract_domains.SimpleSigns *)
 (* open Abstract_domains.SimpleSigns *)
 (* open Abstract_domains.Intervals *)
 let test_prog =(
@@ -49,10 +49,11 @@ let test_prog =(
         Filter (Comparison (Var "b", Equals, Var "x"))
       (* ) *)
     ) *)
-    Sequence (Assign ("x", Const (-3)),
-       While (
+    Sequence (Assign ("x", Const (5)),
+       If (
         Comparison (Var "x", Smaller, Const 0),
-        Assign ("x",Const 0)
+        Assign ("y",Const 1),
+        Assign ("y",Const (-1))
       )
   )
    (* (
@@ -82,7 +83,7 @@ let test_prog =(
   ); *)
 )
   
-let string_of_sign v =
+(* let string_of_sign v =
   match v with
   | Pos -> "+"
   | Neg -> "-"
@@ -91,7 +92,7 @@ let string_of_sign v =
   | NegZero -> "<=0"
   | NonZero -> "!=0"
   | SignTop -> "T (Top)"
-  | SignBottom -> "_|_ (Bottom)"
+  | SignBottom -> "_|_ (Bottom)" *)
 
 (* let string_of_simple_sign v =
   match v with
@@ -113,24 +114,24 @@ let string_of_sign v =
 
 let outputStatePrinter state = 
   match state with
+  | SimpleSignInterp.BottomEnv ->
+      print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
+  | SimpleSignInterp.Env tbl ->
+      Hashtbl.iter (fun var v ->
+        Printf.printf "%s : %s\n" var (Abstract_domains.SimpleSigns.to_string v)
+      ) tbl
   (* | SimpleSignInterp.BottomEnv ->
       print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
   | SimpleSignInterp.Env tbl ->
       Hashtbl.iter (fun var v ->
         Printf.printf "%s : %s\n" var (string_of_simple_sign v)
       ) tbl *)
-  (* | SimpleSignInterp.BottomEnv ->
-      print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
-  | SimpleSignInterp.Env tbl ->
-      Hashtbl.iter (fun var v ->
-        Printf.printf "%s : %s\n" var (string_of_simple_sign v)
-      ) tbl *)
-  | SignInterp.BottomEnv ->
+  (* | SignInterp.BottomEnv ->
       print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
   | SignInterp.Env tbl ->
       Hashtbl.iter (fun var v ->
         Printf.printf "%s : %s\n" var (string_of_sign v)
-      ) tbl
+      ) tbl *)
 
 
 let () =
@@ -145,10 +146,10 @@ let () =
   Hashtbl.replace env "p" (Interval (Int 1, PosInf));
   Hashtbl.replace env "m" (Interval (NegInf, Int (-1)));
   Hashtbl.replace env "b" bottom; *)
-  (* let risultato : SimpleSignInterp.state = SimpleSignInterp.eval test_prog in
-  outputStatePrinter risultato;; *)
-  let risultato : SignInterp.state = SignInterp.eval test_prog in
+  let risultato : SimpleSignInterp.state = SimpleSignInterp.eval test_prog in
   outputStatePrinter risultato;;
+  (* let risultato : SignInterp.state = SignInterp.eval test_prog in
+  outputStatePrinter risultato;; *)
 
 (* let () =
   let env = Hashtbl.create 10 in
