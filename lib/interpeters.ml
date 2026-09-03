@@ -165,11 +165,18 @@ module AbsInterp (D : DOMAIN) = struct
                             refine_vars e1 e2 val1 val2 env (* Raffino le variabili *)
                         | _ -> Env(env) (* Se e1 non è una variabile semplice, manteniamo l'ambiente *)
                     else BottomEnv (* Se la condizione è impossibile, il ramo è irraggiungibile *)
-                | NotEquals -> eval_cond (Boolean(condition != 0)) (Env(env))
+                (* | NotEquals -> eval_cond (Boolean(condition != 0)) (Env(env))
                 | Bigger -> eval_cond (Boolean(condition == 1 || condition == 2)) (Env(env))
                 | Smaller -> eval_cond (Boolean(condition == -1 || condition == 2)) (Env(env))
                 | BiggerEquals -> eval_cond(Or(Comparison(e1,Bigger,e2),Comparison(e1,Equals,e2))) (Env(env))
                 | SmallerEquals -> eval_cond(Or(Comparison(e1,Smaller,e2),Comparison(e1,Equals,e2))) (Env(env))
+                match comp with  *)
+                | Bigger -> condition == 1 || condition == 2
+                | Smaller -> condition == -1 || condition == 2
+                | BiggerEquals -> condition <> -1
+                | SmallerEquals -> condition <> 1
+                | Equals -> condition == 0 || condition == 2
+                | _ -> Env(env)
 
     (* Valutazione Comandi *)
     let rec eval_cmd (command : cmd) (env : state) : state =
@@ -203,7 +210,7 @@ module AbsInterp (D : DOMAIN) = struct
                         let x' = widen_env x (f x) in (* Viene effettuato un Widening sullo stato attuale e lo stato dopo aver applicato f *) 
                             if leq_env x' x then x (* Se gli stati sono uguali allora ho raggiunto il Least Fixpoint, altrimenti continuo ad iterare *)
                             else kleene x' 
-                    in kleene BottomEnv (* Parto dallo stato Vuoto e vado a "salire" *)
+                    in kleene (Env(env)) (* Parto dallo stato Vuoto e vado a "salire" *)
                 in eval_cmd (Filter((Not(cond)))) (lfp f) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*)
 
     (* Funzione eval generale *)
