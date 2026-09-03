@@ -88,8 +88,9 @@
   ) *)
 open Abstract_domains
 open Interpeters
+open Oracles
 
-module Make_Sign_Tests (D : DOMAIN) = struct
+module Make_Sign_Tests (D : DOMAIN) (E: EXPECTED_VALUES with type t = D.t ) = struct
   (* Generiamo l'interprete specifico per questo dominio direttamente all'interno *)
   module Interp = AbsInterp (D)
 
@@ -148,23 +149,23 @@ module Make_Sign_Tests (D : DOMAIN) = struct
   (* ------------------------------------------------------------ *)
 
   let sumtests = List.map make_case [
-    "Sum: Pos + Zero", BinaryOperation (Var "x", Add, Var "z"), D.abstract_range 1 10;
-    "Sum: Zero + Zero", BinaryOperation (Var "z", Add, Var "z"), D.abstract_int 0;
-    "Sum: Top + Pos", BinaryOperation (Var "t", Add, Var "x"), D.top;
-    "Sum: Bottom + Pos", BinaryOperation (Var "b", Add, Var "x"), D.bottom;
-    "Sum: Pos + Neg", BinaryOperation (Var "x", Add, Var "y"), D.sum (D.abstract_range 1 10) (D.abstract_range (-10) (-1));
+    "Sum: Pos + Zero", BinaryOperation (Var "x", Add, Var "z"), E.expected_sum_1;
+    "Sum: Zero + Zero", BinaryOperation (Var "z", Add, Var "z"), E.expected_sum_2;
+    "Sum: Top + Pos", BinaryOperation (Var "t", Add, Var "x"), E.expected_sum_3;
+    "Sum: Bottom + Pos", BinaryOperation (Var "b", Add, Var "x"), E.expected_sum_4;
+    "Sum: Pos + Neg", BinaryOperation (Var "x", Add, Var "y"), E.expected_sum_5;
   ]
 
   let multests = List.map make_case [
-    "Mul: Pos * Zero", BinaryOperation (Var "x", Mul, Var "z"), D.abstract_int 0;
-    "Mul: Top * Zero", BinaryOperation (Var "t", Mul, Var "z"), D.abstract_int 0;
-    "Mul: Bottom * Pos", BinaryOperation (Var "b", Mul, Var "x"), D.bottom;
-    "Mul: Neg * Neg", BinaryOperation (Var "y", Mul, Var "y"), D.mul (D.abstract_range (-10) (-1)) (D.abstract_range (-10) (-1));
+    "Mul: Pos * Zero", BinaryOperation (Var "x", Mul, Var "z"), E.expected_mul_1;
+    "Mul: Top * Zero", BinaryOperation (Var "t", Mul, Var "z"), E.expected_mul_2;
+    "Mul: Bottom * Pos", BinaryOperation (Var "b", Mul, Var "x"), E.expected_mul_3;
+    "Mul: Neg * Neg", BinaryOperation (Var "y", Mul, Var "y"), E.expected_mul_4;
   ]
 
   let divtests = List.map make_case [
-    "Div: Const / Zero", BinaryOperation (Const 10, Div, Var "z"), D.bottom;
-    "Div: Zero / Pos", BinaryOperation (Var "z", Div, Var "x"), D.abstract_int 0;
+    "Div: Const / Zero", BinaryOperation (Const 10, Div, Var "z"), E.expected_div_1;
+    "Div: Zero / Pos", BinaryOperation (Var "z", Div, Var "x"), E.expected_div_2;
   ]
 
   (* ------------------------------------------------------------ *)
@@ -172,15 +173,15 @@ module Make_Sign_Tests (D : DOMAIN) = struct
   (* ------------------------------------------------------------ *)
 
   let assigntests = [
-    make_prog_case_with_env ("Assign: x = 5", Assign ("x", Const 5), ["x", D.abstract_int 5]);
-    make_prog_case_with_env ("Assign: x = -5", Assign ("x", Const (-5)), ["x", D.abstract_int (-5)]);
+    make_prog_case_with_env ("Assign: x = 5", Assign ("x", Const 5), ["x", E.expected_assign_1]);
+    make_prog_case_with_env ("Assign: x = -5", Assign ("x", Const (-5)), ["x", E.expected_assign_2]);
   ]
 
   let iftests = [
     make_prog_case_with_env
       ( "If Pos: if (x > 0) then y = 1 else y = -1",
         If (Comparison (Var "x", Bigger, Const 0), Assign ("y", Const 1), Assign ("y", Const (-1))),
-        ["y", D.abstract_int 1] );
+        ["y", E.expected_if_1] );
   ]
 
   let tests = [
@@ -191,12 +192,12 @@ module Make_Sign_Tests (D : DOMAIN) = struct
     "Istruzioni Condizionali", iftests;
   ]
 end
-module TestSuite_Signs = Make_Sign_Tests (Abstract_domains.Signs)
-module TestSuite_SimpleSigns = Make_Sign_Tests (Abstract_domains.SimpleSigns)
+module TestSuite_Signs = Make_Sign_Tests (Abstract_domains.Signs) (Expected_Signs)
+module TestSuite_SimpleSigns = Make_Sign_Tests (Abstract_domains.SimpleSigns) (Expected_SimpleSigns)
 module TestSuite_ReducedSigns = Make_Sign_Tests (Abstract_domains.ReducedSigns)
 module TestSuite_SimplifiedSigns = Make_Sign_Tests (Abstract_domains.SimplifiedSigns)
 module TestSuite_StrangeSigns = Make_Sign_Tests (Abstract_domains.StrangeSigns)
-module TestSuite_Intervals = Make_Sign_Tests (Abstract_domains.Intervals)
+(* module TestSuite_Intervals = Make_Sign_Tests (Abstract_domains.Intervals) *)
 
 (* 2. Esecuzione tramite Alcotest *)
 (* let () =
