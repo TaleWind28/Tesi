@@ -189,7 +189,7 @@ module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = st
   let iftests = [
     make_prog_case
       ( "If Pos: if (x > 0) then y = 1 else y = -1",
-        Sequence(Assign("x",Const(5)),If (Comparison (Var "x", Bigger, Const 0), Assign ("y", Const 1), Assign ("y", Const (-1)))),
+        Sequence(Assign("x",Const(5)),If (Comparison (Var "x", Bigger, Const 0), Assign ("y", Const (1)), Assign ("y", Const (-1)))),
         ["y", E.if_1] );
     make_prog_case
       ( "If certo vero (x>y)",
@@ -256,10 +256,18 @@ module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = st
              Assign ("x", BinaryOperation (Var "x", Sub, Const 1))
             )),
         [ "x", E.while_1_1 ] );
-    (* make_prog_case
-      ( "While converge",
+    make_prog_case
+      ( "While converge: x = 5; while x!=0 x = 0; -> risultato x = 0",
         Sequence (Assign ("x", Const 5), While (Comparison (Var "x", NotEquals, Const 0), Assign ("x", Const 0))),
-        [ "x", E.while_2_1 ] ); *)
+        [ "x", E.while_2_1 ] );
+      (* expect_bottom "While converge x = 5; while x!=0 x = 0"
+        (Sequence (
+          Assign ("x", Const 5), 
+          While (
+            Comparison (Var "x", NotEquals, Const 0), 
+            Assign ("x", Const 0))
+            )
+          ); *)
     make_prog_case
       ( "While perdita di precisione",
         Sequence (
@@ -320,5 +328,5 @@ let () =
   Alcotest.run "Abstract Interpreter Tests" (
     List.map (fun (name, test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests
     @ List.map (fun (name, test_list) -> ("SimplifiedSigns: " ^ name, test_list)) TestSuite_SimplifiedSigns.tests
-    (* @ List.map (fun (name,test_list) -> ("SimpleSigns: " ^ name, test_list)) TestSuite_SimpleSigns.tests *)
+    @ List.map (fun (name,test_list) -> ("SimpleSigns: " ^ name, test_list)) TestSuite_SimpleSigns.tests
   )
