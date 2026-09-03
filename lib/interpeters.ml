@@ -4,9 +4,19 @@ open Syntax
 (* Interprete astratto parametrico sul dominio D *)
 module AbsInterp (D : DOMAIN) = struct
 
+
     type state =
     | Env of (string, D.t) Hashtbl.t
     | BottomEnv 
+
+    let outputStatePrinter state = 
+        match state with
+            | BottomEnv ->
+                print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
+            | Env tbl ->
+                Hashtbl.iter (fun var v ->
+                    Printf.printf "%s : %s\n" var (D.to_string v)
+                ) tbl
 
     let lub_env e1 e2 : state = match e1,e2 with 
     | BottomEnv,BottomEnv -> BottomEnv
@@ -150,33 +160,61 @@ module AbsInterp (D : DOMAIN) = struct
             | Comparison (e1,comp,e2) -> (* Comparazione tra espressioni mediante un comparatore*) 
                 let val1 = eval_exp e1 (Env(env)) in (* Valuto e1 *)
                 let val2 = eval_exp e2 (Env(env)) in (* Valuto e2 *)
+                (* let condition = D.compare_type val1 val2 in print_int condition;print_string"\n"; *)
                 let condition = D.compare_type val1 val2 in 
-                match comp with (* Pattern Matching per applicare il comparatore richiesto *)
+                (* Pattern Matching per applicare il comparatore richiesto *)
                 (* compare_type viene implementato dal dominio in analisi restituisce:
                     1 con val1 > val2
                     -1 in caso di val1 < val2 
                     0 in caso di uguaglianza 
                     2 in caso di indecidibilità  (es: nei segni pos > pos)
                 *)
-                | Equals -> (* Se l'uguaglianza è possibile (0) o indecidibile (2) *)
+                (* | Equals -> 
                     if condition = 0 || condition = 2 
                         then match e1 with
-                        | Var s -> (* Raffiniamo la variabile 's' facendo il GLB col valore di e2 *)
-                            refine_vars e1 e2 val1 val2 env (* Raffino le variabili *)
-                        | _ -> Env(env) (* Se e1 non è una variabile semplice, manteniamo l'ambiente *)
-                    else BottomEnv (* Se la condizione è impossibile, il ramo è irraggiungibile *)
+                        | Var s -> 
+                            refine_vars e1 e2 val1 val2 env 
+                        | _ -> Env(env) 
+                    else BottomEnv  *)
                 (* | NotEquals -> eval_cond (Boolean(condition != 0)) (Env(env))
                 | Bigger -> eval_cond (Boolean(condition == 1 || condition == 2)) (Env(env))
                 | Smaller -> eval_cond (Boolean(condition == -1 || condition == 2)) (Env(env))
                 | BiggerEquals -> eval_cond(Or(Comparison(e1,Bigger,e2),Comparison(e1,Equals,e2))) (Env(env))
                 | SmallerEquals -> eval_cond(Or(Comparison(e1,Smaller,e2),Comparison(e1,Equals,e2))) (Env(env))
                 match comp with  *)
-                | Bigger -> condition == 1 || condition == 2
+                let res = match comp with 
+                | Bigger  -> condition == 1 || condition == 2
                 | Smaller -> condition == -1 || condition == 2
                 | BiggerEquals -> condition <> -1
                 | SmallerEquals -> condition <> 1
                 | Equals -> condition == 0 || condition == 2
-                | _ -> Env(env)
+                | NotEquals -> condition <> 0
+                in 
+                if not res then BottomEnv
+                else let new_env = Hashtbl.copy env in
+      
+      (* Raffiniamo e1 se è una variabile *)
+      (match e1 with
+       | Var s1 -> 
+           let filtered = D.filter_rel comp val2 in
+           let refined = D.glb val1 filtered in
+           Hashtbl.replace new_env s1 refined
+       | _ -> ());
+
+      (* Raffiniamo e2 se è una variabile *)
+      (match e2 with
+       | Var s2 -> 
+           let inv_comp = negate_comp comp in
+           let filtered = D.filter_rel inv_comp val1 in
+           let refined = D.glb val2 filtered in
+           Hashtbl.replace new_env s2 refined
+       | _ -> ());
+
+      (* Se il GLB ha generato un Bottom per una variabile, il ramo è irraggiungibile *)
+      if Hashtbl.fold (fun _ v acc -> acc || v = D.bottom) new_env false then
+        BottomEnv
+      else
+        Env new_env
 
     (* Valutazione Comandi *)
     let rec eval_cmd (command : cmd) (env : state) : state =
@@ -199,8 +237,13 @@ module AbsInterp (D : DOMAIN) = struct
             | Skip -> Env(env) (* Skip *)
 
             | If(cond,thencmd,elsecmd) -> (* Istruzione Condizionale i cui rami then ed else vengono sempre valutati e successivamente tramite lub si restringe lo stato *)
-                let e1 = eval_cmd (Sequence(Filter(cond),thencmd)) (Env(Hashtbl.copy env)) in 
-                let e2 = eval_cmd (Sequence(Filter(Not(cond)),elsecmd)) (Env(Hashtbl.copy env)) in 
+                (* outputStatePrinter (Env(env)); *)
+                let e1 = eval_cmd (Sequence(Filter(cond), thencmd)) (Env(Hashtbl.copy env)) in 
+                let e2 = eval_cmd (Sequence(Filter(Not(cond)), elsecmd)) (Env(Hashtbl.copy env)) in 
+                (* DEBUG *)
+                (* let () = match e1 with BottomEnv -> print_endline "e1 is Bottom" | Env _ -> print_endline "e1 is Env" in
+                let () = match e2 with BottomEnv -> print_endline "e2 is Bottom" | Env _ -> print_endline "e2 is Env" in *)
+                (* lub_env e1 e2 *)
                 lub_env e1 e2
                     
             | While(cond,cmd) -> (* Ciclo che tramite Least Fixpoint valuta  *)
