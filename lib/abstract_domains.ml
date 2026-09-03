@@ -505,7 +505,7 @@ module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna cont
 
 end
 
-module StrangeSigns = struct (* a regola è questo SimpleSigns però bisogna controllare meglio*)
+module StrangeSigns = struct 
   type t = SignTop | PosZero | Zero | Neg | SignBottom
 
   let to_string t = match t with
