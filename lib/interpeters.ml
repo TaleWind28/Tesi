@@ -91,11 +91,13 @@ module AbsInterp (D : DOMAIN) = struct
         | BottomEnv, _ -> true
         | _, BottomEnv -> false
         | Env(t1),Env(t2) ->
+
             Hashtbl.fold (fun var v1 acc ->
                 acc &&
                 let v2 = try Hashtbl.find t2 var with Not_found -> D.bottom in
                 D.leq v1 v2
             ) t1 true
+            
 
     let negate_comp comp = match comp with
     | Bigger -> Smaller
@@ -160,7 +162,6 @@ module AbsInterp (D : DOMAIN) = struct
             | Comparison (e1,comp,e2) -> (* Comparazione tra espressioni mediante un comparatore*) 
                 let val1 = eval_exp e1 (Env(env)) in (* Valuto e1 *)
                 let val2 = eval_exp e2 (Env(env)) in (* Valuto e2 *)
-                (* let condition = D.compare_type val1 val2 in print_int condition;print_string"\n"; *)
                 let condition = D.compare_type val1 val2 in 
                 (* Pattern Matching per applicare il comparatore richiesto *)
                 (* compare_type viene implementato dal dominio in analisi restituisce:
@@ -169,19 +170,6 @@ module AbsInterp (D : DOMAIN) = struct
                     0 in caso di uguaglianza 
                     2 in caso di indecidibilità  (es: nei segni pos > pos)
                 *)
-                (* | Equals -> 
-                    if condition = 0 || condition = 2 
-                        then match e1 with
-                        | Var s -> 
-                            refine_vars e1 e2 val1 val2 env 
-                        | _ -> Env(env) 
-                    else BottomEnv  *)
-                (* | NotEquals -> eval_cond (Boolean(condition != 0)) (Env(env))
-                | Bigger -> eval_cond (Boolean(condition == 1 || condition == 2)) (Env(env))
-                | Smaller -> eval_cond (Boolean(condition == -1 || condition == 2)) (Env(env))
-                | BiggerEquals -> eval_cond(Or(Comparison(e1,Bigger,e2),Comparison(e1,Equals,e2))) (Env(env))
-                | SmallerEquals -> eval_cond(Or(Comparison(e1,Smaller,e2),Comparison(e1,Equals,e2))) (Env(env))
-                match comp with  *)
                 let res = match comp with 
                 | Bigger  -> condition == 1 || condition == 2
                 | Smaller -> condition == -1 || condition == 2
@@ -218,7 +206,7 @@ module AbsInterp (D : DOMAIN) = struct
 
     (* Valutazione Comandi *)
     let rec eval_cmd (command : cmd) (env : state) : state =
-         match env with 
+        match env with 
         | BottomEnv -> BottomEnv (* Se sono in bottomEnv si è verificato un'errore => restituisco BottomEnv *)
         | Env env -> 
             match command with
@@ -230,19 +218,19 @@ module AbsInterp (D : DOMAIN) = struct
             
             | Sequence(c1,c2) -> (* Sequenza di Comandi *)
                 let env1  = eval_cmd c1 (Env(env)) in  (* Valuto il primo memorizzando l'ambiente risultante *)
-                eval_cmd c2 env1 (* Valuto il secondo utilizzando l'ambiente risultante dalla valutazione del primo *)
+                eval_cmd c2 env1  (* Valuto il secondo utilizzando l'ambiente risultante dalla valutazione del primo *)
+                
 
             | Filter(cd) -> eval_cond cd (Env(env)) (* Controllo se una condizione è rispettata *)
                         
             | Skip -> Env(env) (* Skip *)
 
             | If(cond,thencmd,elsecmd) -> (* Istruzione Condizionale i cui rami then ed else vengono sempre valutati e successivamente tramite lub si restringe lo stato *)
-                (* outputStatePrinter (Env(env)); *)
-                let e1 = eval_cmd (Sequence(Filter(cond), thencmd)) (Env(Hashtbl.copy env)) in 
-                let e2 = eval_cmd (Sequence(Filter(Not(cond)), elsecmd)) (Env(Hashtbl.copy env)) in 
+                let e1 = eval_cmd (Sequence(Filter(cond), thencmd)) (Env(Hashtbl.copy env)) in
+                let e2 = eval_cmd (Sequence(Filter(Not(cond)), elsecmd)) (Env(Hashtbl.copy env)) in
                 (* DEBUG *)
-                (* let () = match e1 with BottomEnv -> print_endline "e1 is Bottom" | Env _ -> print_endline "e1 is Env" in
-                let () = match e2 with BottomEnv -> print_endline "e2 is Bottom" | Env _ -> print_endline "e2 is Env" in *)
+                let () = match e1 with BottomEnv -> print_endline "e1 is Bottom" | Env _ -> print_endline "e1 is Env" in
+                let () = match e2 with BottomEnv -> print_endline "e2 is Bottom" | Env _ -> print_endline "e2 is Env" in
                 (* lub_env e1 e2 *)
                 lub_env e1 e2
                     
@@ -254,7 +242,8 @@ module AbsInterp (D : DOMAIN) = struct
                             if leq_env x' x then x (* Se gli stati sono uguali allora ho raggiunto il Least Fixpoint, altrimenti continuo ad iterare *)
                             else kleene x' 
                     in kleene (Env(env)) (* Parto dallo stato Vuoto e vado a "salire" *)
-                in eval_cmd (Filter((Not(cond)))) (lfp f) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*)
+                in eval_cmd (Filter((Not(cond)))) (lfp f) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*) 
+               
 
     (* Funzione eval generale *)
     let eval (prog : cmd) : state =

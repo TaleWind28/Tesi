@@ -250,15 +250,22 @@ module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = st
   let whiletests = [
     make_prog_case
       ( "While mai eseguito",
-        Sequence (Assign ("x", Const 5),
+        Sequence (
+          Assign ("x", Const 5),
           While (
             Comparison (Var "x", Smaller, Const 0),
-             Assign ("x", BinaryOperation (Var "x", Sub, Const 1))
-            )),
+            Assign ("x", BinaryOperation (Var "x", Sub, Const 1))
+          )
+        ),
         [ "x", E.while_1_1 ] );
     make_prog_case
       ( "While converge: x = 5; while x!=0 x = 0; -> risultato x = 0",
-        Sequence (Assign ("x", Const 5), While (Comparison (Var "x", NotEquals, Const 0), Assign ("x", Const 0))),
+        Sequence (
+          Assign ("x", Const 5),
+          While (
+            Comparison (Var "x", NotEquals, Const 0),
+            Assign ("x", Const 0))
+        ),
         [ "x", E.while_2_1 ] );
       (* expect_bottom "While converge x = 5; while x!=0 x = 0"
         (Sequence (

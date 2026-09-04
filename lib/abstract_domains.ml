@@ -435,8 +435,8 @@ module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna cont
 
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
-    | SignTop, _ | _,SignTop | PosZero,PosZero | NegZero,NegZero | PosZero,Zero -> 2
-    | SignBottom,_ | _,PosZero | _,Zero -> -1
+    | SignTop, _ | _,SignTop | PosZero,PosZero | NegZero,NegZero | PosZero,Zero | Zero,PosZero | NegZero,Zero | NegZero,PosZero-> 2
+    | SignBottom,_  -> -1
     | _,SignBottom | PosZero,_  | Zero,_ -> 1
   
   let lub s1 s2 = match s1, s2 with
@@ -453,7 +453,7 @@ module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna cont
   | x, SignTop | SignTop, x -> x
   (* 3. Idempotenza (stesso elemento con se stesso) *)
   | x, y when x = y -> x
-  | PosZero,PosZero | NegZero, NegZero -> Zero
+  | PosZero,PosZero | NegZero, NegZero |PosZero,Zero | Zero,PosZero | NegZero,Zero | Zero,NegZero -> Zero
   (* 4. Tutti gli altri casi sono disgiunti (es. Pos con Neg, Zero con Pos, ecc.) *)
   | _, _ -> SignBottom
 

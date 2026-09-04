@@ -337,10 +337,10 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   (* While *)
   let while_1_1 = PosZero (*risultato corretto: PosZero*)
   let while_1_2 = NegZero (* non serve questo valore*)
-  let while_2_1 = bottom (* è accettabile anche PosZero, ma ottengo bottomEnv*) 
+  let while_2_1 = Zero (* è accettabile anche PosZero, ma ottengo bottomEnv*) 
   let while_3_1 = PosZero (*0*)
-  let while_4_1 = SignTop (*s*)
-  let while_4_2 = PosZero (*s*)
+  let while_4_1 = SignTop
+  let while_4_2 = PosZero 
   let while_4_3 = SignTop
 end
 
