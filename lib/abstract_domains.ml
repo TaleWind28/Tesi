@@ -624,6 +624,12 @@ module Intervals = struct
   type t = Interval of bound * bound | Bottom
 
   
+  let abstract_int n = Interval (Int n,Int n)
+
+  let abstract_range c1 c2 = 
+  if c1 > c2 then Interval (Int c2, Int c1)
+  else if c2 > c1 then Interval (Int c1, Int c2)
+  else abstract_int c1
 
   let bound_to_string bound = match bound with
   | NegInf -> "-Inf"
@@ -633,12 +639,30 @@ module Intervals = struct
   | Bottom -> "Bottom"
   | Interval (b1,b2)-> 
     Printf.sprintf "[%s, %s]" (bound_to_string b1) (bound_to_string b2)
-
-  
   let bottom = Bottom
   let top = Interval (NegInf,PosInf)
 
-  let filter_rel comp value = failwith "not implemented"
+  let next_bound bound = match bound with
+  | NegInf -> NegInf
+  | PosInf -> PosInf
+  | Int n -> Int (n+1)
+
+  let prev_bound bound = match bound with
+    | NegInf -> NegInf
+    | PosInf -> PosInf
+    | Int n -> Int (n-1)
+
+  let filter_rel comp value = match value with
+  | Bottom -> Bottom
+  | Interval(l,u) ->
+    match comp with 
+    | Equals -> Interval(l,u)
+    | NotEquals -> top 
+    | Bigger -> Interval(next_bound l,PosInf) 
+    | BiggerEquals -> Interval(l,PosInf)
+    | Smaller ->  Interval(NegInf ,(prev_bound u))
+    | SmallerEquals -> Interval(NegInf,u)
+
 
   let min_bound x y = match x,y with
   | _,NegInf | NegInf,_ -> NegInf
@@ -733,12 +757,6 @@ module Intervals = struct
     | PosInf -> NegInf 
     | NegInf -> PosInf
     | Int n -> Int (-n)
-
-  let abstract_int n = Interval (Int n,Int n)
-  let abstract_range c1 c2 = 
-    if c1 > c2 then Interval (Int c2, Int c1)
-    else if c2 > c1 then Interval (Int c1, Int c2)
-    else abstract_int c1
 
   let sum c1 c2 = match c1, c2 with
     |Bottom,_ | _,Bottom -> Bottom
