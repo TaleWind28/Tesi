@@ -484,7 +484,10 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let while_4_3 = SignTop
 end
 
+module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Intervals.t = struct 
 
+
+end
 (* module Expected_Strange : VALUES with type t = Abstract_domains.StrangeSigns.t = struct
   open Abstract_domains.StrangeSigns
   
