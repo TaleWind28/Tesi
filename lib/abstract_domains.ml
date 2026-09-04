@@ -623,6 +623,8 @@ module Intervals = struct
   type bound = NegInf | Int of int | PosInf 
   type t = Interval of bound * bound | Bottom
 
+  
+
   let bound_to_string bound = match bound with
   | NegInf -> "-Inf"
   | Int(n) -> string_of_int n

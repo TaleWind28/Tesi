@@ -256,7 +256,7 @@ module SignInterp = AbsInterp (Signs)
 
 module SimpleSignInterp = AbsInterp (SimpleSigns)
 
-module ReducedSignsSignInterp = AbsInterp (ReducedSigns)
+module ReducedSignInterp = AbsInterp (ReducedSigns)
 
 module SimplifiedSignInterp = AbsInterp (SimplifiedSigns)
 

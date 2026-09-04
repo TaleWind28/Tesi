@@ -17,24 +17,22 @@ let test_prog =(
       )
 )
 
-let outputStatePrinter state = 
-  match state with
-  | SimpleSignInterp.BottomEnv ->
-      print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
-  | SimpleSignInterp.Env tbl ->
-      Hashtbl.iter (fun var v ->
-        Printf.printf "%s : %s\n" var (Abstract_domains.SimpleSigns.to_string v)
-      ) tbl
-  (* 
-  | SignInterp.BottomEnv ->  print_endline "Lo stato finale è BottomEnv (irraggiungibile / bottom)"
-  | SignInterp.Env tbl ->
-      Hashtbl.iter (fun var v ->
-        Printf.printf "%s : %s\n" var (Abstract_domains.Signs.to_string v)
-      ) tbl *)
-
 
 let () =
+  let risultato = SignInterp.eval test_prog in
+  print_string "Sign\t";
+  SignInterp.outputStatePrinter risultato;;
   let risultato = SimpleSignInterp.eval test_prog in
-  outputStatePrinter risultato;;
-  (* let risultato : SignInterp.state = SignInterp.eval test_prog in
-  outputStatePrinter risultato;; *)
+  print_string "SimpleSign\t";
+  SimpleSignInterp.outputStatePrinter risultato;;
+  let risultato = StrangeSignInterp.eval test_prog in
+  print_string "StrangeSign\t";
+  StrangeSignInterp.outputStatePrinter risultato;;
+  print_string "ReducedSign\t";
+  let risultato = ReducedSignInterp.eval test_prog in
+  ReducedSignInterp.outputStatePrinter risultato;;
+  print_string "SimplifiedSign\t";
+  let risultato = SimplifiedSignInterp.eval test_prog in
+  SimplifiedSignInterp.outputStatePrinter risultato;;
+  let risultato = IntervalInterp.eval test_prog in
+  IntervalInterp.outputStatePrinter risultato;;
