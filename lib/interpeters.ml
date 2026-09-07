@@ -36,10 +36,10 @@ module AbsInterp (D : DOMAIN) = struct
         Env(result)
 
     let negate_comp comp = match comp with
-    | Bigger -> Smaller
-    | Smaller -> Bigger
-    | BiggerEquals -> SmallerEquals
-    | SmallerEquals -> BiggerEquals
+    | Bigger -> SmallerEquals
+    | Smaller -> BiggerEquals
+    | BiggerEquals -> Smaller
+    | SmallerEquals -> Bigger
     | Equals -> NotEquals
     | NotEquals -> Equals
 
