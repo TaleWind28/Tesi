@@ -418,7 +418,7 @@ module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna cont
 
   (* 5. Maggiore o Uguale (BiggerEquals: x >= v2) *)
   | BiggerEquals, PosZero     -> PosZero     (* x >= Pos (es. x >= 5) => x dev'essere Pos *)
-  | BiggerEquals, Zero    -> SignTop (* In SimpleSigns non c'è PosZero, quindi include Pos e Zero *)
+  | BiggerEquals, Zero    -> PosZero (* In SimpleSigns non c'è PosZero, quindi include Pos e Zero *)
   | BiggerEquals, NegZero     -> SignTop
   | BiggerEquals, SignTop -> SignTop
 
@@ -429,14 +429,14 @@ module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna cont
 
   (* 7. Minore o Uguale (SmallerEquals: x <= v2) *)
   | SmallerEquals, NegZero     -> NegZero     (* x <= Neg (es. x <= -3) => x dev'essere Neg *)
-  | SmallerEquals, Zero    -> SignTop (* In SimpleSigns non c'è NegZero, quindi include Neg e Zero *)
+  | SmallerEquals, Zero    -> NegZero (* In SimpleSigns non c'è NegZero, quindi include Neg e Zero *)
   | SmallerEquals, PosZero     -> SignTop
   | SmallerEquals, SignTop -> SignTop
 
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
-    | SignTop, _ | _,SignTop | PosZero,PosZero | NegZero,NegZero | PosZero,Zero | Zero,PosZero | NegZero,Zero | NegZero,PosZero-> 2
-    | SignBottom,_  -> -1
+    | SignTop, _ | _,SignTop | PosZero,PosZero | NegZero,NegZero | PosZero,Zero | Zero,PosZero | NegZero,Zero -> 2
+    | SignBottom,_ | NegZero,PosZero -> -1
     | _,SignBottom | PosZero,_  | Zero,_ -> 1
   
   let lub s1 s2 = match s1, s2 with
@@ -453,7 +453,7 @@ module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna cont
   | x, SignTop | SignTop, x -> x
   (* 3. Idempotenza (stesso elemento con se stesso) *)
   | x, y when x = y -> x
-  | PosZero,PosZero | NegZero, NegZero |PosZero,Zero | Zero,PosZero | NegZero,Zero | Zero,NegZero -> Zero
+  | PosZero,Zero | Zero,PosZero | NegZero,Zero | Zero,NegZero | PosZero, NegZero | NegZero,PosZero -> Zero
   (* 4. Tutti gli altri casi sono disgiunti (es. Pos con Neg, Zero con Pos, ecc.) *)
   | _, _ -> SignBottom
 
@@ -547,9 +547,13 @@ module StrangeSigns = struct
   | SmallerEquals, ( PosZero | SignTop )   -> SignTop
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
-    | SignTop, _ | _,SignTop | PosZero,PosZero | Neg,Neg -> 2
-    | SignBottom,_ | _,PosZero | _,Zero -> -1
-    | _,SignBottom | PosZero,_ | Zero,_ -> 1
+    | SignTop, _ | _,SignTop | PosZero,PosZero | Neg,Neg | PosZero,Zero | Zero,PosZero -> 2
+    | SignBottom,_ -> -1
+    | _,SignBottom -> 1
+    | PosZero,_ -> 1
+    | _,PosZero -> -1
+    | Zero,_ -> 1
+    | _,Zero -> -1
 
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
@@ -714,7 +718,7 @@ module Intervals = struct
   | Interval(a,b) , Interval(c,d) -> 
     let lo = max_bound a c in 
     let hi = min_bound b d in 
-    if lo > hi then Bottom else Interval(lo, hi) 
+    if compare_bound lo hi > 0 then Bottom else Interval(lo, hi) 
 
   (*Helper*)
   let add_bound a b = match a,b with 
