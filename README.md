@@ -122,42 +122,46 @@ Per compilare ed eseguire il progetto sono necessari:
 
 ### Compilare il Progetto
 
-Compila tutte le librerie, gli eseguibili e i test:
+Se il tuo terminale ha già l'ambiente opam attivo (dopo aver eseguito `eval $(opam env)`), puoi usare direttamente i comandi `dune`. In alternativa, puoi premettere `opam exec --` per assicurarti di usare lo switch opam corretto.
+
 ```bash
-opam exec -- dune build
+dune build
+# Oppure: opam exec -- dune build
 ```
 
 ### Eseguire il Programma Principale
 
 Esegue lo script di analisi principale (`bin/main.ml`):
 ```bash
-opam exec -- dune exec bin/main.exe
+dune exec bin/main.exe
+# Oppure: opam exec -- dune exec bin/main.exe
 ```
 
 ### Eseguire i Test Unitari (Alcotest)
 
 Esegue la suite di test automatizzati su tutti i domini astratti implementati:
 ```bash
-opam exec -- dune runtest
+dune runtest
+# Oppure: opam exec -- dune runtest
 ```
 
 #### Flag Utili per il Testing:
 
 - **Forzare la riesecuzione (ignorando la cache di build)**:
   ```bash
-  opam exec -- dune runtest -f
+  dune runtest -f
   ```
 - **Modalità Watch (riesegue i test automaticamente ad ogni modifica del codice)**:
   ```bash
-  opam exec -- dune runtest -f -w
+  dune runtest -f -w
   ```
 - **Eseguire un test specifico per nome**:
   ```bash
-  opam exec ./test/test_suite.exe -- test "Signs: Somma"
+  dune exec ./test/test_suite.exe -- test "Signs: Somma"
   ```
 - **Elencare tutti i test disponibili**:
   ```bash
-  opam exec ./test/test_suite.exe -- list
+  dune exec ./test/test_suite.exe -- list
   ```
 
 ### REPL Interattivo (utop)
