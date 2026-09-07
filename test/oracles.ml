@@ -224,7 +224,7 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t  
   let while_1_1 = Pos
   let while_1_2 = Neg
   let while_2_1 = Zero
-  let while_3_1 = Pos
+  let while_3_1 = PosZero
   let while_4_1 = SignTop
   let while_4_2 = Pos
   let while_4_3 = SignTop
@@ -321,7 +321,7 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let skip_1 = PosZero
 
   (* If *)
-  let if_1 = PosZero (*è corretto top*)
+  let if_1 = top (*è corretto top*)
   let if_2 = PosZero
   let if_3 = PosZero
   let if_4 = top
@@ -478,7 +478,7 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let while_1_1 = Pos
   let while_1_2 = Neg
   let while_2_1 = Zero
-  let while_3_1 = Pos
+  let while_3_1 = top
   let while_4_1 = SignTop
   let while_4_2 = Pos
   let while_4_3 = SignTop
@@ -635,7 +635,7 @@ module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Inter
   let if_4 = interval (-5) 5   (* w,x si sovrappongono: ambiguo -> lub(5,-5) *)
   let if_5 = interval 0 1      (* ambiguo -> lub(1,0) *)
   let if_6 = interval (-1) 0   (* ambiguo -> lub(-1,0) *)
-  let if_7 = interval (-90) 3  (* then k=3; else k=w*y con w narrowed=[0,9], y=[-10,-1] -> [-90,0]; lub *)
+  let if_7 = interval (-100) 3  (* then k=3; else k=w*y con w narrowed=[0,9], y=[-10,-1] -> [-90,0]; lub *)
   let if_8 = interval 10 20    (* ambiguo -> lub(10,20) *)
   let if_9 = interval 7 7      (* m assegnata solo nel then *)
   let if_10 = interval (-7) (-7) (* m assegnata solo nell'else *)

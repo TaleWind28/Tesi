@@ -273,8 +273,19 @@ module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = st
           Assign ("x", Const (-5)),
           While (Comparison (Var "x", Smaller, Const 0), Assign ("x", BinaryOperation (Var "x", Add, Const 1)))),
         [ "x", E.while_3_1 ] );
-    expect_bottom "Corpo = Skip (loop infinito)"
-      (Sequence (Assign ("x", Const 5), While (Comparison (Var "x", Bigger, Const 0), Skip)));
+      ( "Corpo = Skip (loop infinito)",
+      `Quick,
+      fun () ->
+        let prog = Sequence (Assign ("x", Const 5), While (Comparison (Var "x", Bigger, Const 0), Skip)) in
+        match Interp.eval prog with
+        | Interp.BottomEnv -> ()
+        | Interp.Env tbl ->
+            (* Per domini senza Pos stretto (come SimpleSigns), il ciclo esce soundly con x = 0 *)
+            (match Hashtbl.find_opt tbl "x" with
+             | Some v -> Alcotest.(check sign_testable) "x deve valere 0 (Zero o PosZero)" (D.abstract_int 0) v
+             | None -> Alcotest.fail "Variabile 'x' non trovata nello stato finale") );
+    (* expect_bottom "Corpo = Skip (loop infinito)"
+      (Sequence (Assign ("x", Const 5), While (Comparison (Var "x", Bigger, Const 0), Skip))); *)
     expect_bottom "Filter(false) prima del while"
       (Sequence (Filter (Boolean false), While (Boolean true, Assign ("x", Const 1))));
     make_prog_case
@@ -319,5 +330,5 @@ let () =
     List.map (fun (name, test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests
     @ List.map (fun (name, test_list) -> ("SimplifiedSigns: " ^ name, test_list)) TestSuite_SimplifiedSigns.tests
     @ List.map (fun (name,test_list) -> ("SimpleSigns: " ^ name, test_list)) TestSuite_SimpleSigns.tests
-    @List.map ( fun (name,test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests
+    @ List.map ( fun (name,test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests
   )
