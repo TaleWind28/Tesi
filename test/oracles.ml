@@ -484,10 +484,175 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let while_4_3 = SignTop
 end
 
-module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Intervals.t = struct 
+(* =====================================================================
+   Expected_Intervals: valori attesi (corretti) per il dominio Intervals
+   =====================================================================
 
+   IMPORTANTE - tre cose da sistemare prima che questi valori combacino
+   con l'output reale del tuo interprete:
 
+   1) I test iftests/whiletests da if_4 in poi (e if_2) fanno riferimento
+      a variabili "w", "x", "y", "k" gia' presenti nello stato precompilato
+      make_test_state(). Ma "make_prog_case" chiama Interp.eval, che parte
+      da un ambiente VUOTO (vedi "let eval prog = eval_cmd prog
+      (Env(Hashtbl.create 10))"), non da make_test_state(). La funzione
+      che userebbe lo stato giusto, "make_prog_case_with_env", e' commentata
+      nel file dei test. Bisogna riattivarla e usarla per iftests/whiletests,
+      altrimenti "x", "y", "w" risultano non definite (=> D.top) e i
+      risultati non corrispondono a quanto suggerito dai nomi dei test.
+
+   2) compare_type nel tuo modulo Intervals decide "uguale"/"maggiore"/
+      "minore" confrontando i bound a coppie (a vs c, b vs d), ma questo
+      NON e' sound in generale:
+        - due intervalli con stessi bound ma non singleton (es. Top,Top,
+          o due variabili diverse con lo stesso range) vengono dichiarati
+          "uguali" (0) invece che "ambigui" (2)
+        - due intervalli che si sovrappongono (es. w=[0,10], x=[1,10])
+          possono risultare "decisi" invece che ambigui
+      Il criterio sound e':
+        - definitivamente MAGGIORE  <=>  a > d  (min di x supera max di y)
+        - definitivamente MINORE    <=>  b < c  (max di x e' sotto min di y)
+        - definitivamente UGUALE    <=>  a = b = c = d (entrambi singleton
+          coincidenti)
+        - altrimenti: AMBIGUO (2)
+      I valori sotto assumono questa versione corretta di compare_type.
+
+   3) Il refine di e2 in eval_cond usa "negate_comp comp" per calcolare il
+      vincolo sul secondo operando, ma li' serve il CONVERSO (converse_comp),
+      non la negazione logica (vedi discussione precedente). Senza il fix,
+      "while_4" collassa a Bottom a causa del refine su "y" col comparatore
+      NotEquals.
+
+   Con questi tre fix, i valori sotto sono quelli che il tuo interprete
+   dovrebbe produrre.
+   ===================================================================== *)
+
+open Abstract_domains.Intervals
+
+module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Intervals.t = struct
+  type t = Abstract_domains.Intervals.t
+
+  (* Helper per leggibilita' *)
+  let interval lo hi = Interval (Int lo, Int hi)
+  let to_pos_inf lo = Interval (Int lo, PosInf)
+  (* let from_neg_inf hi = Interval (NegInf, Int hi) *)
+  let top_val = Interval (NegInf, PosInf)
+  let bottom_val = Bottom
+
+  (* ---------------- Somma ---------------- *)
+  let sum_1 = interval 2 20        (* x+x: [1,10]+[1,10] *)
+  let sum_2 = interval (-9) 9      (* x+y: [1,10]+[-10,-1] *)
+  let sum_3 = interval (-20) (-2)  (* y+y *)
+  let sum_4 = interval 1 10        (* x+z *)
+  let sum_5 = interval 0 0         (* z+z *)
+  let sum_6 = interval 0 20        (* w+w *)
+  let sum_7 = interval (-20) 0     (* k+k *)
+  let sum_8 = interval (-10) 10    (* w+k *)
+  let sum_9 = interval 1 20        (* w+x *)
+  let sum_10 = interval (-10) 9    (* w+y *)
+  let sum_11 = interval (-9) 10    (* k+x *)
+  let sum_12 = interval (-20) (-1) (* k+y *)
+  let sum_13 = interval (-9) 20    (* n+x *)
+  let sum_14 = interval (-10) 10   (* n+z *)
+  let sum_15 = interval (-20) 20   (* n+n *)
+  let sum_16 = top_val             (* t+x *)
+  let sum_17 = bottom_val          (* b+x *)
+  let sum_18 = interval (-10) (-10) (* 10+(-20) *)
+
+  (* ---------------- Sottrazione ---------------- *)
+  let sub_1 = interval 2 20         (* x-y *)
+  let sub_2 = interval (-9) 9       (* x-x *)
+  let sub_3 = interval (-10) (-10)  (* 10-20 *)
+  let sub_4 = interval (-10) 10     (* w-w *)
+  let sub_5 = interval 1 10         (* z-y *)
+
+  (* ---------------- Moltiplicazione ---------------- *)
+  let mul_1 = interval 1 100       (* x*x *)
+  let mul_2 = interval (-100) (-1) (* x*y *)
+  let mul_3 = interval 1 100       (* y*y *)
+  let mul_4 = interval 0 0         (* x*z *)
+  let mul_5 = interval (-100) 0    (* w*y *)
+  let mul_6 = interval (-100) 0    (* k*x *)
+  let mul_7 = interval 0 0         (* n*z *)
+  let mul_8 = interval (-100) 100  (* n*n *)
+  let mul_9 = interval 0 0         (* t*z *)
+  let mul_10 = bottom_val          (* b*x *)
+
+  (* ---------------- Divisione ---------------- *)
+  let div_1 = interval 0 10       (* x/x *)
+  let div_2 = interval (-10) 0    (* x/y *)
+  let div_3 = interval 0 10       (* y/y *)
+  let div_4 = bottom_val          (* 10/z : divisione per {0} certa *)
+  let div_5 = interval 0 10       (* x/w *)
+  let div_6 = interval (-10) 0    (* x/k *)
+  let div_7 = interval (-10) 10   (* x/n *)
+  let div_8 = interval 0 0        (* z/x *)
+  let div_9 = interval 0 0        (* z/y *)
+  let div_10 = top_val            (* t/x *)
+  let div_11 = interval (-10) 0   (* w/y *)
+  let div_12 = interval (-10) 0   (* k/x *)
+
+  (* ---------------- Negazione Unaria ---------------- *)
+  let neg_1 = interval (-10) (-1)  (* -x *)
+  let neg_2 = interval 1 10        (* -y *)
+  let neg_3 = interval 0 0         (* -z *)
+  let neg_4 = interval (-10) 0     (* -w *)
+  let neg_5 = interval 0 10        (* -k *)
+  let neg_6 = interval (-10) 10    (* -n *)
+  let neg_7 = top_val              (* -t *)
+  let neg_8 = bottom_val           (* -b *)
+  let neg_9 = interval 1 10        (* --x *)
+  let neg_10 = interval 2 20       (* x+(-y) *)
+
+  (* ---------------- Random ---------------- *)
+  let rand_1 = interval (-1) 10
+  let rand_2 = interval 1 10
+  let rand_3 = interval (-10) (-1)
+  let rand_4 = interval 0 10
+  let rand_5 = interval (-10) 0
+  let rand_6 = interval 0 0
+
+  (* ---------------- Assegnamenti ---------------- *)
+  let assign_1 = interval 5 5
+  let assign_2 = interval (-5) (-5)
+  let assign_3 = interval 0 0
+  let assign_4 = top_val   (* y = x, con x non definita -> Top *)
+  let assign_5 = interval 1 10
+
+  (* ---------------- Sequenze ---------------- *)
+  let sequence_1_1 = interval 5 5
+  let sequence_1_2 = interval (-3) (-3)
+
+  (* ---------------- Skip ---------------- *)
+  let skip_1 = interval 42 42
+
+  (* ---------------- If ---------------- *)
+  (* Nota: if_2 e if_4..if_12 assumono l'uso di make_test_state()
+     (vedi punto 1 in testa al file) *)
+  let if_1 = interval 1 1      (* x=5>0 deciso -> y=1 *)
+  let if_2 = interval 1 1      (* x=[1,10] > y=[-10,-1] deciso -> k=1 *)
+  let if_3 = interval 2 2      (* y=-3 > x=5 deciso falso -> k=2 *)
+  let if_4 = interval (-5) 5   (* w,x si sovrappongono: ambiguo -> lub(5,-5) *)
+  let if_5 = interval 0 1      (* ambiguo -> lub(1,0) *)
+  let if_6 = interval (-1) 0   (* ambiguo -> lub(-1,0) *)
+  let if_7 = interval (-90) 3  (* then k=3; else k=w*y con w narrowed=[0,9], y=[-10,-1] -> [-90,0]; lub *)
+  let if_8 = interval 10 20    (* ambiguo -> lub(10,20) *)
+  let if_9 = interval 7 7      (* m assegnata solo nel then *)
+  let if_10 = interval (-7) (-7) (* m assegnata solo nell'else *)
+  let if_11 = interval (-1) 100  (* if annidato, entrambi ambigui *)
+  let if_12 = interval (-1) 1    (* And: x>y deciso vero, w>x ambiguo *)
+
+  (* ---------------- While ---------------- *)
+  let while_1_1 = interval 5 5   (* while mai eseguito: x resta 5 *)
+  let while_1_2 = top_val        (* non usato dai test attuali *)
+  let while_2_1 = interval 0 0   (* x=5; while x!=0 x=0 -> x=0 esatto *)
+  let while_3_1 = to_pos_inf 0   (* perdita di precisione: [0,+Inf] *)
+  let while_4_1 = interval 1 1   (* x!=y deciso subito -> loop mai eseguito *)
+  let while_4_2 = interval 2 2
+  let while_4_3 = interval (-3) 5
 end
+
+
 (* module Expected_Strange : VALUES with type t = Abstract_domains.StrangeSigns.t = struct
   open Abstract_domains.StrangeSigns
   

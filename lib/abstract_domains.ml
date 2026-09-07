@@ -689,15 +689,12 @@ module Intervals = struct
     | Bottom,_ -> -1
     | _,Bottom -> 1
     | Interval(a,b),Interval(c,d) -> 
-      let lower_bound = compare_bound a c in
-      let higher_bound = compare_bound b d in 
-      match lower_bound,higher_bound with
-      | 0,0 -> 0
-      | 1,1 -> 1
-      | -1,-1 -> -1
-      | 0,x | x,0 -> x
-      | _,_ -> 2
-      (* if compare_bound a c >= 0 && compare_bound b d >= 0 then 1 else -1  *)
+      if compare_bound a b = 0 && compare_bound a c = 0 
+       && compare_bound b d = 0 && compare_bound c d = 0 then 0
+      (* singleton coincidenti: a=b=c=d *)
+      else if compare_bound a d > 0 then 1   (* minimo di x supera massimo di y *)
+      else if compare_bound b c < 0 then -1  (* massimo di x è sotto il minimo di y *)
+      else 2   
     
   let lub c1 c2 = match c1,c2 with 
     | Bottom,x | x,Bottom -> x
@@ -724,7 +721,13 @@ module Intervals = struct
     | PosInf,NegInf | NegInf,PosInf -> PosInf (*dovrebbe dare bottom*)
     | PosInf,_ | _,PosInf -> PosInf
     | NegInf,_ | _,NegInf -> NegInf
-    | Int a, Int b -> Int (a+b)
+    | Int a, Int b -> 
+      print_string "a:";
+      print_int (a);
+      print_string "b:";
+      print_int (b);
+      print_string "\n";
+      Int (a+b)
 
   
   let mul_bound x y = match x,y with
@@ -760,7 +763,8 @@ module Intervals = struct
 
   let sum c1 c2 = match c1, c2 with
     |Bottom,_ | _,Bottom -> Bottom
-    | Interval(a,b),Interval(c,d) -> Interval (add_bound a c,add_bound b d)
+    | Interval(a,b),Interval(c,d) -> 
+      Interval (add_bound a c,add_bound b d)
   
   let negate = function 
     |Bottom -> Bottom

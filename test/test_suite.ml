@@ -46,12 +46,12 @@ module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = st
   let make_prog_case (desc, prog, expected_vars) =
     (desc, `Quick, fun () -> check_vars desc (Interp.eval prog) expected_vars)
 
-  (* let make_prog_case_with_env (desc, prog, expected_vars) =
+  let make_prog_case_with_env (desc, prog, expected_vars) =
     ( desc,
       `Quick,
       fun () ->
         let final_st = Interp.eval_cmd prog (Interp.Env (make_test_state ())) in
-        check_vars desc final_st expected_vars ) *)
+        check_vars desc final_st expected_vars )
 
   let expect_bottom ?(with_env = false) desc prog =
     ( desc,
@@ -191,7 +191,7 @@ module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = st
       ( "If Pos: if (x > 0) then y = 1 else y = -1",
         Sequence(Assign("x",Const(5)),If (Comparison (Var "x", Bigger, Const 0), Assign ("y", Const (1)), Assign ("y", Const (-1)))),
         ["y", E.if_1] );
-    make_prog_case
+    make_prog_case_with_env
       ( "If certo vero (x>y)",
         If (Comparison (Var "x", Bigger, Var "y"), Assign ("k", Const 1), Assign ("k", Const 999)),
         [ "k", E.if_2 ] );
@@ -204,41 +204,41 @@ module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = st
             Assign ("k", Const (-999)), 
             Assign ("k", Const 2))),
         [ "k", E.if_3 ] );
-    make_prog_case
+    make_prog_case_with_env
       ( "Ambiguo: then=Pos(5), else=Neg(-5)",
         If (Comparison (Var "w", Bigger, Var "x"), Assign ("k", Const 5), Assign ("k", Const (-5))),
         [ "k", E.if_4 ] );
-    make_prog_case
+    make_prog_case_with_env
       ( "Ambiguo: then=Pos(1), else=Zero(0)",
         If (Comparison (Var "w", Bigger, Var "x"), Assign ("k", Const 1), Assign ("k", Const 0)),
         [ "k", E.if_5 ] );
-    make_prog_case
+    make_prog_case_with_env
       ( "Ambiguo: then=Neg(-1), else=Zero(0)",
         If (Comparison (Var "w", Bigger, Var "x"), Assign ("k", Const (-1)), Assign ("k", Const 0)),
         [ "k", E.if_6 ] );
-    make_prog_case
+    make_prog_case_with_env
       ( "Ambiguo: catch-all",
         If (Comparison (Var "w", Bigger, Var "x"),
             Assign ("k", Const 3),
             Assign ("k", BinaryOperation (Var "w", Mul, Var "y"))),
         [ "k", E.if_7 ] );
-    make_prog_case
+    make_prog_case_with_env
       ( "Ambiguo: rami convergenti (entrambi Pos)",
         If (Comparison (Var "w", Bigger, Var "x"), Assign ("k", Const 10), Assign ("k", Const 20)),
         [ "k", E.if_8 ] );
-    make_prog_case
+    make_prog_case_with_env
       ( "Ambiguo, var assegnata solo nel then",
         If (Comparison (Var "w", Bigger, Var "x"), Assign ("m", Const 7), Skip), [ "m", E.if_9 ]; );
-    make_prog_case
+    make_prog_case_with_env
       ( "Ambiguo, var assegnata solo nell'else",
         If (Comparison (Var "w", Bigger, Var "x"), Skip, Assign ("m", Const (-7))), [ "m", E.if_10 ]; );
-    make_prog_case
+    make_prog_case_with_env
       ( "If annidato",
         If (Comparison (Var "w", Bigger, Var "x"),
             If (Comparison (Var "w", Bigger, Var "x"), Assign ("k", Const 1), Assign ("k", Const (-1))),
             Assign ("k", Const 100)),
         [ "k", E.if_11 ] );
-    make_prog_case
+    make_prog_case_with_env
       ( "If con And",
         If (And (Comparison (Var "x", Bigger, Var "y"), Comparison (Var "w", Bigger, Var "x")),
             Assign ("k", Const 1), Assign ("k", Const (-1))),
@@ -267,14 +267,6 @@ module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = st
             Assign ("x", Const 0))
         ),
         [ "x", E.while_2_1 ] );
-      (* expect_bottom "While converge x = 5; while x!=0 x = 0"
-        (Sequence (
-          Assign ("x", Const 5), 
-          While (
-            Comparison (Var "x", NotEquals, Const 0), 
-            Assign ("x", Const 0))
-            )
-          ); *)
     make_prog_case
       ( "While perdita di precisione",
         Sequence (
@@ -319,21 +311,13 @@ module TestSuite_SimpleSigns = Make_Sign_Tests (Abstract_domains.SimpleSigns) (E
 (* module TestSuite_ReducedSigns = Make_Sign_Tests (Abstract_domains.ReducedSigns) *)
 module TestSuite_SimplifiedSigns = Make_Sign_Tests (Abstract_domains.SimplifiedSigns) (Expected_SimplifiedSigns)
 (* module TestSuite_StrangeSigns = Make_Sign_Tests (Abstract_domains.StrangeSigns) *)
-(* module TestSuite_Intervals = Make_Sign_Tests (Abstract_domains.Intervals) *)
+module TestSuite_Intervals = Make_Sign_Tests (Abstract_domains.Intervals) (Expected_Intervals)
 
 (* 2. Esecuzione tramite Alcotest *)
-(*let () =
-   Alcotest.run "Suite di Test per Interprete Astratto" [
-    "Domain: Signs", TestSuite_Signs.tests;
-    "Domain: SimpleSigns", TestSuite_SimpleSigns.tests;
-    "Domain: ReducedSigns", TestSuite_ReducedSigns.tests;
-    "Domain: SimplifiedSigns", TestSuite_SimplifiedSigns.tests;
-    "Domain: StrangeSigns", TestSuite_StrangeSigns.tests;
-    "Domain: Intervals", TestSuite_Intervals.tests;
-  ] *)
 let () =
   Alcotest.run "Abstract Interpreter Tests" (
     List.map (fun (name, test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests
     @ List.map (fun (name, test_list) -> ("SimplifiedSigns: " ^ name, test_list)) TestSuite_SimplifiedSigns.tests
     @ List.map (fun (name,test_list) -> ("SimpleSigns: " ^ name, test_list)) TestSuite_SimpleSigns.tests
+    @List.map ( fun (name,test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests
   )

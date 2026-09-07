@@ -35,24 +35,49 @@ module AbsInterp (D : DOMAIN) = struct
         t2;
         Env(result)
 
-    let refine_vars e1 e2 v1 v2 env =
-        let common_val = D.glb v1 v2 in
-        if common_val = D.bottom then 
-            BottomEnv
-        else
-            let new_env = Hashtbl.copy env in
-            (* Aggiorna e1 se è una variabile *)
-            (match e1 with 
-            | Var s1 -> Hashtbl.replace new_env s1 common_val 
-            | _ -> ());
-            
-            (* Aggiorna e2 se è una variabile *)
-            (match e2 with 
-            | Var s2 -> Hashtbl.replace new_env s2 common_val 
-            | _ -> ());
-            
-            Env new_env
+    let negate_comp comp = match comp with
+    | Bigger -> Smaller
+    | Smaller -> Bigger
+    | BiggerEquals -> SmallerEquals
+    | SmallerEquals -> BiggerEquals
+    | Equals -> NotEquals
+    | NotEquals -> Equals
 
+    let inv_comp comp = match comp with
+    | Bigger -> Smaller
+    | Smaller -> Bigger
+    | BiggerEquals -> SmallerEquals
+    | SmallerEquals -> BiggerEquals
+    | Equals -> Equals
+    | NotEquals -> NotEquals
+
+    let refine_vars e1 e2 v1 v2 env comp =
+        let new_env = Hashtbl.copy env in
+        let became_bottom = ref false in
+
+        (* Raffina e1 usando il vincolo derivato da val2 e dal comparatore diretto *)
+        (match e1 with
+        | Var s1 ->
+            let filtered = D.filter_rel comp v2 in
+            let refined = D.glb v1 filtered in
+            if refined = D.bottom then became_bottom := true;
+            Hashtbl.replace new_env s1 refined
+        | _ -> ());
+
+        (* Raffina e2 usando il vincolo derivato da val1 e dal comparatore CONVERSO *)
+        (match e2 with
+        | Var s2 ->
+            let inve_comp = inv_comp comp in
+            let filtered = D.filter_rel inve_comp v1 in
+            let refined = D.glb v2 filtered in
+            if refined = D.bottom then became_bottom := true;
+            Hashtbl.replace new_env s2 refined
+        | _ -> ());
+
+        if !became_bottom then BottomEnv
+        else Env new_env
+
+    
     let widen_env e1 e2 =
         match e1, e2 with
         | BottomEnv, e | e, BottomEnv -> e
@@ -99,13 +124,7 @@ module AbsInterp (D : DOMAIN) = struct
             ) t1 true
             
 
-    let negate_comp comp = match comp with
-    | Bigger -> Smaller
-    | Smaller -> Bigger
-    | BiggerEquals -> SmallerEquals
-    | SmallerEquals -> BiggerEquals
-    | Equals -> NotEquals
-    | NotEquals -> Equals
+
 
     let rec negate_cond cd = match cd with
     | Not cd -> cd
@@ -162,47 +181,17 @@ module AbsInterp (D : DOMAIN) = struct
             | Comparison (e1,comp,e2) -> (* Comparazione tra espressioni mediante un comparatore*) 
                 let val1 = eval_exp e1 (Env(env)) in (* Valuto e1 *)
                 let val2 = eval_exp e2 (Env(env)) in (* Valuto e2 *)
-                let condition = D.compare_type val1 val2 in 
-                (* Pattern Matching per applicare il comparatore richiesto *)
-                (* compare_type viene implementato dal dominio in analisi restituisce:
-                    1 con val1 > val2
-                    -1 in caso di val1 < val2 
-                    0 in caso di uguaglianza 
-                    2 in caso di indecidibilità  (es: nei segni pos > pos)
-                *)
-                let res = match comp with 
-                | Bigger  -> condition == 1 || condition == 2
-                | Smaller -> condition == -1 || condition == 2
-                | BiggerEquals -> condition <> -1
-                | SmallerEquals -> condition <> 1
-                | Equals -> condition == 0 || condition == 2
-                | NotEquals -> condition <> 0
+                let condition = D.compare_type val1 val2 in (* compare_type viene implementato dal dominio in analisi*)
+                let res = match comp with                 (* Pattern Matching per applicare il comparatore richiesto *)
+                | Bigger  -> condition == 1 || condition == 2 (*1 -> val1 > val2*)
+                | Smaller -> condition == -1 || condition == 2 (*-1 -> val1 < val2*)
+                | BiggerEquals -> condition <> -1 (*-1 -> val1 <= val2*)
+                | SmallerEquals -> condition <> 1 (*1 -> val1 >= val2*)
+                | Equals -> condition == 0 || condition == 2 (*0 -> val1 == val2*)
+                | NotEquals -> condition <> 0 (*0 -> val1 == val2*)
                 in 
                 if not res then BottomEnv
-                else let new_env = Hashtbl.copy env in
-      
-      (* Raffiniamo e1 se è una variabile *)
-      (match e1 with
-       | Var s1 -> 
-           let filtered = D.filter_rel comp val2 in
-           let refined = D.glb val1 filtered in
-           Hashtbl.replace new_env s1 refined
-       | _ -> ());
-
-      (* Raffiniamo e2 se è una variabile *)
-      (match e2 with
-       | Var s2 -> 
-           let inv_comp = negate_comp comp in
-           let filtered = D.filter_rel inv_comp val1 in
-           let refined = D.glb val2 filtered in
-           Hashtbl.replace new_env s2 refined
-       | _ -> ());
-
-      (* Se il GLB ha generato un Bottom per una variabile, il ramo è irraggiungibile *)
-      if Hashtbl.fold (fun _ v acc -> acc || v = D.bottom) new_env false then
-        BottomEnv
-      else
-        Env new_env
+                else refine_vars e1 e2 val1 val2 env comp
 
     (* Valutazione Comandi *)
     let rec eval_cmd (command : cmd) (env : state) : state =
