@@ -122,29 +122,29 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t  
 
   (* Somma *)
   let sum_1 = Pos
-  let sum_2 = SignTop
+  let sum_2 = top
   let sum_3 = Neg
   let sum_4 = Pos
   let sum_5 = Zero
   let sum_6 = PosZero
   let sum_7 = NegZero
-  let sum_8 = SignTop
+  let sum_8 = top
   let sum_9 = Pos
-  let sum_10 = SignTop
-  let sum_11 = SignTop
+  let sum_10 = top
+  let sum_11 = top
   let sum_12 = Neg
-  let sum_13 = SignTop
+  let sum_13 = top
   let sum_14 = NonZero
-  let sum_15 = SignTop
-  let sum_16 = SignTop
+  let sum_15 = top
+  let sum_16 = top
   let sum_17 = SignBottom
-  let sum_18 = SignTop
+  let sum_18 = top
 
   (* Sottrazione *)
   let sub_1 = Pos
-  let sub_2 = SignTop
-  let sub_3 = SignTop
-  let sub_4 = SignTop
+  let sub_2 = top
+  let sub_3 = top
+  let sub_4 = top
   let sub_5 = Pos
 
   (* Moltiplicazione *)
@@ -164,12 +164,12 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t  
   let div_2 = NegZero
   let div_3 = PosZero
   let div_4 = SignBottom
-  let div_5 = SignTop
-  let div_6 = SignTop
-  let div_7 = SignTop
+  let div_5 = top
+  let div_6 = top
+  let div_7 = top
   let div_8 = Zero
   let div_9 = Zero
-  let div_10 = SignTop
+  let div_10 = top
   let div_11 = NegZero
   let div_12 = NegZero
 
@@ -180,13 +180,13 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t  
   let neg_4 = NegZero
   let neg_5 = PosZero
   let neg_6 = NonZero
-  let neg_7 = SignTop
+  let neg_7 = top
   let neg_8 = SignBottom
   let neg_9 = Pos
   let neg_10 = Pos
 
   (* Random *)
-  let rand_1 = SignTop
+  let rand_1 = top
   let rand_2 = Pos
   let rand_3 = Neg
   let rand_4 = PosZero
@@ -197,7 +197,7 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t  
   let assign_1 = Pos
   let assign_2 = Neg
   let assign_3 = Zero
-  let assign_4 = SignTop
+  let assign_4 = top
   let assign_5 = Pos
 
   (* Sequenze *)
@@ -214,7 +214,7 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t  
   let if_4 = NonZero
   let if_5 = PosZero
   let if_6 = NegZero
-  let if_7 = SignTop
+  let if_7 = top
   let if_8 = Pos
   let if_9 = Pos
   let if_10 = Neg
@@ -227,9 +227,9 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t  
   let while_2_1 = Zero
   let while_3_1 = PosZero
   let while_3_2 = PosZero 
-  let while_4_1 = SignTop
+  let while_4_1 = top
   let while_4_2 = Pos
-  let while_4_3 = SignTop
+  let while_4_3 = top
 end
 
 module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.SimpleSigns.t = struct
@@ -245,21 +245,21 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let sum_7 = NegZero
   let sum_8 = top
   let sum_9 = PosZero
-  let sum_10 = SignTop
-  let sum_11 = SignTop
+  let sum_10 = top
+  let sum_11 = top
   let sum_12 = NegZero
-  let sum_13 = SignTop
+  let sum_13 = top
   let sum_14 = top
-  let sum_15 = SignTop
-  let sum_16 = SignTop
+  let sum_15 = top
+  let sum_16 = top
   let sum_17 = SignBottom
-  let sum_18 = SignTop
+  let sum_18 = top
 
   (* Sottrazione *)
   let sub_1 = PosZero
-  let sub_2 = SignTop
-  let sub_3 = SignTop
-  let sub_4 = SignTop
+  let sub_2 = top
+  let sub_3 = top
+  let sub_4 = top
   let sub_5 = PosZero
 
   (* Moltiplicazione *)
@@ -281,10 +281,10 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let div_4 = SignBottom
   let div_5 = PosZero
   let div_6 = NegZero
-  let div_7 = SignTop
+  let div_7 = top
   let div_8 = Zero
   let div_9 = Zero
-  let div_10 = SignTop
+  let div_10 = top
   let div_11 = NegZero
   let div_12 = NegZero
 
@@ -295,13 +295,13 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let neg_4 = NegZero
   let neg_5 = PosZero
   let neg_6 = top
-  let neg_7 = SignTop
+  let neg_7 = top
   let neg_8 = SignBottom
   let neg_9 = PosZero
   let neg_10 = PosZero
 
   (* Random *)
-  let rand_1 = SignTop
+  let rand_1 = top
   let rand_2 = PosZero
   let rand_3 = NegZero
   let rand_4 = PosZero
@@ -312,7 +312,7 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let assign_1 = PosZero
   let assign_2 = NegZero
   let assign_3 = Zero
-  let assign_4 = SignTop
+  let assign_4 = top
   let assign_5 = PosZero
 
   (* Sequenze *)
@@ -329,7 +329,7 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let if_4 = top
   let if_5 = PosZero
   let if_6 = NegZero
-  let if_7 = SignTop
+  let if_7 = top
   let if_8 = PosZero
   let if_9 = PosZero
   let if_10 = NegZero
@@ -342,9 +342,9 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let while_2_1 = Zero (* è accettabile anche PosZero, ma ottengo bottomEnv*) 
   let while_3_1 = PosZero (*0*)
   let while_3_2 = Zero 
-  let while_4_1 = SignTop
+  let while_4_1 = top
   let while_4_2 = PosZero 
-  let while_4_3 = SignTop
+  let while_4_3 = top
 end
 
 module Expected_StrangeSigns : EXPECTED_VALUES with type t = Abstract_domains.StrangeSigns.t = struct
@@ -357,82 +357,82 @@ module Expected_StrangeSigns : EXPECTED_VALUES with type t = Abstract_domains.St
 
   (* Somma *)
   let sum_1 = PosZero
-  let sum_2 = SignTop            (* PosZero+Neg: nessun elemento copre "<=0" *)
+  let sum_2 = top            (* PosZero+Neg: nessun elemento copre "<=0" *)
   let sum_3 = Neg
   let sum_4 = PosZero
   let sum_5 = Zero
   let sum_6 = PosZero
-  let sum_7 = SignTop            (* k+k = Top+Top *)
-  let sum_8 = SignTop
+  let sum_7 = top            (* k+k = Top+Top *)
+  let sum_8 = top
   let sum_9 = PosZero
-  let sum_10 = SignTop
-  let sum_11 = SignTop
-  let sum_12 = SignTop
-  let sum_13 = SignTop
-  let sum_14 = SignTop
-  let sum_15 = SignTop
-  let sum_16 = SignTop
+  let sum_10 = top
+  let sum_11 = top
+  let sum_12 = top
+  let sum_13 = top
+  let sum_14 = top
+  let sum_15 = top
+  let sum_16 = top
   let sum_17 = SignBottom
-  let sum_18 = SignTop           (* 10:PosZero, -20:Neg -> Top *)
+  let sum_18 = top           (* 10:PosZero, -20:Neg -> Top *)
 
   (* Sottrazione: a-b = a + Negation(b) *)
   let sub_1 = PosZero            (* PosZero + Negation(Neg)=PosZero => PosZero *)
-  let sub_2 = SignTop            (* PosZero + Negation(PosZero)=Top *)
-  let sub_3 = SignTop
-  let sub_4 = SignTop
+  let sub_2 = top            (* PosZero + Negation(PosZero)=Top *)
+  let sub_3 = top
+  let sub_4 = top
   let sub_5 = PosZero            (* Zero + Negation(Neg)=PosZero *)
 
   (* Moltiplicazione *)
   let mul_1 = PosZero
-  let mul_2 = SignTop            (* PosZero*Neg: nessun "non-positivo" *)
+  let mul_2 = top            (* PosZero*Neg: nessun "non-positivo" *)
   let mul_3 = PosZero            (* Neg*Neg: prodotto strett. positivo -> PosZero *)
   let mul_4 = Zero
-  let mul_5 = SignTop            (* PosZero*Neg *)
-  let mul_6 = SignTop            (* k=Top, non è Zero esatto: Top*PosZero *)
+  let mul_5 = top            (* PosZero*Neg *)
+  let mul_6 = top            (* k=Top, non è Zero esatto: Top*PosZero *)
   let mul_7 = Zero               (* z=Zero esatto -> risultato Zero comunque *)
-  let mul_8 = SignTop
+  let mul_8 = top
   let mul_9 = Zero
   let mul_10 = SignBottom
 
   (* Divisione *)
   let div_1 = PosZero
-  let div_2 = SignTop            (* PosZero/Neg *)
+  let div_2 = top            (* PosZero/Neg *)
   let div_3 = PosZero
   let div_4 = SignBottom
   let div_5 = PosZero
-  let div_6 = SignTop            (* x/k = PosZero/Top *)
-  let div_7 = SignTop
+  let div_6 = top            (* x/k = PosZero/Top *)
+  let div_7 = top
   let div_8 = Zero
   let div_9 = Zero
-  let div_10 = SignTop
-  let div_11 = SignTop           (* w/y = PosZero/Neg *)
-  let div_12 = SignTop           (* k/x = Top/PosZero *)
+  let div_10 = top
+  let div_11 = top           (* w/y = PosZero/Neg *)
+  let div_12 = top           (* k/x = Top/PosZero *)
 
   (* Negazione unaria *)
-  let neg_1 = SignTop            (* Negation(PosZero): nessun "<=0" esatto *)
+  let neg_1 = top            (* Negation(PosZero): nessun "<=0" esatto *)
   let neg_2 = PosZero            (* Negation(Neg) = PosZero *)
   let neg_3 = Zero
-  let neg_4 = SignTop            (* Negation(PosZero) *)
-  let neg_5 = SignTop            (* Negation(Top) *)
-  let neg_6 = SignTop
-  let neg_7 = SignTop
+  let neg_4 = top            (* Negation(PosZero) *)
+  let neg_5 = top            (* Negation(Top) *)
+  let neg_6 = top
+  let neg_7 = top
   let neg_8 = SignBottom
-  let neg_9 = SignTop            (* Negation(Negation(PosZero)) = Negation(Top) *)
+  let neg_9 = top            (* Negation(Negation(PosZero)) = Negation(Top) *)
   let neg_10 = PosZero           (* x + Negation(y) = PosZero+PosZero *)
 
   (* Random *)
-  let rand_1 = SignTop           (* attraversa Neg e PosZero *)
+  let rand_1 = top           (* attraversa Neg e PosZero *)
   let rand_2 = PosZero
   let rand_3 = Neg
   let rand_4 = PosZero
-  let rand_5 = SignTop           (* attraversa Neg e Zero *)
+  let rand_5 = top           (* attraversa Neg e Zero *)
   let rand_6 = Zero
 
   (* Assegnamenti *)
   let assign_1 = PosZero
   let assign_2 = Neg
   let assign_3 = Zero
-  let assign_4 = SignTop         (* variabile non definita -> Top *)
+  let assign_4 = top         (* variabile non definita -> Top *)
   let assign_5 = PosZero
 
   (* Sequenze *)
@@ -443,18 +443,18 @@ module Expected_StrangeSigns : EXPECTED_VALUES with type t = Abstract_domains.St
   let skip_1 = PosZero
 
   (* If *)
-  let if_1 = SignTop             (* join(PosZero,Neg), corretto che sia top *)
+  let if_1 = top             (* join(PosZero,Neg), corretto che sia top *)
   let if_2 = PosZero
   let if_3 = PosZero
-  let if_4 = SignTop
+  let if_4 = top
   let if_5 = PosZero
-  let if_6 = SignTop             (* join(Neg,Zero): qui differisce da SimpleSigns (NegZero) *)
-  let if_7 = SignTop
+  let if_6 = top             (* join(Neg,Zero): qui differisce da SimpleSigns (NegZero) *)
+  let if_7 = top
   let if_8 = PosZero
   let if_9 = PosZero
   let if_10 = Neg
-  let if_11 = SignTop
-  let if_12 = SignTop
+  let if_11 = top
+  let if_12 = top
 
   (* While *)
   let while_1_1 = PosZero
@@ -464,9 +464,9 @@ module Expected_StrangeSigns : EXPECTED_VALUES with type t = Abstract_domains.St
   let while_3_2 = PosZero        (* vero risultato 0, perso per precisione *)
 
   (* let while_3_2 = PosZero *)
-  let while_4_1 = SignTop
+  let while_4_1 = top
   let while_4_2 = PosZero        (* vedi nota sotto *)
-  let while_4_3 = SignTop
+  let while_4_3 = top
 end
 
 module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.SimplifiedSigns.t = struct
@@ -476,29 +476,29 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
 
   (* Somma *)
   let sum_1 = Pos
-  let sum_2 = SignTop
+  let sum_2 = top
   let sum_3 = Neg
   let sum_4 = Pos
   let sum_5 = Zero
-  let sum_6 = SignTop
-  let sum_7 = SignTop
-  let sum_8 = SignTop
+  let sum_6 = top
+  let sum_7 = top
+  let sum_8 = top
   let sum_9 = top
-  let sum_10 = SignTop
-  let sum_11 = SignTop
+  let sum_10 = top
+  let sum_11 = top
   let sum_12 = top
-  let sum_13 = SignTop
-  let sum_14 = SignTop
-  let sum_15 = SignTop
-  let sum_16 = SignTop
+  let sum_13 = top
+  let sum_14 = top
+  let sum_15 = top
+  let sum_16 = top
   let sum_17 = SignBottom
-  let sum_18 = SignTop
+  let sum_18 = top
 
   (* Sottrazione *)
   let sub_1 = Pos
-  let sub_2 = SignTop
-  let sub_3 = SignTop
-  let sub_4 = SignTop
+  let sub_2 = top
+  let sub_3 = top
+  let sub_4 = top
   let sub_5 = Pos
 
   (* Moltiplicazione *)
@@ -506,10 +506,10 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let mul_2 = Neg
   let mul_3 = Pos
   let mul_4 = Zero
-  let mul_5 = SignTop
-  let mul_6 = SignTop
+  let mul_5 = top
+  let mul_6 = top
   let mul_7 = Zero
-  let mul_8 = SignTop
+  let mul_8 = top
   let mul_9 = Zero
   let mul_10 = SignBottom
 
@@ -518,40 +518,40 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let div_2 = Neg
   let div_3 = Pos
   let div_4 = bottom
-  let div_5 = SignTop
-  let div_6 = SignTop
-  let div_7 = SignTop
+  let div_5 = top
+  let div_6 = top
+  let div_7 = top
   let div_8 = Zero
   let div_9 = Zero
-  let div_10 = SignTop
-  let div_11 = SignTop
-  let div_12 = SignTop
+  let div_10 = top
+  let div_11 = top
+  let div_12 = top
 
   (* Negazione Unaria *)
   let neg_1 = Neg
   let neg_2 = Pos
   let neg_3 = Zero
-  let neg_4 = SignTop
-  let neg_5 = SignTop
-  let neg_6 = SignTop
-  let neg_7 = SignTop
+  let neg_4 = top
+  let neg_5 = top
+  let neg_6 = top
+  let neg_7 = top
   let neg_8 = SignBottom
   let neg_9 = Pos
   let neg_10 = Pos
 
   (* Random *)
-  let rand_1 = SignTop
+  let rand_1 = top
   let rand_2 = Pos
   let rand_3 = Neg
-  let rand_4 = SignTop
-  let rand_5 = SignTop
+  let rand_4 = top
+  let rand_5 = top
   let rand_6 = Zero
 
   (* Assegnamenti *)
   let assign_1 = Pos
   let assign_2 = Neg
   let assign_3 = Zero
-  let assign_4 = SignTop
+  let assign_4 = top
   let assign_5 = Pos
 
   (* Sequenze *)
@@ -565,15 +565,15 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let if_1 = Pos
   let if_2 = Pos
   let if_3 = Pos
-  let if_4 = SignTop
-  let if_5 = SignTop
-  let if_6 = SignTop
-  let if_7 = SignTop
+  let if_4 = top
+  let if_5 = top
+  let if_6 = top
+  let if_7 = top
   let if_8 = Pos
   let if_9 = Pos
   let if_10 = Neg
-  let if_11 = SignTop
-  let if_12 = SignTop
+  let if_11 = top
+  let if_12 = top
 
   (* While *)
   let while_1_1 = Pos
@@ -582,9 +582,9 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let while_3_1 = top
 
   let while_3_2 = top
-  let while_4_1 = SignTop
+  let while_4_1 = top
   let while_4_2 = Pos
-  let while_4_3 = SignTop
+  let while_4_3 = top
 end
 
 module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.ReducedSigns.t = struct
@@ -597,29 +597,29 @@ module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.Re
 
   (* Somma *)
   let sum_1 = Pos
-  let sum_2 = SignTop
+  let sum_2 = top
   let sum_3 = Neg
   let sum_4 = top
   let sum_5 = top              (* ⚠️ era Zero esatto; ora Pos (0+0=0∈Pos, sound ma impreciso) *)
   let sum_6 = top
   let sum_7 = top
-  let sum_8 = SignTop
+  let sum_8 = top
   let sum_9 = top
-  let sum_10 = SignTop
-  let sum_11 = SignTop
+  let sum_10 = top
+  let sum_11 = top
   let sum_12 = top
-  let sum_13 = SignTop
-  let sum_14 = SignTop
-  let sum_15 = SignTop
-  let sum_16 = SignTop
+  let sum_13 = top
+  let sum_14 = top
+  let sum_15 = top
+  let sum_16 = top
   let sum_17 = SignBottom
-  let sum_18 = SignTop
+  let sum_18 = top
 
   (* Sottrazione (negazione qui è ESATTA: Pos<->Neg) *)
   let sub_1 = Pos
-  let sub_2 = SignTop
-  let sub_3 = SignTop
-  let sub_4 = SignTop
+  let sub_2 = top
+  let sub_3 = top
+  let sub_4 = top
   let sub_5 = top
 
   (* Moltiplicazione *)
@@ -629,9 +629,9 @@ module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.Re
   let mul_4 = top              (* ⚠️ era Zero esatto; ora Pos*Pos=Pos *)
   let mul_5 = top
   let mul_6 = top
-  let mul_7 = SignTop          (* ⚠️ era Zero esatto (n*z, "anything*0=0"); qui n=Top perde il caso speciale, Top*Pos=Top *)
-  let mul_8 = SignTop
-  let mul_9 = SignTop          (* ⚠️ era Zero esatto (t*z); ora Top*Pos=Top *)
+  let mul_7 = top          (* ⚠️ era Zero esatto (n*z, "anything*0=0"); qui n=Top perde il caso speciale, Top*Pos=Top *)
+  let mul_8 = top
+  let mul_9 = top          (* ⚠️ era Zero esatto (t*z); ora Top*Pos=Top *)
   let mul_10 = SignBottom
 
   (* Divisione *)
@@ -641,10 +641,10 @@ module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.Re
   let div_4 = top              (* ⚠️⚠️ era SignBottom (divisore esattamente 0); qui z=Pos non è riconoscibile come "0 esatto", quindi niente check div-by-zero: risultato Pos/Pos=Pos. ReducedSigns NON rileva più la divisione per zero certa. *)
   let div_5 = top
   let div_6 = top
-  let div_7 = SignTop
+  let div_7 = top
   let div_8 = top              (* ⚠️ era Zero esatto (z/x); ora Pos/Pos=Pos *)
   let div_9 = top             (* ⚠️ era Zero esatto (z/y); ora Pos/Neg=Neg *)
-  let div_10 = SignTop
+  let div_10 = top
   let div_11 = top
   let div_12 = top
 
@@ -654,14 +654,14 @@ module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.Re
   let neg_3 = top              (* ⚠️ era Zero esatto; ora Negate(Pos)=Neg (conseguenza della convenzione su z, non della negazione) *)
   let neg_4 = top
   let neg_5 = top
-  let neg_6 = SignTop
-  let neg_7 = SignTop
+  let neg_6 = top
+  let neg_7 = top
   let neg_8 = SignBottom
   let neg_9 = Pos
   let neg_10 = Pos
 
   (* Random *)
-  let rand_1 = SignTop
+  let rand_1 = top
   let rand_2 = Pos
   let rand_3 = Neg
   let rand_4 = top
@@ -672,7 +672,7 @@ module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.Re
   let assign_1 = Pos
   let assign_2 = Neg
   let assign_3 = top           (* ⚠️ era Zero esatto (x=Const 0); convenzione -> Pos *)
-  let assign_4 = SignTop
+  let assign_4 = top
   let assign_5 = Pos
 
   (* Sequenze *)
@@ -683,18 +683,18 @@ module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.Re
   let skip_1 = Pos
 
   (* If *)
-  let if_1 = SignTop
+  let if_1 = top
   let if_2 = Pos
   let if_3 = Pos
-  let if_4 = SignTop
+  let if_4 = top
   let if_5 = top
-  let if_6 = SignTop           (* ⚠️ era NegZero; else=Const 0 ora è Pos (convenzione) non più subsumed in Neg, quindi join(Neg,Pos)=Top *)
-  let if_7 = SignTop
+  let if_6 = top           (* ⚠️ era NegZero; else=Const 0 ora è Pos (convenzione) non più subsumed in Neg, quindi join(Neg,Pos)=Top *)
+  let if_7 = top
   let if_8 = Pos
   let if_9 = Pos
   let if_10 = Neg
-  let if_11 = SignTop
-  let if_12 = SignTop
+  let if_11 = top
+  let if_12 = top
 
   (* While *)
   let while_1_1 = top
@@ -702,9 +702,9 @@ module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.Re
   let while_2_1 = top          (* qui NON è ambiguo Zero-vs-PosZero: Pos è l'UNICA rappresentazione più precisa disponibile per {0}, essendo Zero assente dal dominio *)
   let while_3_1 = top
   let while_3_2 = Pos
-  let while_4_1 = SignTop
-  let while_4_2 = Pos          (* ⚠️ stessa ambiguità di iterazione già segnalata per StrangeSigns/SimpleSigns: potrebbe diventare SignTop a seconda della profondità del fixpoint *)
-  let while_4_3 = SignTop
+  let while_4_1 = top
+  let while_4_2 = Pos          (* ⚠️ stessa ambiguità di iterazione già segnalata per StrangeSigns/SimpleSigns: potrebbe diventare top a seconda della profondità del fixpoint *)
+  let while_4_3 = top
 end
 (* =====================================================================
    Expected_Intervals: valori attesi (corretti) per il dominio Intervals
@@ -749,9 +749,10 @@ end
    dovrebbe produrre.
    ===================================================================== *)
 
-open Abstract_domains.Intervals
+
 
 module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Intervals.t = struct
+  open Abstract_domains.Intervals
   type t = Abstract_domains.Intervals.t
 
   (* Helper per leggibilita' *)
