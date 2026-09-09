@@ -1,4 +1,3 @@
-(*value *)
 module type EXPECTED_VALUES = sig
   type t
 
@@ -113,7 +112,6 @@ module type EXPECTED_VALUES = sig
   val while_4_2 : t
   val while_4_3 : t
 end
-(* Aggiungi qui gli altri valori se variano tra domini *)
 
 module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t  = struct
   open Abstract_domains.Signs
@@ -706,50 +704,6 @@ module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.Re
   let while_4_2 = Pos          (* ⚠️ stessa ambiguità di iterazione già segnalata per StrangeSigns/SimpleSigns: potrebbe diventare top a seconda della profondità del fixpoint *)
   let while_4_3 = top
 end
-(* =====================================================================
-   Expected_Intervals: valori attesi (corretti) per il dominio Intervals
-   =====================================================================
-
-   IMPORTANTE - tre cose da sistemare prima che questi valori combacino
-   con l'output reale del tuo interprete:
-
-   1) I test iftests/whiletests da if_4 in poi (e if_2) fanno riferimento
-      a variabili "w", "x", "y", "k" gia' presenti nello stato precompilato
-      make_test_state(). Ma "make_prog_case" chiama Interp.eval, che parte
-      da un ambiente VUOTO (vedi "let eval prog = eval_cmd prog
-      (Env(Hashtbl.create 10))"), non da make_test_state(). La funzione
-      che userebbe lo stato giusto, "make_prog_case_with_env", e' commentata
-      nel file dei test. Bisogna riattivarla e usarla per iftests/whiletests,
-      altrimenti "x", "y", "w" risultano non definite (=> D.top) e i
-      risultati non corrispondono a quanto suggerito dai nomi dei test.
-
-   2) compare_type nel tuo modulo Intervals decide "uguale"/"maggiore"/
-      "minore" confrontando i bound a coppie (a vs c, b vs d), ma questo
-      NON e' sound in generale:
-        - due intervalli con stessi bound ma non singleton (es. Top,Top,
-          o due variabili diverse con lo stesso range) vengono dichiarati
-          "uguali" (0) invece che "ambigui" (2)
-        - due intervalli che si sovrappongono (es. w=[0,10], x=[1,10])
-          possono risultare "decisi" invece che ambigui
-      Il criterio sound e':
-        - definitivamente MAGGIORE  <=>  a > d  (min di x supera max di y)
-        - definitivamente MINORE    <=>  b < c  (max di x e' sotto min di y)
-        - definitivamente UGUALE    <=>  a = b = c = d (entrambi singleton
-          coincidenti)
-        - altrimenti: AMBIGUO (2)
-      I valori sotto assumono questa versione corretta di compare_type.
-
-   3) Il refine di e2 in eval_cond usa "negate_comp comp" per calcolare il
-      vincolo sul secondo operando, ma li' serve il CONVERSO (converse_comp),
-      non la negazione logica (vedi discussione precedente). Senza il fix,
-      "while_4" collassa a Bottom a causa del refine su "y" col comparatore
-      NotEquals.
-
-   Con questi tre fix, i valori sotto sono quelli che il tuo interprete
-   dovrebbe produrre.
-   ===================================================================== *)
-
-
 
 module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Intervals.t = struct
   open Abstract_domains.Intervals

@@ -1,20 +1,6 @@
 open Syntax
 open Interpeters
 let test_prog =(
-    (* Sequence(
-      Assign("x",Const(5)),
-      If (
-        Comparison (Var "x", Bigger, Const 0), 
-        Assign ("y", Const 1),
-        Assign ("y", Const (-1))
-      )
-    ) *)
-     (* Sequence (
-      Assign ("x", Const (5)), 
-      While (
-        Comparison (Var "x", NotEquals, Const 0), 
-        Assign ("x", Const 0))
-      ) *)
        Sequence (
           Assign ("x", Const (-5)),
           While (
@@ -26,8 +12,8 @@ let test_prog =(
 
 
 let () =
-  (* let risultato = SignInterp.eval test_prog in
-  print_string "Sign\t";
+  let risultato = SignInterp.eval test_prog in
+  print_string "ExtendedSigns\t";
   SignInterp.outputStatePrinter risultato;;
   let risultato = SimpleSignInterp.eval test_prog in
   print_string "SimpleSign\t";
@@ -38,9 +24,10 @@ let () =
   print_string "ReducedSign\t";
   let risultato = ReducedSignInterp.eval test_prog in
   ReducedSignInterp.outputStatePrinter risultato;;
-  print_string "SimplifiedSign\t";
+  print_string "Sign\t\t";
   let risultato = SimplifiedSignInterp.eval test_prog in
-  SimplifiedSignInterp.outputStatePrinter risultato;; *)
+  SimplifiedSignInterp.outputStatePrinter risultato;;
+  print_string "Intervals\t";
   let risultato = IntervalInterp.eval test_prog in
   IntervalInterp.outputStatePrinter risultato;;
 

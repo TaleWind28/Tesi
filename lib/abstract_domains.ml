@@ -726,13 +726,7 @@ module Intervals = struct
     | PosInf,NegInf | NegInf,PosInf -> PosInf (*dovrebbe dare bottom*)
     | PosInf,_ | _,PosInf -> PosInf
     | NegInf,_ | _,NegInf -> NegInf
-    | Int a, Int b -> 
-      print_string "a:";
-      print_int (a);
-      print_string "b:";
-      print_int (b);
-      print_string "\n";
-      Int (a+b)
+    | Int a, Int b -> Int (a+b)
 
   
   let mul_bound x y = match x,y with
