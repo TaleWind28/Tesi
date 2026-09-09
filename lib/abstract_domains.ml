@@ -607,16 +607,17 @@ module StrangeSigns = struct
   let div s1 s2 = match s1, s2 with
     (*Errore/Irraggiungibile*)
     | SignBottom, _ | _, SignBottom -> SignBottom
+    | Zero, _ -> Zero
     (* divisione per zero *)
     | _, Zero -> SignBottom
-    | _, PosZero | PosZero, Neg -> SignTop
+    | PosZero, Neg -> SignTop
     (*Unici casi noti della tabella della divisione*)
-    | Neg, Neg -> PosZero
+    | PosZero,PosZero | Neg, Neg -> PosZero
     (*Casi con possibili divisioni per 0 oppure divisioni con NonZero*)
     | _ -> SignTop
 
   let negate = function
-    | PosZero        -> Neg
+    | PosZero    -> top
     | Neg        -> PosZero
     | x          -> x   (* Zero, SignTop, SignBottom*)
 

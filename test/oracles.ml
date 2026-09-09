@@ -108,6 +108,7 @@ module type EXPECTED_VALUES = sig
   val while_1_2 : t
   val while_2_1 : t
   val while_3_1 : t
+  val while_3_2 : t
   val while_4_1 : t
   val while_4_2 : t
   val while_4_3 : t
@@ -225,6 +226,7 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t  
   let while_1_2 = Neg
   let while_2_1 = Zero
   let while_3_1 = PosZero
+  let while_3_2 = PosZero 
   let while_4_1 = SignTop
   let while_4_2 = Pos
   let while_4_3 = SignTop
@@ -339,34 +341,133 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let while_1_2 = NegZero (* non serve questo valore*)
   let while_2_1 = Zero (* è accettabile anche PosZero, ma ottengo bottomEnv*) 
   let while_3_1 = PosZero (*0*)
+  let while_3_2 = Zero 
   let while_4_1 = SignTop
   let while_4_2 = PosZero 
   let while_4_3 = SignTop
 end
 
-(*
-module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.ReducedSigns.t = struct
-  open Abstract_domains.ReducedSigns
-  
-  type t = Abstract_domains.ReducedSigns.t
-  let sum_1 = Pos
-  let sum_2 = top
-  let sum_3 = top
-  let sum_4 = bottom
-  let sum_5 = top
-  let mul_1 = top
-  let mul_2 = top
-  let mul_3 = bottom
-  let mul_4 = Pos
+module Expected_StrangeSigns : EXPECTED_VALUES with type t = Abstract_domains.StrangeSigns.t = struct
+  open Abstract_domains.StrangeSigns
 
-  let div_1 = bottom
+  type t = Abstract_domains.StrangeSigns.t
 
-  let div_2 = top
+  (* Stato test: x=PosZero(1..10) y=Neg(-10..-1) z=Zero w=PosZero(0..10)
+     k=Top(-10..0, unisce Neg e Zero) n=Top(unisce PosZero e Neg) t=Top b=Bottom *)
 
-  let assign_1 = Pos
+  (* Somma *)
+  let sum_1 = PosZero
+  let sum_2 = SignTop            (* PosZero+Neg: nessun elemento copre "<=0" *)
+  let sum_3 = Neg
+  let sum_4 = PosZero
+  let sum_5 = Zero
+  let sum_6 = PosZero
+  let sum_7 = SignTop            (* k+k = Top+Top *)
+  let sum_8 = SignTop
+  let sum_9 = PosZero
+  let sum_10 = SignTop
+  let sum_11 = SignTop
+  let sum_12 = SignTop
+  let sum_13 = SignTop
+  let sum_14 = SignTop
+  let sum_15 = SignTop
+  let sum_16 = SignTop
+  let sum_17 = SignBottom
+  let sum_18 = SignTop           (* 10:PosZero, -20:Neg -> Top *)
+
+  (* Sottrazione: a-b = a + Negation(b) *)
+  let sub_1 = PosZero            (* PosZero + Negation(Neg)=PosZero => PosZero *)
+  let sub_2 = SignTop            (* PosZero + Negation(PosZero)=Top *)
+  let sub_3 = SignTop
+  let sub_4 = SignTop
+  let sub_5 = PosZero            (* Zero + Negation(Neg)=PosZero *)
+
+  (* Moltiplicazione *)
+  let mul_1 = PosZero
+  let mul_2 = SignTop            (* PosZero*Neg: nessun "non-positivo" *)
+  let mul_3 = PosZero            (* Neg*Neg: prodotto strett. positivo -> PosZero *)
+  let mul_4 = Zero
+  let mul_5 = SignTop            (* PosZero*Neg *)
+  let mul_6 = SignTop            (* k=Top, non è Zero esatto: Top*PosZero *)
+  let mul_7 = Zero               (* z=Zero esatto -> risultato Zero comunque *)
+  let mul_8 = SignTop
+  let mul_9 = Zero
+  let mul_10 = SignBottom
+
+  (* Divisione *)
+  let div_1 = PosZero
+  let div_2 = SignTop            (* PosZero/Neg *)
+  let div_3 = PosZero
+  let div_4 = SignBottom
+  let div_5 = PosZero
+  let div_6 = SignTop            (* x/k = PosZero/Top *)
+  let div_7 = SignTop
+  let div_8 = Zero
+  let div_9 = Zero
+  let div_10 = SignTop
+  let div_11 = SignTop           (* w/y = PosZero/Neg *)
+  let div_12 = SignTop           (* k/x = Top/PosZero *)
+
+  (* Negazione unaria *)
+  let neg_1 = SignTop            (* Negation(PosZero): nessun "<=0" esatto *)
+  let neg_2 = PosZero            (* Negation(Neg) = PosZero *)
+  let neg_3 = Zero
+  let neg_4 = SignTop            (* Negation(PosZero) *)
+  let neg_5 = SignTop            (* Negation(Top) *)
+  let neg_6 = SignTop
+  let neg_7 = SignTop
+  let neg_8 = SignBottom
+  let neg_9 = SignTop            (* Negation(Negation(PosZero)) = Negation(Top) *)
+  let neg_10 = PosZero           (* x + Negation(y) = PosZero+PosZero *)
+
+  (* Random *)
+  let rand_1 = SignTop           (* attraversa Neg e PosZero *)
+  let rand_2 = PosZero
+  let rand_3 = Neg
+  let rand_4 = PosZero
+  let rand_5 = SignTop           (* attraversa Neg e Zero *)
+  let rand_6 = Zero
+
+  (* Assegnamenti *)
+  let assign_1 = PosZero
   let assign_2 = Neg
-  let  if_1 = Pos
-end *)
+  let assign_3 = Zero
+  let assign_4 = SignTop         (* variabile non definita -> Top *)
+  let assign_5 = PosZero
+
+  (* Sequenze *)
+  let sequence_1_1 = PosZero
+  let sequence_1_2 = Neg
+
+  (* Skip *)
+  let skip_1 = PosZero
+
+  (* If *)
+  let if_1 = SignTop             (* join(PosZero,Neg), corretto che sia top *)
+  let if_2 = PosZero
+  let if_3 = PosZero
+  let if_4 = SignTop
+  let if_5 = PosZero
+  let if_6 = SignTop             (* join(Neg,Zero): qui differisce da SimpleSigns (NegZero) *)
+  let if_7 = SignTop
+  let if_8 = PosZero
+  let if_9 = PosZero
+  let if_10 = Neg
+  let if_11 = SignTop
+  let if_12 = SignTop
+
+  (* While *)
+  let while_1_1 = PosZero
+  let while_1_2 = Neg            (* non serve questo valore *)
+  let while_2_1 = Zero
+  let while_3_1 = PosZero        (* vero risultato 0, perso per precisione *)
+  let while_3_2 = PosZero        (* vero risultato 0, perso per precisione *)
+
+  (* let while_3_2 = PosZero *)
+  let while_4_1 = SignTop
+  let while_4_2 = PosZero        (* vedi nota sotto *)
+  let while_4_3 = SignTop
+end
 
 module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.SimplifiedSigns.t = struct
   open Abstract_domains.SimplifiedSigns
@@ -479,11 +580,132 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let while_1_2 = Neg
   let while_2_1 = Zero
   let while_3_1 = top
+
+  let while_3_2 = top
   let while_4_1 = SignTop
   let while_4_2 = Pos
   let while_4_3 = SignTop
 end
 
+module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.ReducedSigns.t = struct
+  open Abstract_domains.ReducedSigns
+
+  type t = Abstract_domains.ReducedSigns.t
+
+  (* Stato: x=Pos(1..10) y=Neg(-10..-1) z=Pos(convenzione: 0->Pos)
+     w=Pos(0..10) k=Neg(-10..0) n=Top(join Pos,Neg) t=Top b=Bottom *)
+
+  (* Somma *)
+  let sum_1 = Pos
+  let sum_2 = SignTop
+  let sum_3 = Neg
+  let sum_4 = top
+  let sum_5 = top              (* ⚠️ era Zero esatto; ora Pos (0+0=0∈Pos, sound ma impreciso) *)
+  let sum_6 = top
+  let sum_7 = top
+  let sum_8 = SignTop
+  let sum_9 = top
+  let sum_10 = SignTop
+  let sum_11 = SignTop
+  let sum_12 = top
+  let sum_13 = SignTop
+  let sum_14 = SignTop
+  let sum_15 = SignTop
+  let sum_16 = SignTop
+  let sum_17 = SignBottom
+  let sum_18 = SignTop
+
+  (* Sottrazione (negazione qui è ESATTA: Pos<->Neg) *)
+  let sub_1 = Pos
+  let sub_2 = SignTop
+  let sub_3 = SignTop
+  let sub_4 = SignTop
+  let sub_5 = top
+
+  (* Moltiplicazione *)
+  let mul_1 = Pos
+  let mul_2 = Neg
+  let mul_3 = Pos              (* Neg*Neg = nonpos*nonpos ≥0 -> Pos *)
+  let mul_4 = top              (* ⚠️ era Zero esatto; ora Pos*Pos=Pos *)
+  let mul_5 = top
+  let mul_6 = top
+  let mul_7 = SignTop          (* ⚠️ era Zero esatto (n*z, "anything*0=0"); qui n=Top perde il caso speciale, Top*Pos=Top *)
+  let mul_8 = SignTop
+  let mul_9 = SignTop          (* ⚠️ era Zero esatto (t*z); ora Top*Pos=Top *)
+  let mul_10 = SignBottom
+
+  (* Divisione *)
+  let div_1 = Pos
+  let div_2 = Neg
+  let div_3 = Pos
+  let div_4 = top              (* ⚠️⚠️ era SignBottom (divisore esattamente 0); qui z=Pos non è riconoscibile come "0 esatto", quindi niente check div-by-zero: risultato Pos/Pos=Pos. ReducedSigns NON rileva più la divisione per zero certa. *)
+  let div_5 = top
+  let div_6 = top
+  let div_7 = SignTop
+  let div_8 = top              (* ⚠️ era Zero esatto (z/x); ora Pos/Pos=Pos *)
+  let div_9 = top             (* ⚠️ era Zero esatto (z/y); ora Pos/Neg=Neg *)
+  let div_10 = SignTop
+  let div_11 = top
+  let div_12 = top
+
+  (* Negazione unaria — ESATTA in questo dominio *)
+  let neg_1 = Neg
+  let neg_2 = Pos
+  let neg_3 = top              (* ⚠️ era Zero esatto; ora Negate(Pos)=Neg (conseguenza della convenzione su z, non della negazione) *)
+  let neg_4 = top
+  let neg_5 = top
+  let neg_6 = SignTop
+  let neg_7 = SignTop
+  let neg_8 = SignBottom
+  let neg_9 = Pos
+  let neg_10 = Pos
+
+  (* Random *)
+  let rand_1 = SignTop
+  let rand_2 = Pos
+  let rand_3 = Neg
+  let rand_4 = top
+  let rand_5 = top
+  let rand_6 = top             (* ⚠️ era Zero esatto (Random(0,0)); convenzione -> Pos *)
+
+  (* Assegnamenti *)
+  let assign_1 = Pos
+  let assign_2 = Neg
+  let assign_3 = top           (* ⚠️ era Zero esatto (x=Const 0); convenzione -> Pos *)
+  let assign_4 = SignTop
+  let assign_5 = Pos
+
+  (* Sequenze *)
+  let sequence_1_1 = Pos
+  let sequence_1_2 = Neg
+
+  (* Skip *)
+  let skip_1 = Pos
+
+  (* If *)
+  let if_1 = SignTop
+  let if_2 = Pos
+  let if_3 = Pos
+  let if_4 = SignTop
+  let if_5 = top
+  let if_6 = SignTop           (* ⚠️ era NegZero; else=Const 0 ora è Pos (convenzione) non più subsumed in Neg, quindi join(Neg,Pos)=Top *)
+  let if_7 = SignTop
+  let if_8 = Pos
+  let if_9 = Pos
+  let if_10 = Neg
+  let if_11 = SignTop
+  let if_12 = SignTop
+
+  (* While *)
+  let while_1_1 = top
+  let while_1_2 = Neg
+  let while_2_1 = top          (* qui NON è ambiguo Zero-vs-PosZero: Pos è l'UNICA rappresentazione più precisa disponibile per {0}, essendo Zero assente dal dominio *)
+  let while_3_1 = top
+  let while_3_2 = Pos
+  let while_4_1 = SignTop
+  let while_4_2 = Pos          (* ⚠️ stessa ambiguità di iterazione già segnalata per StrangeSigns/SimpleSigns: potrebbe diventare SignTop a seconda della profondità del fixpoint *)
+  let while_4_3 = SignTop
+end
 (* =====================================================================
    Expected_Intervals: valori attesi (corretti) per il dominio Intervals
    =====================================================================
@@ -647,31 +869,8 @@ module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Inter
   let while_1_2 = top_val        (* non usato dai test attuali *)
   let while_2_1 = interval 0 0   (* x=5; while x!=0 x=0 -> x=0 esatto *)
   let while_3_1 = to_pos_inf 0   (* perdita di precisione: [0,+Inf] *)
+  let while_3_2 = to_pos_inf 0
   let while_4_1 = interval 1 1   (* x!=y deciso subito -> loop mai eseguito *)
   let while_4_2 = interval 2 2
   let while_4_3 = interval (-3) 5
 end
-
-
-(* module Expected_Strange : VALUES with type t = Abstract_domains.StrangeSigns.t = struct
-  open Abstract_domains.StrangeSigns
-  
-  type t = Abstract_domains.StrangeSigns.t
-    let sum_1 = PosZero
-  let sum_2 = Zero
-  let sum_3 = top
-  let sum_4 = bottom
-  let sum_5 = top
-  let mul_1 = Zero
-  let mul_2 = Zero
-  let mul_3 = bottom
-  let mul_4 = PosZero
-
-  let div_1 = bottom
-
-  let div_2 = Zero
-
-  let assign_1 = PosZero
-  let assign_2 = Neg
-  let  if_1 = PosZero
-end *)

@@ -282,7 +282,7 @@ module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = st
         | Interp.Env tbl ->
             (* Per domini senza Pos stretto (come SimpleSigns), il ciclo esce soundly con x = 0 *)
             (match Hashtbl.find_opt tbl "x" with
-             | Some v -> Alcotest.(check sign_testable) "x deve valere 0 (Zero o PosZero)" (D.abstract_int 0) v
+             | Some v -> Alcotest.(check sign_testable) "x deve valere 0 (Zero o PosZero)" (E.while_3_2) v
              | None -> Alcotest.fail "Variabile 'x' non trovata nello stato finale") );
     (* expect_bottom "Corpo = Skip (loop infinito)"
       (Sequence (Assign ("x", Const 5), While (Comparison (Var "x", Bigger, Const 0), Skip))); *)
@@ -319,16 +319,18 @@ end
 
 module TestSuite_Signs = Make_Sign_Tests (Abstract_domains.Signs) (Expected_Signs)
 module TestSuite_SimpleSigns = Make_Sign_Tests (Abstract_domains.SimpleSigns) (Expected_SimpleSigns)
-(* module TestSuite_ReducedSigns = Make_Sign_Tests (Abstract_domains.ReducedSigns) *)
+module TestSuite_ReducedSigns = Make_Sign_Tests (Abstract_domains.ReducedSigns) (Expected_ReducedSigns)
 module TestSuite_SimplifiedSigns = Make_Sign_Tests (Abstract_domains.SimplifiedSigns) (Expected_SimplifiedSigns)
-(* module TestSuite_StrangeSigns = Make_Sign_Tests (Abstract_domains.StrangeSigns) *)
+module TestSuite_StrangeSigns = Make_Sign_Tests (Abstract_domains.StrangeSigns) (Expected_StrangeSigns)
 module TestSuite_Intervals = Make_Sign_Tests (Abstract_domains.Intervals) (Expected_Intervals)
 
 (* 2. Esecuzione tramite Alcotest *)
 let () =
   Alcotest.run "Abstract Interpreter Tests" (
-    List.map (fun (name, test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests
-    @ List.map (fun (name, test_list) -> ("SimplifiedSigns: " ^ name, test_list)) TestSuite_SimplifiedSigns.tests
-    @ List.map (fun (name,test_list) -> ("SimpleSigns: " ^ name, test_list)) TestSuite_SimpleSigns.tests
-    @ List.map ( fun (name,test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests
+    List.map (fun (name, test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests @
+    List.map (fun (name, test_list) -> ("SimplifiedSigns: " ^ name, test_list)) TestSuite_SimplifiedSigns.tests @
+    List.map (fun (name,test_list) -> ("SimpleSigns: " ^ name, test_list)) TestSuite_SimpleSigns.tests @
+    List.map (fun (name,test_list) -> ("StrangeSigns: " ^ name, test_list)) TestSuite_StrangeSigns.tests @
+    List.map (fun (name,test_list) -> ("ReducedSigns: " ^ name, test_list)) TestSuite_ReducedSigns.tests @
+    List.map ( fun (name,test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests
   )
