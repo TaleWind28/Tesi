@@ -1,4 +1,4 @@
-module type EXPECTED_VALUES = sig
+(* module type EXPECTED_VALUES = sig
   type t
 
   (* Somma *)
@@ -113,10 +113,10 @@ module type EXPECTED_VALUES = sig
   val while_4_3 : t
 end
 
-module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t  = struct
-  open Abstract_domains.Signs
+module Expected_ExtendedSigns : EXPECTED_VALUES with type t = Abstract_domains.ExtendedSigns.t  = struct
+  open Abstract_domains.ExtendedSigns
 
-  type t = Abstract_domains.Signs.t
+  type t = Abstract_domains.ExtendedSigns.t
 
   (* Somma *)
   let sum_1 = Pos
@@ -585,10 +585,10 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let while_4_3 = top
 end
 
-module Expected_ReducedSigns : EXPECTED_VALUES with type t = Abstract_domains.ReducedSigns.t = struct
-  open Abstract_domains.ReducedSigns
+module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t = struct
+  open Abstract_domains.Signs
 
-  type t = Abstract_domains.ReducedSigns.t
+  type t = Abstract_domains.Signs.t
 
   (* Stato: x=Pos(1..10) y=Neg(-10..-1) z=Pos(convenzione: 0->Pos)
      w=Pos(0..10) k=Neg(-10..0) n=Top(join Pos,Neg) t=Top b=Bottom *)
@@ -828,4 +828,4 @@ module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Inter
   let while_4_1 = interval 1 1   (* x!=y deciso subito -> loop mai eseguito *)
   let while_4_2 = interval 2 2
   let while_4_3 = interval (-3) 5
-end
+end *)

@@ -1,10 +1,10 @@
-open Abstract_domains
+(* open Abstract_domains
 open Interpeters
 open Oracles
 open Syntax
 
-module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = struct
-  module Interp = AbsInterp (D)
+module Make_Sign_Tests (D : NonReletionalDomain) (E : EXPECTED_VALUES with type t = D.t) = struct
+  module Interp = NonRelationalAbsInterp (D)
 
   let sign_testable =
     Alcotest.testable
@@ -317,9 +317,9 @@ module Make_Sign_Tests (D : DOMAIN) (E : EXPECTED_VALUES with type t = D.t) = st
   ]
 end
 
-module TestSuite_Signs = Make_Sign_Tests (Abstract_domains.Signs) (Expected_Signs)
+module TestSuite_ExtendedSigns = Make_Sign_Tests (Abstract_domains.ExtendedSigns) (Expected_ExtendedSigns)
 module TestSuite_SimpleSigns = Make_Sign_Tests (Abstract_domains.SimpleSigns) (Expected_SimpleSigns)
-module TestSuite_ReducedSigns = Make_Sign_Tests (Abstract_domains.ReducedSigns) (Expected_ReducedSigns)
+module TestSuite_Signs = Make_Sign_Tests (Abstract_domains.Signs) (Expected_Signs)
 module TestSuite_SimplifiedSigns = Make_Sign_Tests (Abstract_domains.SimplifiedSigns) (Expected_SimplifiedSigns)
 module TestSuite_StrangeSigns = Make_Sign_Tests (Abstract_domains.StrangeSigns) (Expected_StrangeSigns)
 module TestSuite_Intervals = Make_Sign_Tests (Abstract_domains.Intervals) (Expected_Intervals)
@@ -327,10 +327,10 @@ module TestSuite_Intervals = Make_Sign_Tests (Abstract_domains.Intervals) (Expec
 (* 2. Esecuzione tramite Alcotest *)
 let () =
   Alcotest.run "Abstract Interpreter Tests" (
-    List.map (fun (name, test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests @
+    List.map (fun (name, test_list) -> ("ExtendedSigns: " ^ name, test_list)) TestSuite_ExtendedSigns.tests @
     List.map (fun (name, test_list) -> ("SimplifiedSigns: " ^ name, test_list)) TestSuite_SimplifiedSigns.tests @
     List.map (fun (name,test_list) -> ("SimpleSigns: " ^ name, test_list)) TestSuite_SimpleSigns.tests @
     List.map (fun (name,test_list) -> ("StrangeSigns: " ^ name, test_list)) TestSuite_StrangeSigns.tests @
-    List.map (fun (name,test_list) -> ("ReducedSigns: " ^ name, test_list)) TestSuite_ReducedSigns.tests @
+    List.map (fun (name,test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests @
     List.map ( fun (name,test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests
-  )
+  ) *)

@@ -2,9 +2,7 @@ open Abstract_domains
 open Syntax
 
 (* Interprete astratto parametrico sul dominio D *)
-module AbsInterp (D : DOMAIN) = struct
-
-
+module NonRelationalAbsInterp (D : NonReletionalDomain) = struct
     type state =
     | Env of (string, D.t) Hashtbl.t
     | BottomEnv 
@@ -123,9 +121,6 @@ module AbsInterp (D : DOMAIN) = struct
                 D.leq v1 v2
             ) t1 true
             
-
-
-
     let rec negate_cond cd = match cd with
     | Not cd -> cd
     | Boolean b -> Boolean (not b)
@@ -241,15 +236,15 @@ module AbsInterp (D : DOMAIN) = struct
 end
 
 (* Istanza concreta con il dominio dei segni *)
-module SignInterp = AbsInterp (Signs)
+module ExtendedSignInterp = NonRelationalAbsInterp (ExtendedSigns)
 
-module SimpleSignInterp = AbsInterp (SimpleSigns)
+module SimpleSignInterp = NonRelationalAbsInterp (SimpleSigns)
 
-module ReducedSignInterp = AbsInterp (ReducedSigns)
+module SignInterp = NonRelationalAbsInterp (Signs)
 
-module SimplifiedSignInterp = AbsInterp (SimplifiedSigns)
+module SimplifiedSignInterp = NonRelationalAbsInterp (SimplifiedSigns)
 
-module StrangeSignInterp = AbsInterp (StrangeSigns)
+module StrangeSignInterp = NonRelationalAbsInterp (StrangeSigns)
 
 (* Istanza concreta con il dominio degli Intervalli *)
-module IntervalInterp = AbsInterp (Intervals)
+module IntervalInterp = NonRelationalAbsInterp (Intervals)

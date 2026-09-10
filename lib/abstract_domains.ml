@@ -1,6 +1,6 @@
 (* Firma del dominio astratto *)
 open Syntax
-module type DOMAIN = sig
+module type NonReletionalDomain = sig
   type t
   val top    : t
   val bottom : t
@@ -23,7 +23,7 @@ module type DOMAIN = sig
 end
 
 (* Dominio dei segni *)
-module Signs = struct
+module ExtendedSigns : NonReletionalDomain = struct
   type t = SignTop | Pos |PosZero | Zero | NegZero | Neg | NonZero | SignBottom
 
   let to_string t = match t with
@@ -167,7 +167,7 @@ module Signs = struct
     | x          -> x   (* Zero, SignTop, SignBottom, NonZero invariati *)
 end
 
-module SimplifiedSigns = struct
+module SimplifiedSigns : NonReletionalDomain = struct
   type t = SignTop | Pos | Zero | Neg | SignBottom
   let to_string t = match t with
   | SignTop -> "Top"
@@ -287,7 +287,7 @@ module SimplifiedSigns = struct
 
 end
 
-module ReducedSigns = struct
+module Signs : NonReletionalDomain = struct
   type t = SignTop | Pos | Neg | SignBottom
   let to_string t = match t with
   | SignTop -> "Top"
@@ -388,7 +388,7 @@ module ReducedSigns = struct
 
 end
 
-module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna controllare meglio*)
+module SimpleSigns : NonReletionalDomain = struct (* a regola è questo SimpleSigns però bisogna controllare meglio*)
   type t = SignTop | PosZero | Zero | NegZero | SignBottom
   let to_string t = match t with
   | SignTop -> "Top"
@@ -505,7 +505,7 @@ module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna cont
 
 end
 
-module StrangeSigns = struct 
+module StrangeSigns : NonReletionalDomain = struct 
   type t = SignTop | PosZero | Zero | Neg | SignBottom
 
   let to_string t = match t with
@@ -624,7 +624,7 @@ module StrangeSigns = struct
 end
 
 (*Dominio degli Intervalli*)
-module Intervals = struct
+module Intervals : NonReletionalDomain = struct
   type bound = NegInf | Int of int | PosInf 
   type t = Interval of bound * bound | Bottom
 
@@ -788,3 +788,117 @@ module Intervals = struct
       else if d <= Int(-1) then  Interval(min_bound (div_bound b c) (div_bound b d), max_bound (div_bound a c) (div_bound a d))
       else div_helper a b c d
 end 
+
+(* Domini Relazionali *)
+module type WeakReletionalDomain = sig
+  type t (*done*)
+  val bottom : t (*done*)
+  val init : ide list -> t (*done*)
+  val is_bottom : t -> bool (*done*)
+  val normalize : t -> t (*done*)
+  val leq : t -> t -> bool
+  val lub : t -> t -> t
+  val glb : t -> t -> t
+  val widen : t -> t -> t
+  val narrow : t -> t -> t
+
+  (** {4 Funzioni di Trasferimento} *)
+
+  (** Assegnamento astratto: aggiorna la DBM a seguito dell'istruzione x := e.
+      Gestisce sia assegnamenti esatti (costanti, traslazioni x := x + c)
+      sia assegnamenti affini approssimati tramite intervalli *)
+  val assign : ide -> exp -> t -> t
+
+  (** Forget / Reset: rimuove tutti i vincoli che coinvolgono la variabile x.
+      Richiede la chiusura preventiva della DBM prima di impostare riga e colonna a +infinity *)
+  val forget : ide -> t -> t
+
+  (** Filtro condizionale: raffina la DBM applicando la guardia c
+      (es. vincoli di differenza Vj - Vi <= c o guardie unari Vi <= c) *)
+  val filter : cond -> t -> t
+  val to_string : t -> string
+  val print : t -> unit
+end
+
+module Zones (*: WeakReletionalDomain*) = struct
+
+  type bound = Int of int | PosInf
+  type dbm = 
+  {
+    n : int; 
+    env : (ide * int) list ;
+    matrix : bound array array 
+  }
+  type t  = Bottom | Env of dbm
+  let bottom = Bottom
+
+  let is_bottom env = match env with
+    | Bottom -> true
+    | _ -> false
+
+  let copy_matrix m = Array.map Array.copy m
+
+  let index_of env x = try Some (List.assoc x env) with Not_found -> None
+ 
+  let resolve_index env x =
+    match index_of env x with
+    | Some i -> i
+    | None -> failwith (Printf.sprintf "Zones: variabile '%s' non dichiarata" x)
+
+  let init (vars : ide list) : t = 
+    (* ordino la lista controllando l'unicità delle variabili *)
+    let xs = List.sort_uniq compare vars in 
+    (* ottengo la lunghezza della lista *)
+    let n = List.length xs in 
+    (* creo l'ambiente associando identificatori ad indici della lista *)
+    let env = List.mapi(fun i x -> (x,i)) xs in 
+    (* creo la dbm *)
+    let matrix = Array.make_matrix (n+1) (n+1) (Int 0) in
+    Env{
+      n;
+      env;
+      matrix
+    }
+
+  let b_add a b = match a,b with
+  | PosInf,_ | _,PosInf -> PosInf
+  | Int x, Int y -> Int (x+y) 
+  let b_leq a b = failwith "not implemented"
+
+  (* Algoritmo di chiusura della DBM *)
+  let close_dbm dbm = 
+    (* let s = dbm.n +1 in  *)
+    let iter_cube dim f = 
+    for k = 0 to dim -1 do 
+      for i = 0 to dim -1 do 
+        for j = 0 to dim -1 do
+          f k i j
+        done
+      done
+    done in 
+    let floyd_wharshall matrix n = 
+      let res_m = copy_matrix matrix in 
+      iter_cube n (fun k i j ->  
+      match matrix.(i).(k), matrix.(k).(j) with
+      | Int x, Int y -> 
+        let k_path = b_add matrix.(i).(k) matrix.(k).(j) in
+        if b_leq k_path matrix.(i).(j) then matrix.(i).(j) <- k_path;
+      | _ ->  ()); 
+      res_m in 
+    let rec has_neg_cycle matrix dim i = 
+    if i >= dim then false
+    else match matrix.(i).(i) with
+    | Int x -> if x < 0 then true else has_neg_cycle matrix dim (i+1)
+    | _ -> has_neg_cycle matrix dim (i+1) in 
+
+    let computated_matrix = floyd_wharshall dbm.matrix dbm.n in 
+    if (has_neg_cycle computated_matrix dbm.n 0 ) 
+    then Bottom
+    else Env {n = dbm.n;env = dbm.env;matrix = computated_matrix}
+
+  let normalize dbm = match dbm with 
+  | Bottom -> Bottom
+  | Env dbm' -> close_dbm dbm'
+
+
+end

@@ -12,9 +12,9 @@ let test_prog =(
 
 
 let () =
-  let risultato = SignInterp.eval test_prog in
+  let risultato = ExtendedSignInterp.eval test_prog in
   print_string "ExtendedSigns\t";
-  SignInterp.outputStatePrinter risultato;;
+  ExtendedSignInterp.outputStatePrinter risultato;;
   let risultato = SimpleSignInterp.eval test_prog in
   print_string "SimpleSign\t";
   SimpleSignInterp.outputStatePrinter risultato;;
@@ -22,8 +22,8 @@ let () =
   print_string "StrangeSign\t";
   StrangeSignInterp.outputStatePrinter risultato;;
   print_string "ReducedSign\t";
-  let risultato = ReducedSignInterp.eval test_prog in
-  ReducedSignInterp.outputStatePrinter risultato;;
+  let risultato = SignInterp.eval test_prog in
+  SignInterp.outputStatePrinter risultato;;
   print_string "Sign\t\t";
   let risultato = SimplifiedSignInterp.eval test_prog in
   SimplifiedSignInterp.outputStatePrinter risultato;;
