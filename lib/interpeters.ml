@@ -75,7 +75,6 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
         if !became_bottom then BottomEnv
         else Env new_env
 
-    
     let widen_env e1 e2 =
         match e1, e2 with
         | BottomEnv, e | e, BottomEnv -> e
@@ -228,13 +227,53 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
                     in kleene (Env(env)) (* Parto dallo stato Vuoto e vado a "salire" *)
                 in eval_cmd (Filter((Not(cond)))) (lfp f) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*) 
                
-
     (* Funzione eval generale *)
     let eval (prog : cmd) : state =
         let initial_env = Env(Hashtbl.create 10) in
         eval_cmd prog initial_env
 end
 
+module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
+    
+    let rec retrieve_var_from_exp (exp : exp) : ide list = 
+        match exp with
+        | Const _-> []
+        | Random _ -> []
+        | Var x -> [x]
+        | BinaryOperation(e1,bop,e2) -> retrieve_var_from_exp e1 @ retrieve_var_from_exp e2
+        | UnaryOperation(uop,e) -> retrieve_var_from_exp e
+
+    let rec retrieve_var_from_cond (cond:cond) : ide list = 
+        match cond with
+        | Comparison(e1,comp,e2) -> retrieve_var_from_exp e1 @ retrieve_var_from_exp e2
+        | Boolean _ -> []
+        | Not cd -> retrieve_var_from_cond cd
+        | And(cd1,cd2) -> retrieve_var_from_cond cd1 @ retrieve_var_from_cond cd2
+        | Or(cd1,cd2) -> retrieve_var_from_cond cd1 @ retrieve_var_from_cond cd2
+
+    let rec get_all_var (prog: cmd) : ide list = 
+        match prog with
+        | Skip -> []
+        | Sequence(c1,c2)-> get_all_var c1 @ get_all_var c2
+        | If(cd,cthen,celse) -> get_all_var cthen @ get_all_var celse @ retrieve_var_from_cond cd
+        | While(cd,c) -> get_all_var c @ retrieve_var_from_cond cd
+        | Filter(cd) -> retrieve_var_from_cond cd
+        | Assign(ide,e1) -> ide :: retrieve_var_from_exp e1
+
+    let eval_exp (exp : exp) (env : D.t) : D.t = failwith "not implemented"
+
+    let eval_cond (cond : cond) (env : D.t) : D.t = failwith "not implemented"
+
+    let eval_cmd (cmd : cmd) (env : D.t) : D.t = failwith "not implemented"
+
+    let eval (prog: cmd) : D.t = 
+        (* Raccoglie la lista variabili del programma dall'albero di sintassi astratta*)
+        let var_list  = get_all_var prog in
+        (* Crea lo stato iniziale *)
+        let initial_env = D.init var_list in
+        (* Valuta il programma *)
+        eval_cmd prog initial_env
+end
 (* Istanza concreta con il dominio dei segni *)
 module ExtendedSignInterp = NonRelationalAbsInterp (ExtendedSigns)
 
@@ -248,3 +287,5 @@ module StrangeSignInterp = NonRelationalAbsInterp (StrangeSigns)
 
 (* Istanza concreta con il dominio degli Intervalli *)
 module IntervalInterp = NonRelationalAbsInterp (Intervals)
+
+module ZoneInterp = WeakRelationalAbsInterp (Zones)

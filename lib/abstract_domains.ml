@@ -790,16 +790,16 @@ module Intervals = struct
 end 
 
 (* Domini Relazionali *)
-module type WeakReletionalDomain = sig
+module type WeakRelationalDomain = sig
   type t (*done*)
   val bottom : t (*done*)
   val init : ide list -> t (*done*)
   val is_bottom : t -> bool (*done*)
   val normalize : t -> t (*done*)
-  val leq : t -> t -> bool
-  val lub : t -> t -> t
-  val glb : t -> t -> t
-  val widen : t -> t -> t
+  val leq : t -> t -> bool (*done*)
+  val lub : t -> t -> t (*done*)
+  val glb : t -> t -> t (*done*)
+  val widen : t -> t -> t 
   val narrow : t -> t -> t
 
   (** {4 Funzioni di Trasferimento} *)
@@ -807,25 +807,25 @@ module type WeakReletionalDomain = sig
   (** Assegnamento astratto: aggiorna la DBM a seguito dell'istruzione x := e.
       Gestisce sia assegnamenti esatti (costanti, traslazioni x := x + c)
       sia assegnamenti affini approssimati tramite intervalli *)
-  val assign_const : int -> int -> t -> t
-  val assign_var_offset : int -> int -> int -> t -> t
+  val assign_const : int -> int -> t -> t (*done*)
+  val assign_var_offset : int -> int -> int -> t -> t (*done*)
 
-  val shift_var : int -> int -> t -> t
+  val shift_var : int -> int -> t -> t (*done*)
 
   (** Forget / Reset: rimuove tutti i vincoli che coinvolgono la variabile x.
       Richiede la chiusura preventiva della DBM prima di impostare riga e colonna a +infinity *)
-  val forget : int -> t -> t
+  val forget : int -> t -> t (*done*)
 
   (** Filtro condizionale: raffina la DBM applicando la guardia c
       (es. vincoli di differenza Vj - Vi <= c o guardie unari Vi <= c) *)
-  val filter_rel : int -> int -> int -> t -> t
+  val filter_rel : int -> int -> int -> t -> t (*done*)
 
 
   val to_string : t -> string
   val print : t -> unit
 end
 
-module Zones : WeakReletionalDomain = struct
+module Zones : WeakRelationalDomain = struct
 
   type bound = Int of int | PosInf
   type dbm = 
@@ -837,8 +837,10 @@ module Zones : WeakReletionalDomain = struct
   type t  = Bottom | Env of dbm
   let bottom = Bottom
 
-  let create_type_dbm n env matrix = Env{n; env;matrix}
 
+
+  let create_type_dbm n env matrix = Env{n; env;matrix}
+  
   let is_bottom env = match env with
     | Bottom -> true
     | _ -> false
@@ -852,15 +854,24 @@ module Zones : WeakReletionalDomain = struct
     | Some i -> i
     | None -> failwith (Printf.sprintf "Zones: variabile '%s' non dichiarata" x) *)
 
-  let init (vars : ide list) : t = 
-    (* ordino la lista controllando l'unicità delle variabili *)
-    let xs = List.sort_uniq compare vars in 
-    (* ottengo la lunghezza della lista *)
-    let n = List.length xs in 
-    (* creo l'ambiente associando identificatori ad indici della lista *)
-    let env = List.mapi(fun i x -> (x,i)) xs in 
-    (* creo la dbm *)
-    let matrix = Array.make_matrix (n+1) (n+1) (Int 0) in
+  let init (vars : ide list) : t =
+    (* 1. Ordino la lista ed elimino i duplicati *)
+    let xs = List.sort_uniq compare vars in
+    let n = List.length xs in
+
+    (* 2. Mappo gli identificatori con indici da 1 a n
+      (l'indice 0 è riservato a V0) *)
+    let env = List.mapi (fun i x -> (x, i + 1)) xs in
+
+    (* 3. Creo la matrice (n+1) x (n+1)
+      inizializzata a PosInf (Top) *)
+    let dim = n + 1 in
+    let matrix = Array.make_matrix dim dim PosInf in
+
+    (* 4. Imposto solo la diagonale a Int 0 (m_ii = 0) *)
+    for i = 0 to dim - 1 do
+      matrix.(i).(i) <- Int 0
+    done;
     create_type_dbm n env matrix
 
   let b_add b1 b2 = 

@@ -31,3 +31,23 @@ let () =
   let risultato = IntervalInterp.eval test_prog in
   IntervalInterp.outputStatePrinter risultato;;
 
+  
+let test_completo =
+  If (
+    And (
+      Comparison (Var "a", Equals, Const 0),
+      Not (Comparison (Var "b", Bigger, Var "c"))
+    ),
+    Filter (Comparison (Var "d", Smaller, Const 5)),
+    Assign ("e", UnaryOperation (Negation, Var "f"))
+  )
+
+let test_extraction () =
+  let vars = ZoneInterp.get_all_var test_completo in
+  Printf.printf
+    "Variabili estratte (%d): [%s]\n"
+    (List.length vars)
+    (String.concat "; " vars)
+
+(* Invocazione *)
+let () = test_extraction ()
