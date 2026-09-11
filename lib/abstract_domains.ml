@@ -1,6 +1,6 @@
 (* Firma del dominio astratto *)
 open Syntax
-module type NonReletionalDomain = sig
+module type NonRelationalDomain = sig
   type t
   val top    : t
   val bottom : t
@@ -23,7 +23,7 @@ module type NonReletionalDomain = sig
 end
 
 (* Dominio dei segni *)
-module ExtendedSigns : NonReletionalDomain = struct
+module ExtendedSigns = struct
   type t = SignTop | Pos |PosZero | Zero | NegZero | Neg | NonZero | SignBottom
 
   let to_string t = match t with
@@ -167,7 +167,7 @@ module ExtendedSigns : NonReletionalDomain = struct
     | x          -> x   (* Zero, SignTop, SignBottom, NonZero invariati *)
 end
 
-module SimplifiedSigns : NonReletionalDomain = struct
+module SimplifiedSigns = struct
   type t = SignTop | Pos | Zero | Neg | SignBottom
   let to_string t = match t with
   | SignTop -> "Top"
@@ -287,7 +287,7 @@ module SimplifiedSigns : NonReletionalDomain = struct
 
 end
 
-module Signs : NonReletionalDomain = struct
+module Signs = struct
   type t = SignTop | Pos | Neg | SignBottom
   let to_string t = match t with
   | SignTop -> "Top"
@@ -388,7 +388,7 @@ module Signs : NonReletionalDomain = struct
 
 end
 
-module SimpleSigns : NonReletionalDomain = struct (* a regola è questo SimpleSigns però bisogna controllare meglio*)
+module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna controllare meglio*)
   type t = SignTop | PosZero | Zero | NegZero | SignBottom
   let to_string t = match t with
   | SignTop -> "Top"
@@ -505,7 +505,7 @@ module SimpleSigns : NonReletionalDomain = struct (* a regola è questo SimpleSi
 
 end
 
-module StrangeSigns : NonReletionalDomain = struct 
+module StrangeSigns = struct 
   type t = SignTop | PosZero | Zero | Neg | SignBottom
 
   let to_string t = match t with
@@ -624,7 +624,7 @@ module StrangeSigns : NonReletionalDomain = struct
 end
 
 (*Dominio degli Intervalli*)
-module Intervals : NonReletionalDomain = struct
+module Intervals = struct
   type bound = NegInf | Int of int | PosInf 
   type t = Interval of bound * bound | Bottom
 
@@ -845,12 +845,12 @@ module Zones : WeakReletionalDomain = struct
 
   let copy_matrix m = Array.map Array.copy m
   (* ottieni index della x *)
-  let index_of env x = try Some (List.assoc x env) with Not_found -> None
+  (* let index_of env x = try Some (List.assoc x env) with Not_found -> None
  
   let resolve_index env x =
     match index_of env x with
     | Some i -> i
-    | None -> failwith (Printf.sprintf "Zones: variabile '%s' non dichiarata" x)
+    | None -> failwith (Printf.sprintf "Zones: variabile '%s' non dichiarata" x) *)
 
   let init (vars : ide list) : t = 
     (* ordino la lista controllando l'unicità delle variabili *)
@@ -1009,9 +1009,9 @@ module Zones : WeakReletionalDomain = struct
     done;
     create_type_dbm dbm.n dbm.env new_m
 
-  let string_of_bound b = match b with
+  (* let string_of_bound b = match b with
   | Int x -> string_of_int x
-  | PosInf -> "+inf"
+  | PosInf -> "+inf" *)
 
   let to_string env = failwith "not implemented"
   let print env = failwith "not implemented"

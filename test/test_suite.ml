@@ -1,9 +1,9 @@
-(* open Abstract_domains
+open Abstract_domains
 open Interpeters
 open Oracles
 open Syntax
 
-module Make_Sign_Tests (D : NonReletionalDomain) (E : EXPECTED_VALUES with type t = D.t) = struct
+module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type t = D.t) = struct
   module Interp = NonRelationalAbsInterp (D)
 
   let sign_testable =
@@ -333,4 +333,4 @@ let () =
     List.map (fun (name,test_list) -> ("StrangeSigns: " ^ name, test_list)) TestSuite_StrangeSigns.tests @
     List.map (fun (name,test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests @
     List.map ( fun (name,test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests
-  ) *)
+  )

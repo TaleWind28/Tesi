@@ -2,7 +2,7 @@ open Abstract_domains
 open Syntax
 
 (* Interprete astratto parametrico sul dominio D *)
-module NonRelationalAbsInterp (D : NonReletionalDomain) = struct
+module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
     type state =
     | Env of (string, D.t) Hashtbl.t
     | BottomEnv 

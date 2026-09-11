@@ -1,4 +1,4 @@
-(* module type EXPECTED_VALUES = sig
+module type EXPECTED_VALUES = sig
   type t
 
   (* Somma *)
@@ -828,4 +828,4 @@ module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Inter
   let while_4_1 = interval 1 1   (* x!=y deciso subito -> loop mai eseguito *)
   let while_4_2 = interval 2 2
   let while_4_3 = interval (-3) 5
-end *)
+end
