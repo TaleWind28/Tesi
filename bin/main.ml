@@ -11,7 +11,7 @@ let test_prog =(
 )
 
 
-(* let () =
+let () =
   let risultato = ExtendedSignInterp.eval test_prog in
   print_string "ExtendedSigns\t";
   ExtendedSignInterp.outputStatePrinter risultato;;
@@ -29,7 +29,7 @@ let test_prog =(
   SimplifiedSignInterp.outputStatePrinter risultato;;
   print_string "Intervals\t";
   let risultato = IntervalInterp.eval test_prog in
-  IntervalInterp.outputStatePrinter risultato;; *)
+  IntervalInterp.outputStatePrinter risultato;;
 
   
 let test_completo =
@@ -50,9 +50,18 @@ let test_extraction test () =
     (List.length sorted_var)
     (String.concat "; " sorted_var)
 
+let test_cmds = 
+  Sequence(
+    Assign("x",Const 4),
+    Sequence(
+    Assign("y",Const(-3)),
+    Assign("x",BinaryOperation(Var("x"),Add,Var("y"))
+    )))
+  
 (* Invocazione *)
 let () = test_extraction test_completo()
-let () = test_extraction test_prog ()
-let () = 
-let exp = ZoneInterp.eval_exp(BinaryOperation(Const(5),Sub,Const(-3))) (ZoneInterp.init []) in 
-  ZoneInterp.print_value exp
+let () = test_extraction test_cmds ()
+(* let () =  *)
+let () = print_string "Dominio delle Zone: \n";
+ZoneInterp.print_result (ZoneInterp.eval test_cmds); 
+(* let () = ZoneInterp.print_result (ZoneInterp.eval test_completo) *)

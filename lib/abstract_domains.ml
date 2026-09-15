@@ -671,10 +671,13 @@ module type WeakRelationalDomain = sig
   (** Assegnamento astratto: aggiorna la DBM a seguito dell'istruzione x := e.
       Gestisce sia assegnamenti esatti (costanti, traslazioni x := x + c)
       sia assegnamenti affini approssimati tramite intervalli *)
-  val assign_const : int -> int -> t -> t (*done*)
-  val assign_var_offset : int -> int -> int -> t -> t (*done*)
+  val assign_const : ide -> int -> t -> t (*done*)
 
-  val shift_var : int -> int -> t -> t (*done*)
+  val assign_var_offset : ide -> ide -> int -> t -> t (*done*)
+
+  val assign : ide -> value -> t -> t 
+
+  val shift_var : ide -> int -> t -> t (*done*)
 
   (** Forget / Reset: rimuove tutti i vincoli che coinvolgono la variabile x.
       Richiede la chiusura preventiva della DBM prima di impostare riga e colonna a +infinity *)
@@ -691,6 +694,8 @@ module type WeakRelationalDomain = sig
   val mul    : value -> value -> value
   val div    : value -> value -> value
   val negate : value -> value
+
+  val resolve_index : (ide * int)list  -> ide -> int
 
   val to_string : t -> string
   val string_of_value : value -> string
@@ -718,12 +723,12 @@ module Zones : WeakRelationalDomain = struct
 
   let copy_matrix m = Array.map Array.copy m
   (* ottieni index della x *)
-  (* let index_of env x = try Some (List.assoc x env) with Not_found -> None
+  let index_of env x = try Some (List.assoc x env) with Not_found -> None
  
   let resolve_index env x =
     match index_of env x with
     | Some i -> i
-    | None -> failwith (Printf.sprintf "Zones: variabile '%s' non dichiarata" x) *)
+    | None -> failwith (Printf.sprintf "Zones: variabile '%s' non dichiarata" x)
 
   let init (vars : ide list) : t =
     (* 1. Ordino la lista ed elimino i duplicati *)
@@ -857,20 +862,40 @@ module Zones : WeakRelationalDomain = struct
     close_dbm (Env dbm)
     
   (* modella assegnazioni di vincoli del tipo Vj = Vi + c *)
-  let assign_var_offset i j c env = match forget i env with
+  let assign_var_offset ide1 ide2 c env = 
+    match env with
     | Bottom -> Bottom
     | Env dbm -> 
-      dbm.matrix.(j).(i) <- Int c;
-      dbm.matrix.(i).(j) <- Int (-c);
-      close_dbm (Env dbm )
+      let i = resolve_index dbm.env ide1 in
+      let j = if ide2 = "const" then 0 else resolve_index dbm.env ide2 in 
+      match forget i env with
+      | Bottom -> Bottom
+      | Env dbm -> 
+        dbm.matrix.(j).(i) <- Int c;
+        dbm.matrix.(i).(j) <- Int (-c);
+        close_dbm (Env dbm )
   
   (* modella assegnazioni di vincoli del tipo Vj = c *)
-  let assign_const i c env = assign_var_offset i 0 c env
+  let assign_const ide c env = assign_var_offset ide "const" c env
+
+  let assign ide value env = match env,value with
+  | Bottom,_ | _,Shared_arithmetic.IntervalArith.Bottom -> Bottom
+  | Env dbm, Interval(lo,hi) -> 
+    let i = resolve_index dbm.env ide in 
+    match forget i env with
+    | Bottom -> Bottom
+    | Env dbm' ->
+      dbm'.matrix.(i).(0) <- hi;              (* x <= hi *)
+      dbm'.matrix.(0).(i) <- neg_bound lo;     (* v0 - x <= -lo, cioè x >= lo *)
+      close_dbm (Env dbm')
+
+
   (* modella assegnazioni di vincoli del tipo Vj = Vj + c *)
-  let shift_var i c env = match env with
+  let shift_var ide c env = match env with
   | Bottom -> Bottom
   | Env dbm ->
-    let new_m = copy_matrix dbm.matrix in 
+    let new_m = copy_matrix dbm.matrix in
+    let i = resolve_index dbm.env ide  in 
     for k = 0 to dbm.n do 
       if k <> i then begin 
         new_m.(k).(i) <- add_bound new_m.(k).(i) (Int c );
@@ -881,12 +906,38 @@ module Zones : WeakRelationalDomain = struct
 
   let string_of_value valore = to_string valore
 
-  let to_string env = failwith "not implemented"
-  let print env = failwith "not implemented"
+  (* let to_string env = failwith "not implemented" *)
+  let print env = failwith "print not implemented"
 
   let abstract_int x = Interval(Int(x),Int(x))
   let abstract_range x y = if x > y then Interval(Int(y),Int(x)) else Interval(Int(x),Int(y))
 
-  let retrieve_variable id env = failwith "retrieve var not implemented"
+  let retrieve_variable ide env = match env with
+  | Bottom -> Shared_arithmetic.IntervalArith.Bottom
+  | Env dbm -> 
+    let idx = resolve_index dbm.env ide in
+    let lo  = neg_bound(dbm.matrix.(0).(idx)) in
+    let hi = dbm.matrix.(idx).(0) in
+    Interval(lo,hi)
 
+    let to_string t = match t with
+  | Bottom -> "Bottom"
+  | Env dbm ->
+    let idx_to_name i =
+      if i = 0 then "v0"
+      else
+        match List.find_opt (fun (_, idx) -> idx = i) dbm.env with
+        | Some (ide, _) -> ide
+        | None -> "?"
+    in
+    let names = List.init (dbm.n + 1) idx_to_name in
+    let header = "\t" ^ String.concat "\t" names in
+    let rows =
+      List.init (dbm.n + 1) (fun i ->
+          let row_cells =
+            List.init (dbm.n + 1) (fun j -> bound_to_string dbm.matrix.(i).(j))
+          in
+          idx_to_name i ^ "\t" ^ String.concat "\t" row_cells)
+    in
+    header ^ "\n" ^ String.concat "\n" rows
 end

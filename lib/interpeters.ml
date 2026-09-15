@@ -234,6 +234,9 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
 end
 
 module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
+
+    let print_result env : unit = 
+        print_string ((D.to_string env) ^ "\n")
     
     let rec retrieve_var_from_exp (exp : exp) : ide list = 
         match exp with
@@ -262,20 +265,39 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
 
     let rec eval_exp (exp : exp) (env : D.t) : D.value = 
         match exp with
-        | Const c -> D.abstract_int c
-        | Var x -> 
-            if D.is_bottom env then failwith "Bottom"
-            else D.retrieve_variable x env 
         | BinaryOperation(e1,Add,e2) -> D.sum (eval_exp e1 env) (eval_exp e2 env)
         | BinaryOperation(e1,Sub,e2) -> D.sum (eval_exp e1 env) ((eval_exp (UnaryOperation(Negation,e2)) env))
         | BinaryOperation(e1,Mul,e2) -> D.mul (eval_exp e1 env) (eval_exp e2 env)
         | BinaryOperation(e1,Div,e2) -> D.div (eval_exp e1 env) (eval_exp e2 env)
         | UnaryOperation(Negation,e) -> D.negate (eval_exp e env)
-        | _ -> D.abstract_int 0
+        | Random(a,b) -> D.abstract_range a b
+        | Const c -> D.abstract_int c
+        | Var x -> 
+            if D.is_bottom env then failwith "Devo pensare a cosa far ritornare"
+            else D.retrieve_variable x env 
 
     let eval_cond (cond : cond) (env : D.t) : D.t = failwith "cond not implemented"
 
-    let eval_cmd (cmd : cmd) (env : D.t) : D.t = failwith "cmd not implemented"
+    let rec eval_cmd (cmd : cmd) (env : D.t) : D.t = 
+        match cmd with
+        | Assign(ide,Const(c)) ->
+            D.assign_const ide c env
+        | Assign(ide,Var(x)) -> 
+            if ide = x then env (*se sto assegnando x a sè stessa non devo aggiungere vincoli*)
+            else D.assign_var_offset ide x 0 env
+        | Assign(ide,BinaryOperation(Var(x),Add,Const c)) -> 
+            if ide <> x then D.assign_var_offset ide x c env (*se non sto assegnando x a sè stessa devo fare qualcosa che devo ancora capire*)
+            else D.shift_var ide c env
+        | Assign(ide,exp) -> 
+            let v = eval_exp exp env in 
+            D.assign ide v env
+        | Sequence(c1,c2) -> 
+            let env1  = eval_cmd c1 env in  (* Valuto il primo memorizzando l'ambiente risultante *)
+            eval_cmd c2 env1  (* Valuto il secondo utilizzando l'ambiente risultante dalla valutazione del primo *)
+        | Filter(cd) -> eval_cond cd env
+        | Skip -> env
+        | If(cd,thencmd,elsecmd) -> failwith "if not implemented"
+        | While(cd,c) -> failwith "While not implemented"
 
     let init var_list = D.init var_list 
     let eval (prog: cmd) : D.t = 
