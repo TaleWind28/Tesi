@@ -625,38 +625,17 @@ end
 
 (*Dominio degli Intervalli*)
 module Intervals = struct
-  include Shared_arithmetic
-  type bound = NegInf | Int of int | PosInf 
-  type t = Interval of bound * bound | Bottom
+  include Shared_arithmetic.IntervalArith
+  type t = value
 
-  
   let abstract_int n = Interval (Int n,Int n)
 
   let abstract_range c1 c2 = 
   if c1 > c2 then Interval (Int c2, Int c1)
   else if c2 > c1 then Interval (Int c1, Int c2)
   else abstract_int c1
-
-  let bound_to_string bound = match bound with
-  | NegInf -> "-Inf"
-  | Int(n) -> string_of_int n
-  | PosInf -> "+Inf" 
-  let to_string t = match t with
-  | Bottom -> "Bottom"
-  | Interval (b1,b2)-> 
-    Printf.sprintf "[%s, %s]" (bound_to_string b1) (bound_to_string b2)
   let bottom = Bottom
   let top = Interval (NegInf,PosInf)
-
-  let next_bound bound = match bound with
-  | NegInf -> NegInf
-  | PosInf -> PosInf
-  | Int n -> Int (n+1)
-
-  let prev_bound bound = match bound with
-    | NegInf -> NegInf
-    | PosInf -> PosInf
-    | Int n -> Int (n-1)
 
   let filter_rel comp value = match value with
   | Bottom -> Bottom
@@ -668,126 +647,6 @@ module Intervals = struct
     | BiggerEquals -> Interval(l,PosInf)
     | Smaller ->  Interval(NegInf ,(prev_bound u))
     | SmallerEquals -> Interval(NegInf,u)
-
-
-  let min_bound x y = match x,y with
-  | _,NegInf | NegInf,_ -> NegInf
-  | PosInf,a | a,PosInf -> a
-  | Int a, Int b -> Int( min a b)
-
-  let max_bound x y = match x,y with
-  | _,PosInf | PosInf,_ -> PosInf
-  | NegInf,a | a,NegInf -> a
-  | Int a, Int b -> Int( max a b)
-
-  let compare_bound c1 c2 = match c1,c2 with
-  | x,y when x = y -> 0
-  | NegInf,_ | _,PosInf -> -1
-  | _,NegInf | PosInf,_ -> 1
-  | Int x, Int y -> compare x y
-
-  let leq  c1 c2 = match c1,c2 with
-    |Bottom,_ -> true
-    |_,Bottom -> false
-    |Interval (a,b), Interval(c,d)-> compare_bound a c >= 0 && compare_bound d b >= 0
-
-  let compare_type x y =  match x,y with
-    | Bottom,_ -> -1
-    | _,Bottom -> 1
-    | Interval(a,b),Interval(c,d) -> 
-      if compare_bound a b = 0 && compare_bound a c = 0 
-       && compare_bound b d = 0 && compare_bound c d = 0 then 0
-      (* singleton coincidenti: a=b=c=d *)
-      else if compare_bound a d > 0 then 1   (* minimo di x supera massimo di y *)
-      else if compare_bound b c < 0 then -1  (* massimo di x è sotto il minimo di y *)
-      else 2   
-    
-  let lub c1 c2 = match c1,c2 with 
-    | Bottom,x | x,Bottom -> x
-    | Interval(a,b), Interval(c,d) -> Interval(min_bound a c ,max_bound b d )
-
-  let widen c1 c2 = match c1,c2 with
-  | Bottom,x | x,Bottom -> x
-  | Interval(a,b), Interval(c,d) -> 
-    let min = if compare_bound a c <= 0 then a else NegInf in 
-    let max = if compare_bound d b <= 0 then b else PosInf in
-    Interval(min,max)
-
-  let narrow x y = if leq y x then y else x
-
-  let glb c1 c2 = match c1,c2 with
-  | Bottom,_ | _,Bottom -> Bottom
-  | Interval(a,b) , Interval(c,d) -> 
-    let lo = max_bound a c in 
-    let hi = min_bound b d in 
-    if compare_bound lo hi > 0 then Bottom else Interval(lo, hi) 
-
-  (*Helper*)
-  let add_bound a b = match a,b with 
-    | PosInf,NegInf | NegInf,PosInf -> PosInf (*dovrebbe dare bottom*)
-    | PosInf,_ | _,PosInf -> PosInf
-    | NegInf,_ | _,NegInf -> NegInf
-    | Int a, Int b -> Int (a+b)
-
-  
-  let mul_bound x y = match x,y with
-  | Int x, Int y -> Int( x* y)
-  | NegInf, NegInf | PosInf,PosInf -> PosInf
-  | NegInf,PosInf | PosInf,NegInf -> NegInf
-  | Int 0, _ | _, Int 0 -> Int 0
-  | Int x, PosInf | PosInf, Int x -> if x>= 0 then PosInf else NegInf
-  | Int x, NegInf | NegInf, Int x -> if x>= 0 then NegInf else PosInf
-  
-  let mul_helper a b c d = 
-    let p1 = mul_bound a c in
-    let p2 = mul_bound a d in
-    let p3 = mul_bound b c in
-    let p4 = mul_bound b d in 
-    
-    Interval (min_bound (min_bound p1 p2) (min_bound p3 p4), max_bound (max_bound p1 p2) (max_bound p3 p4) )
-  
-
-  let div_bound x y = match x,y with
-  | Int 0,_ -> Int 0
-  | _,Int 0 -> PosInf
-  | _,PosInf | _,NegInf -> Int 0
-  | PosInf, Int b -> if b > 0 then PosInf else NegInf
-  | NegInf, Int b -> if b > 0 then NegInf else PosInf 
-  | Int a, Int b -> Int (a/b)
-
-
-  let neg_bound = function
-    | PosInf -> NegInf 
-    | NegInf -> PosInf
-    | Int n -> Int (-n)
-
-  let sum c1 c2 = match c1, c2 with
-    |Bottom,_ | _,Bottom -> Bottom
-    | Interval(a,b),Interval(c,d) -> 
-      Interval (add_bound a c,add_bound b d)
-  
-  let negate = function 
-    |Bottom -> Bottom
-    | Interval(a,b) -> Interval(neg_bound b,neg_bound a)
-
-  let mul c1 c2 = match c1,c2 with
-    | Bottom,_ | _,Bottom -> Bottom
-    | Interval(a,b),Interval(c,d) -> mul_helper a b c d
-
-  let rec div c1 c2 = 
-    let div_helper a b c d = 
-      let p1 = glb (Interval(c,d)) (Interval(Int 1,PosInf)) in 
-      let p2 = glb (Interval(c,d)) (Interval(NegInf,Int (-1))) in 
-      let p3 = Interval(a,b) in 
-      let r1 = div p3 p1 in 
-      let r2 = div p3 p2 in
-      lub r1 r2 in  
-    match c1,c2 with
-    | Bottom,_ | _,Bottom -> Bottom
-    | Interval(a,b), Interval(c,d) -> 
-      if c >= Int 1 then Interval(min_bound (div_bound a c) (div_bound a d), max_bound (div_bound b c) (div_bound b d))
-      else if d <= Int(-1) then  Interval(min_bound (div_bound b c) (div_bound b d), max_bound (div_bound a c) (div_bound a d))
-      else div_helper a b c d
 end 
 
 (* Domini Relazionali *)
@@ -839,8 +698,7 @@ module type WeakRelationalDomain = sig
 end
 
 module Zones : WeakRelationalDomain = struct
-  type bound = NegInf |Int of int | PosInf
-  type value = Interval of bound*bound
+  include Shared_arithmetic.IntervalArith
   type dbm = 
   {
     n : int; 
@@ -887,12 +745,6 @@ module Zones : WeakRelationalDomain = struct
     done;
     create_type_dbm n env matrix
 
-  let b_add b1 b2 = 
-    match b1,b2 with
-    | PosInf,_ | _,PosInf -> PosInf
-    | Int x, Int y -> Int (x+y) 
-    | NegInf,_ | _,NegInf -> NegInf
-
   let b_leq b1 b2 = 
     match b1, b2 with
     | NegInf, _ -> true
@@ -900,30 +752,6 @@ module Zones : WeakRelationalDomain = struct
     | PosInf, Int _ -> false
     |_, PosInf -> true
     | _ -> false
-  let b_min b1 b2 = 
-    match b1,b2 with
-    | NegInf,_ | _,NegInf -> NegInf
-    | Int x, Int y -> Int (min x y)
-    | PosInf, b | b, PosInf -> b
-
-  let b_max b1 b2 = 
-    match b1,b2 with
-    | Int x, Int y -> Int (max x y)
-    | PosInf, _ | _, PosInf -> PosInf
-    | NegInf, b |b,NegInf -> b
-  let compare_bound c1 c2 = match c1,c2 with
-    | x,y when x = y -> 0
-    | NegInf,_ | _,PosInf -> -1
-    | _,NegInf | PosInf,_ -> 1
-    | Int x, Int y -> compare x y
-  let b_lub c1 c2 = match c1,c2 with 
-      | Interval(a,b), Interval(c,d) -> Interval(b_min a c ,b_max b d )
-
-  let b_glb c1 c2 : value = match c1,c2 with
-    | Interval(a,b) , Interval(c,d) -> 
-      let lo = b_max a c in 
-      let hi = b_min b d in 
-      if compare_bound lo hi > 0 then Interval(PosInf, NegInf) else Interval(lo, hi) 
 
   (* Algoritmo di chiusura della DBM *)
   let close_dbm env = match env with
@@ -987,7 +815,7 @@ module Zones : WeakRelationalDomain = struct
       *) 
       let maxmat = 
       Array.map2 (
-        fun rigam rigan -> Array.map2 b_max rigam rigan
+        fun rigam rigan -> Array.map2 max_bound rigam rigan
       ) m1.matrix n1.matrix in
       close_dbm (create_type_dbm m1.n m1.env maxmat)
 
@@ -1001,7 +829,7 @@ module Zones : WeakRelationalDomain = struct
       *) 
       let minmat = 
       Array.map2 (
-        fun rigam rigan -> Array.map2 b_min rigam rigan
+        fun rigam rigan -> Array.map2 min_bound rigam rigan
       ) m1.matrix n1.matrix in
       close_dbm (create_type_dbm m1.n m1.env minmat)
   let widen m n = failwith "not implemented"
@@ -1025,7 +853,7 @@ module Zones : WeakRelationalDomain = struct
   | Bottom -> Bottom
   | Env dbm -> 
     let new_m = copy_matrix dbm.matrix in 
-    new_m.(i).(j) <- b_min new_m.(i).(j) (Int (c));
+    new_m.(i).(j) <- min_bound new_m.(i).(j) (Int (c));
     close_dbm (Env dbm)
     
   (* modella assegnazioni di vincoli del tipo Vj = Vi + c *)
@@ -1045,21 +873,13 @@ module Zones : WeakRelationalDomain = struct
     let new_m = copy_matrix dbm.matrix in 
     for k = 0 to dbm.n do 
       if k <> i then begin 
-        new_m.(k).(i) <- b_add new_m.(k).(i) (Int c );
-        new_m.(i).(k) <- b_add new_m.(i).(k) (Int(-c));
+        new_m.(k).(i) <- add_bound new_m.(k).(i) (Int c );
+        new_m.(i).(k) <- add_bound new_m.(i).(k) (Int(-c));
       end
     done;
     create_type_dbm dbm.n dbm.env new_m
 
-  let string_of_bound = function
-  | NegInf -> "-inf"
-  | PosInf -> "+inf"
-  | Int n  -> string_of_int n
-
-  let string_of_value valore =
-    match valore with
-    | Interval (lo,hi) -> 
-      Printf.sprintf "[%s, %s]" (string_of_bound lo) (string_of_bound hi)
+  let string_of_value valore = to_string valore
 
   let to_string env = failwith "not implemented"
   let print env = failwith "not implemented"
@@ -1068,54 +888,5 @@ module Zones : WeakRelationalDomain = struct
   let abstract_range x y = if x > y then Interval(Int(y),Int(x)) else Interval(Int(x),Int(y))
 
   let retrieve_variable id env = failwith "retrieve var not implemented"
-  let sum c1 c2 = match c1, c2 with
-    | Interval(a,b),Interval(c,d) -> Interval (b_add a c,b_add b d)
 
-  let mul_bound x y = match x,y with
-  | Int x, Int y -> Int( x* y)
-  | NegInf, NegInf | PosInf,PosInf -> PosInf
-  | NegInf,PosInf | PosInf,NegInf -> NegInf
-  | Int 0, _ | _, Int 0 -> Int 0
-  | Int x, PosInf | PosInf, Int x -> if x>= 0 then PosInf else NegInf
-  | Int x, NegInf | NegInf, Int x -> if x>= 0 then NegInf else PosInf
-  
-  let mul_helper a b c d = 
-    let p1 = mul_bound a c in
-    let p2 = mul_bound a d in
-    let p3 = mul_bound b c in
-    let p4 = mul_bound b d in 
-    Interval (b_min (b_min p1 p2) (b_min p3 p4), b_max (b_max p1 p2) (b_max p3 p4) )
-  
-  let mul b1 b2 = match b1,b2 with
-  | Interval(a,b),Interval(c,d)-> mul_helper a b c d
-  let div_bound x y = match x,y with
-  | Int 0,_ -> Int 0
-  | _,Int 0 -> PosInf
-  | _,PosInf | _,NegInf -> Int 0
-  | PosInf, Int b -> if b > 0 then PosInf else NegInf
-  | NegInf, Int b -> if b > 0 then NegInf else PosInf 
-  | Int a, Int b -> Int (a/b)
-
-  let rec div c1 c2 : value= 
-    let div_helper a b c d = 
-      let p1 = b_glb (Interval(c,d)) (Interval(Int 1,PosInf)) in 
-      let p2 = b_glb (Interval(c,d)) (Interval(NegInf,Int (-1))) in 
-      let p3 = Interval(a,b) in 
-      let r1 = div p3 p1 in 
-      let r2 = div p3 p2 in
-      b_lub r1 r2 in  
-    match c1,c2 with
-    | Interval(a,b), Interval(c,d) -> 
-      if c >= Int 1 then Interval(b_min (div_bound a c) (div_bound a d), b_max (div_bound b c) (div_bound b d))
-      else if d <= Int(-1) then  Interval(b_min (div_bound b c) (div_bound b d), b_max (div_bound a c) (div_bound a d))
-      else div_helper a b c d
-
-  let neg_bound = function
-  | PosInf -> NegInf 
-  | NegInf -> PosInf
-  | Int n -> Int (-n)
-
-  let negate b1= match b1 with
-  | Interval(a,b) -> Interval(neg_bound b,neg_bound a)
-  
 end

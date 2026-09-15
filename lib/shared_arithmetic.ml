@@ -28,7 +28,7 @@ module IntervalArith = struct
     | PosInf -> PosInf
     | Int n -> Int (n-1)
 
-  (* let filter_rel comp value = match value with
+(* let filter_rel comp value = match value with
   | Bottom -> Bottom
   | Interval(l,u) ->
     match comp with 
@@ -37,9 +37,8 @@ module IntervalArith = struct
     | Bigger -> Interval(next_bound l,PosInf) 
     | BiggerEquals -> Interval(l,PosInf)
     | Smaller ->  Interval(NegInf ,(prev_bound u))
-    | SmallerEquals -> Interval(NegInf,u) *)
-
-
+    | SmallerEquals -> Interval(NegInf,u) 
+  *)
   let min_bound x y = match x,y with
   | _,NegInf | NegInf,_ -> NegInf
   | PosInf,a | a,PosInf -> a
