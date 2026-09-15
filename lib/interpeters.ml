@@ -260,19 +260,34 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | Filter(cd) -> retrieve_var_from_cond cd
         | Assign(ide,e1) -> ide :: retrieve_var_from_exp e1
 
-    let eval_exp (exp : exp) (env : D.t) : D.t = failwith "not implemented"
+    let rec eval_exp (exp : exp) (env : D.t) : D.value = 
+        match exp with
+        | Const c -> D.abstract_int c
+        | Var x -> 
+            if D.is_bottom env then failwith "Bottom"
+            else D.retrieve_variable x env 
+        | BinaryOperation(e1,Add,e2) -> D.sum (eval_exp e1 env) (eval_exp e2 env)
+        | BinaryOperation(e1,Sub,e2) -> D.sum (eval_exp e1 env) ((eval_exp (UnaryOperation(Negation,e2)) env))
+        | BinaryOperation(e1,Mul,e2) -> D.mul (eval_exp e1 env) (eval_exp e2 env)
+        | BinaryOperation(e1,Div,e2) -> D.div (eval_exp e1 env) (eval_exp e2 env)
+        | UnaryOperation(Negation,e) -> D.negate (eval_exp e env)
+        | _ -> D.abstract_int 0
 
-    let eval_cond (cond : cond) (env : D.t) : D.t = failwith "not implemented"
+    let eval_cond (cond : cond) (env : D.t) : D.t = failwith "cond not implemented"
 
-    let eval_cmd (cmd : cmd) (env : D.t) : D.t = failwith "not implemented"
+    let eval_cmd (cmd : cmd) (env : D.t) : D.t = failwith "cmd not implemented"
 
+    let init var_list = D.init var_list 
     let eval (prog: cmd) : D.t = 
         (* Raccoglie la lista variabili del programma dall'albero di sintassi astratta*)
         let var_list  = get_all_var prog in
         (* Crea lo stato iniziale *)
-        let initial_env = D.init var_list in
+        let initial_env = init var_list in
         (* Valuta il programma *)
         eval_cmd prog initial_env
+
+    let print_value result = print_endline (D.string_of_value result)
+
 end
 
 (* Domini Non-Relazionali *)

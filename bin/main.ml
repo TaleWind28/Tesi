@@ -53,3 +53,6 @@ let test_extraction test () =
 (* Invocazione *)
 let () = test_extraction test_completo()
 let () = test_extraction test_prog ()
+let () = 
+let exp = ZoneInterp.eval_exp(BinaryOperation(Const(5),Sub,Const(-3))) (ZoneInterp.init []) in 
+  ZoneInterp.print_value exp
