@@ -274,18 +274,21 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         (* Valuta il programma *)
         eval_cmd prog initial_env
 end
-(* Istanza concreta con il dominio dei segni *)
-module ExtendedSignInterp = NonRelationalAbsInterp (ExtendedSigns)
 
-module SimpleSignInterp = NonRelationalAbsInterp (SimpleSigns)
-
+(* Domini Non-Relazionali *)
+(* Dominio dei Segni *)
 module SignInterp = NonRelationalAbsInterp (Signs)
-
+(* Dominio Esteso dei Segni *)
+module ExtendedSignInterp = NonRelationalAbsInterp (ExtendedSigns)
+(* Dominio Semplice dei Segni *)
+module SimpleSignInterp = NonRelationalAbsInterp (SimpleSigns)
+(* Dominio Semplificato dei Segni *)
 module SimplifiedSignInterp = NonRelationalAbsInterp (SimplifiedSigns)
-
+(* Dominio Particolare dei Segni *)
 module StrangeSignInterp = NonRelationalAbsInterp (StrangeSigns)
-
 (* Istanza concreta con il dominio degli Intervalli *)
 module IntervalInterp = NonRelationalAbsInterp (Intervals)
 
+(* Domini Debolmente Relazionali *)
+(* Dominio delle Zone *)
 module ZoneInterp = WeakRelationalAbsInterp (Zones)

@@ -11,7 +11,7 @@ let test_prog =(
 )
 
 
-let () =
+(* let () =
   let risultato = ExtendedSignInterp.eval test_prog in
   print_string "ExtendedSigns\t";
   ExtendedSignInterp.outputStatePrinter risultato;;
@@ -29,7 +29,7 @@ let () =
   SimplifiedSignInterp.outputStatePrinter risultato;;
   print_string "Intervals\t";
   let risultato = IntervalInterp.eval test_prog in
-  IntervalInterp.outputStatePrinter risultato;;
+  IntervalInterp.outputStatePrinter risultato;; *)
 
   
 let test_completo =
@@ -42,12 +42,14 @@ let test_completo =
     Assign ("e", UnaryOperation (Negation, Var "f"))
   )
 
-let test_extraction () =
-  let vars = ZoneInterp.get_all_var test_completo in
+let test_extraction test () =
+  let vars = ZoneInterp.get_all_var test in
+  let sorted_var = List.sort_uniq compare vars in 
   Printf.printf
     "Variabili estratte (%d): [%s]\n"
-    (List.length vars)
-    (String.concat "; " vars)
+    (List.length sorted_var)
+    (String.concat "; " sorted_var)
 
 (* Invocazione *)
-let () = test_extraction ()
+let () = test_extraction test_completo()
+let () = test_extraction test_prog ()
