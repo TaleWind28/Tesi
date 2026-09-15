@@ -276,7 +276,47 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             if D.is_bottom env then failwith "Devo pensare a cosa far ritornare"
             else D.retrieve_variable x env 
 
-    let eval_cond (cond : cond) (env : D.t) : D.t = failwith "cond not implemented"
+        let negate_comp comp = match comp with
+    | Bigger -> SmallerEquals
+    | Smaller -> BiggerEquals
+    | BiggerEquals -> Smaller
+    | SmallerEquals -> Bigger
+    | Equals -> NotEquals
+    | NotEquals -> Equals
+
+    let inv_comp comp = match comp with
+    | Bigger -> Smaller
+    | Smaller -> Bigger
+    | BiggerEquals -> SmallerEquals
+    | SmallerEquals -> BiggerEquals
+    | Equals -> Equals
+    | NotEquals -> NotEquals
+
+    let rec negate_cond cd = match cd with
+    | Not cd -> cd
+    | Boolean b -> Boolean (not b)
+    | And (cd1,cd2) -> Or(negate_cond cd1,negate_cond cd2)
+    | Or (cd1, cd2) -> And(negate_cond cd1, negate_cond cd2)
+    | Comparison (e1,comp,e2) -> Comparison(e1,negate_comp comp ,e2)
+
+    let rec eval_cond (cond : cond) (env : D.t) : D.t = 
+        match cond with
+        | Boolean true -> env
+        | Boolean false -> D.bottom
+        | Not(cond) -> eval_cond (negate_cond cond) env
+        | And(cd1,cd2) -> 
+            let env' = eval_cond cd1 env in
+            eval_cond cd2 env'
+        | Or(cd1,cd2) -> 
+            let env1 = eval_cond cd1 env in
+            let env2 = eval_cond cd2 env in 
+            D.lub env1 env2
+        | Comparison(e1,comp,e2) -> 
+            (* let v1 = eval_exp e1 env in
+            let v2 = eval_exp e2 env in  *)
+            (* Se seguo il vecchio inteprete dovrei controllare la relazioentra i due valori secondo compare type *)
+            failwith "comparison not implemented"
+        | _ -> failwith "pattern non riconosciuto"
 
     let rec eval_cmd (cmd : cmd) (env : D.t) : D.t = 
         match cmd with
