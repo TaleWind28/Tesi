@@ -68,14 +68,13 @@ let test_cmds =
     Sequence(
     Assign("y",Const(3)),
     Filter(Comparison (Var "x", Equals ,Var("x") )
-    (* Assign("x",BinaryOperation(Var("x"),Add,Var("y")) *)
     )))
-     (* SequenceComparison (Var "d", Smaller, Const 5) *)
-  
+    
 (* Invocazione *)
 let () = test_extraction test_completo()
 let () = test_extraction test_cmds ()
 (* let () =  *)
 let () = print_string "Dominio delle Zone: \n";
 (* ZoneInterp.print_result (ZoneInterp.eval test_cmds);  *)
-ZoneInterp.print_result (ZoneInterp.eval test_completo);
+(* ZoneInterp.print_result (ZoneInterp.eval test_completo); *)
+ZoneInterp.print_result (ZoneInterp.eval test_prog)

@@ -211,10 +211,6 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
             | If(cond,thencmd,elsecmd) -> (* Istruzione Condizionale i cui rami then ed else vengono sempre valutati e successivamente tramite lub si restringe lo stato *)
                 let e1 = eval_cmd (Sequence(Filter(cond), thencmd)) (Env(Hashtbl.copy env)) in
                 let e2 = eval_cmd (Sequence(Filter(Not(cond)), elsecmd)) (Env(Hashtbl.copy env)) in
-                (* DEBUG *)
-                (* let () = match e1 with BottomEnv -> print_endline "e1 is Bottom" | Env _ -> print_endline "e1 is Env" in
-                let () = match e2 with BottomEnv -> print_endline "e2 is Bottom" | Env _ -> print_endline "e2 is Env" in *)
-                (* lub_env e1 e2 *)
                 lub_env e1 e2
                     
             | While(cond,cmd) -> (* Ciclo che tramite Least Fixpoint valuta  *)
@@ -361,7 +357,22 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             let env2 = eval_cmd (Sequence(Filter(Not(cond)), elsecmd)) env in
             D.lub env1 env2
             (* failwith "diomerda" *)
-        | While(cond,c) -> failwith "While not implemented"
+        | While(cond,cmd) -> 
+            let f x = D.lub env (eval_cmd cmd (eval_cond cond x)) in 
+            (* let lfp f =  *)
+                let rec kleene x = 
+                    let x' = D.widen x ( f x ) in 
+                    if D.leq x' x then x 
+                    else kleene x' 
+                in 
+                let post_fp = kleene env in 
+                let rec descend x = 
+                    let x' = D.narrow x (f x) in 
+                    if D.leq x x' then x 
+                    else descend x' in 
+                    let invariant = descend post_fp 
+                in 
+                    eval_cmd (Filter(Not(cond))) invariant
 
     let init var_list = D.init var_list 
     let eval (prog: cmd) : D.t = 

@@ -862,8 +862,34 @@ module Zones : WeakRelationalDomain = struct
         fun rigam rigan -> Array.map2 min_bound rigam rigan
       ) m1.matrix n1.matrix in
       close_dbm (create_type_dbm m1.n m1.env minmat)
-  let widen m n = failwith "not implemented"
-  let narrow m n = failwith "not implemented"
+  let widen m n = 
+    match normalize m, normalize n with
+    | Bottom,Bottom -> Bottom 
+    | Bottom,Env e | Env e ,Bottom -> Env e
+    | Env m1 , Env n1 -> 
+      let widen_bound bm bn = 
+        if b_leq bn bm then bm 
+        else PosInf
+      in let widen_mat = 
+        Array.map2(
+          fun rigam rigan -> Array.map2 widen_bound rigam rigan
+        ) m1.matrix n1.matrix
+      in close_dbm(create_type_dbm m1.n m1.env widen_mat)
+  let narrow m n = 
+    match normalize m, normalize n with
+    | Bottom,_ -> Bottom
+    | x,Bottom -> x
+    | Env m1, Env n1 -> 
+      let narrow_bound bm bn = 
+        match bm with
+        | PosInf -> bn 
+        | _ -> bm
+      in 
+      let narrow_mat = 
+        Array.map2(
+          fun rigam rigan -> Array.map2 narrow_bound rigam rigan
+        ) m1.matrix n1.matrix 
+      in close_dbm (create_type_dbm m1.n m1.env narrow_mat)
 
   (* Operazioni su valori di dbm *)
   (* Reset non deterministico *)
