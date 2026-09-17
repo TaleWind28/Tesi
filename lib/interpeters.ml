@@ -276,7 +276,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             if D.is_bottom env then failwith "Devo pensare a cosa far ritornare"
             else D.retrieve_variable x env 
 
-        let negate_comp comp = match comp with
+    let negate_comp comp = match comp with
     | Bigger -> SmallerEquals
     | Smaller -> BiggerEquals
     | BiggerEquals -> Smaller
@@ -299,6 +299,19 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
     | Or (cd1, cd2) -> And(negate_cond cd1, negate_cond cd2)
     | Comparison (e1,comp,e2) -> Comparison(e1,negate_comp comp ,e2)
 
+    let vincolize e1 e2 v1 v2 const env = 
+        let l1 = retrieve_var_from_exp e1 in 
+        let l2 = retrieve_var_from_exp e2 in 
+        let ide1 = if List.length l1 <> 1 then "const" else List.nth l1 0 in 
+        let ide2 = if List.length l2 <> 1 then "const" else List.nth l2 0 in 
+        let constV1 = D.string_of_value v1 in
+        let constV2 = D.string_of_value v2 in
+        match ide1,ide2 with
+        | "const","const" -> env
+        | x,"const" -> D.filter_rel x "const" 0 env
+        | "const",y -> D.filter_rel y "const" 0 env
+        | x,y -> D.filter_rel x y const env
+
     let rec eval_cond (cond : cond) (env : D.t) : D.t = 
         match cond with
         | Boolean true -> env
@@ -312,11 +325,21 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             let env2 = eval_cond cd2 env in 
             D.lub env1 env2
         | Comparison(e1,comp,e2) -> 
-            (* let v1 = eval_exp e1 env in
-            let v2 = eval_exp e2 env in  *)
-            (* Se seguo il vecchio inteprete dovrei controllare la relazioentra i due valori secondo compare type *)
-            failwith "comparison not implemented"
-        | _ -> failwith "pattern non riconosciuto"
+            let v1 = eval_exp e1 env in
+            let v2 = eval_exp e2 env in
+            let condition = D.compare_type v1 v2 env in
+            match comp, condition with
+            | Bigger, (1 | 2) ->
+                (* prendi il merda di valore *)
+                vincolize e1 e2 v1 v2 (-1) env  
+            | Smaller, (-1 | 2) -> vincolize e1 e2 v1 v2 (-1) env 
+            | BiggerEquals, (1 | 0| 2) -> vincolize e1 e2 v1 v2 (-1) env 
+            | SmallerEquals, (-1| 0 | 2) -> vincolize e1 e2 v1 v2 (-1) env 
+            | Equals, (0 | 2) -> 
+                let env' = vincolize e1 e2 v1 v2 (0) env in 
+                vincolize e1 e2 v2 v1 (0) env' 
+            | NotEquals, (-1 | 1 | 2) -> env
+            | _ -> D.bottom
 
     let rec eval_cmd (cmd : cmd) (env : D.t) : D.t = 
         match cmd with

@@ -39,24 +39,26 @@ let test_completo =
       Not (Comparison (Var "b", Bigger, Var "c"))
     ),
     Filter (Comparison (Var "d", Smaller, Const 5)),
-    Assign ("e", UnaryOperation (Negation, Var "f"))
+    Assign ("f", UnaryOperation (Negation, Var "e"))
   )
 
 let test_extraction test () =
   let vars = ZoneInterp.get_all_var test in
-  let sorted_var = List.sort_uniq compare vars in 
+  let sorted_vars = List.sort_uniq compare vars in 
   Printf.printf
     "Variabili estratte (%d): [%s]\n"
-    (List.length sorted_var)
-    (String.concat "; " sorted_var)
+    (List.length sorted_vars)
+    (String.concat "; " sorted_vars)
 
 let test_cmds = 
   Sequence(
     Assign("x",Const 4),
     Sequence(
     Assign("y",Const(-3)),
-    Assign("x",BinaryOperation(Var("x"),Add,Var("y"))
+    Filter(Comparison (Var "d", Smaller,BinaryOperation(Var("x"),Add,Var("y") ))
+    (* Assign("x",BinaryOperation(Var("x"),Add,Var("y")) *)
     )))
+     (* SequenceComparison (Var "d", Smaller, Const 5) *)
   
 (* Invocazione *)
 let () = test_extraction test_completo()

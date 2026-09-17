@@ -664,6 +664,8 @@ module type WeakRelationalDomain = sig
   val widen : t -> t -> t 
   val narrow : t -> t -> t
 
+  val compare_type :  value -> value -> t -> int
+
   val retrieve_variable : ide -> t -> value
 
   (** {4 Funzioni di Trasferimento} *)
@@ -685,7 +687,7 @@ module type WeakRelationalDomain = sig
 
   (** Filtro condizionale: raffina la DBM applicando la guardia c
       (es. vincoli di differenza Vj - Vi <= c o guardie unari Vi <= c) *)
-  val filter_rel : int -> int -> int -> t -> t (*done*)
+  val filter_rel : ide -> ide -> int -> t -> t (*done*)
 
   val abstract_int   : int -> value
   val abstract_range : int -> int -> value
@@ -712,8 +714,6 @@ module Zones : WeakRelationalDomain = struct
   }
   type t  = Bottom | Env of dbm
   let bottom = Bottom
-
-
 
   let create_type_dbm n env matrix = Env{n; env;matrix}
   
@@ -854,9 +854,11 @@ module Zones : WeakRelationalDomain = struct
       done;
       create_type_dbm dbm.n dbm.env dbm.matrix
 
-  let filter_rel i j c env = match env with
+  let filter_rel v1 v2 c env = match env with
   | Bottom -> Bottom
   | Env dbm -> 
+    let i = if v1 == "const" then 0 else resolve_index dbm.env v1 in
+    let j = if v2 == "const" then 0 else resolve_index dbm.env v2 in 
     let new_m = copy_matrix dbm.matrix in 
     new_m.(i).(j) <- min_bound new_m.(i).(j) (Int (c));
     close_dbm (Env dbm)
@@ -919,6 +921,8 @@ module Zones : WeakRelationalDomain = struct
     let lo  = neg_bound(dbm.matrix.(0).(idx)) in
     let hi = dbm.matrix.(idx).(0) in
     Interval(lo,hi)
+
+  let compare_type b1 b2 = failwith "compare type not implemented"
 
     let to_string t = match t with
   | Bottom -> "Bottom"
