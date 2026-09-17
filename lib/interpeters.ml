@@ -272,9 +272,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | UnaryOperation(Negation,e) -> D.negate (eval_exp e env)
         | Random(a,b) -> D.abstract_range a b
         | Const c -> D.abstract_int c
-        | Var x -> 
-            if D.is_bottom env then failwith "Devo pensare a cosa far ritornare"
-            else D.retrieve_variable x env 
+        | Var x -> D.retrieve_variable x env 
 
     let negate_comp comp = match comp with
     | Bigger -> SmallerEquals
@@ -316,8 +314,8 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
 
     let rec eval_cond (cond : cond) (env : D.t) : D.t = 
         match cond with
-        | Boolean true ->             print_string "passo\n";env
-        | Boolean false -> print_string "passo\n";D.bottom
+        | Boolean true -> env
+        | Boolean false -> D.bottom
         | Not(cond) -> eval_cond (negate_cond cond) env
         | And(cd1,cd2) -> 
             let env' = eval_cond cd1 env in
@@ -356,10 +354,14 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | Sequence(c1,c2) -> 
             let env1  = eval_cmd c1 env in  (* Valuto il primo memorizzando l'ambiente risultante *)
             eval_cmd c2 env1  (* Valuto il secondo utilizzando l'ambiente risultante dalla valutazione del primo *)
-        | Filter(cd) -> eval_cond cd env
+        | Filter(cond) -> eval_cond cond env
         | Skip -> env
-        | If(cd,thencmd,elsecmd) -> failwith "if not implemented"
-        | While(cd,c) -> failwith "While not implemented"
+        | If(cond,thencmd,elsecmd) -> 
+            let e1 = eval_cmd (Sequence(Filter(cond), thencmd)) env in
+            let e2 = eval_cmd (Sequence(Filter(Not(cond)), elsecmd)) env in
+            
+            (* failwith "diomerda" *)
+        | While(cond,c) -> failwith "While not implemented"
 
     let init var_list = D.init var_list 
     let eval (prog: cmd) : D.t = 

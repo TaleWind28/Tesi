@@ -925,8 +925,8 @@ module Zones : WeakRelationalDomain = struct
     let i = resolve_index dbm.env ide  in 
     for k = 0 to dbm.n do 
       if k <> i then begin 
-        new_m.(k).(i) <- add_bound new_m.(k).(i) (Int c );
-        new_m.(i).(k) <- add_bound new_m.(i).(k) (Int(-c));
+        new_m.(i).(k) <- add_bound new_m.(i).(k) (Int c );
+        new_m.(k).(i) <- add_bound new_m.(k).(i) (Int(-c));
       end
     done;
     create_type_dbm dbm.n dbm.env new_m
