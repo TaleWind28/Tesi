@@ -33,14 +33,26 @@ let () =
 
   
 let test_completo =
-  If (
-    And (
-      Comparison (Var "a", Equals, Const 0),
-      Not (Comparison (Var "b", Bigger, Var "c"))
-    ),
-    Filter (Comparison (Var "d", Smaller, Const 5)),
-    Assign ("f", UnaryOperation (Negation, Var "e"))
-  )
+  Sequence(
+    Assign("a",Const(0)),
+    Sequence(
+      Assign("b",Const(10)),
+      Sequence(
+        Assign("c",Const(20)),
+        Sequence(
+          Assign("d",Const(-10)),
+          Sequence(
+            Assign("e",Const(10)),
+                  If (
+                  And (
+                    Comparison (Var "a", Equals, Const 0),
+                    Not (Comparison (Var "b", Bigger, Var "c"))
+                  ),
+                  Filter (Comparison (Var "d", Smaller, Const 5)),(* then *)
+                  Assign ("f", UnaryOperation (Negation, Var "e"))(* else *)
+                )
+      )))))
+  
 
 let test_extraction test () =
   let vars = ZoneInterp.get_all_var test in
@@ -65,5 +77,5 @@ let () = test_extraction test_completo()
 let () = test_extraction test_cmds ()
 (* let () =  *)
 let () = print_string "Dominio delle Zone: \n";
-ZoneInterp.print_result (ZoneInterp.eval test_cmds); 
-(* let () = ZoneInterp.print_result (ZoneInterp.eval test_completo) *)
+(* ZoneInterp.print_result (ZoneInterp.eval test_cmds);  *)
+ZoneInterp.print_result (ZoneInterp.eval test_completo);

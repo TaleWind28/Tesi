@@ -212,8 +212,8 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
                 let e1 = eval_cmd (Sequence(Filter(cond), thencmd)) (Env(Hashtbl.copy env)) in
                 let e2 = eval_cmd (Sequence(Filter(Not(cond)), elsecmd)) (Env(Hashtbl.copy env)) in
                 (* DEBUG *)
-                let () = match e1 with BottomEnv -> print_endline "e1 is Bottom" | Env _ -> print_endline "e1 is Env" in
-                let () = match e2 with BottomEnv -> print_endline "e2 is Bottom" | Env _ -> print_endline "e2 is Env" in
+                (* let () = match e1 with BottomEnv -> print_endline "e1 is Bottom" | Env _ -> print_endline "e1 is Env" in
+                let () = match e2 with BottomEnv -> print_endline "e2 is Bottom" | Env _ -> print_endline "e2 is Env" in *)
                 (* lub_env e1 e2 *)
                 lub_env e1 e2
                     
@@ -357,9 +357,9 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | Filter(cond) -> eval_cond cond env
         | Skip -> env
         | If(cond,thencmd,elsecmd) -> 
-            let e1 = eval_cmd (Sequence(Filter(cond), thencmd)) env in
-            let e2 = eval_cmd (Sequence(Filter(Not(cond)), elsecmd)) env in
-            
+            let env1 = eval_cmd (Sequence(Filter(cond), thencmd)) env in
+            let env2 = eval_cmd (Sequence(Filter(Not(cond)), elsecmd)) env in
+            D.lub env1 env2
             (* failwith "diomerda" *)
         | While(cond,c) -> failwith "While not implemented"
 

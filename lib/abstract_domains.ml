@@ -836,7 +836,8 @@ module Zones : WeakRelationalDomain = struct
 
   let lub m n = (* m U n -> m* U n* -> min(leq) o t.c. y(m) U y(n) contenuto y(o)    *)
   match normalize m,normalize n with
-    | Bottom,_ | _,Bottom -> Bottom
+    | Bottom,Env e | Env e,Bottom -> Env e
+    | Bottom,Bottom -> Bottom
     | Env m1, Env n1 ->
       (* 
       map2 scorre contemporaneamente due array ed applica una funzione ai loro elementi 
