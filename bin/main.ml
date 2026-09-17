@@ -52,10 +52,10 @@ let test_extraction test () =
 
 let test_cmds = 
   Sequence(
-    Assign("x",Const 4),
+    Assign("x",Const (-4)),
     Sequence(
-    Assign("y",Const(-3)),
-    Filter(Comparison (Var "d", Smaller,BinaryOperation(Var("x"),Add,Var("y") ))
+    Assign("y",Const(3)),
+    Filter(Comparison (Var "x", Equals ,Var("x") )
     (* Assign("x",BinaryOperation(Var("x"),Add,Var("y")) *)
     )))
      (* SequenceComparison (Var "d", Smaller, Const 5) *)

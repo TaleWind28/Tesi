@@ -1,5 +1,6 @@
 (* Firma del dominio astratto *)
 open Syntax
+
 module type NonRelationalDomain = sig
   type t
   val top    : t
@@ -699,6 +700,8 @@ module type WeakRelationalDomain = sig
 
   val resolve_index : (ide * int)list  -> ide -> int
 
+  val unpack_value : value -> bool -> int option
+
   val to_string : t -> string
   val string_of_value : value -> string
   val print : t -> unit
@@ -749,6 +752,27 @@ module Zones : WeakRelationalDomain = struct
       matrix.(i).(i) <- Int 0
     done;
     create_type_dbm n env matrix
+
+  let to_string t = match t with
+  | Bottom -> "Bottom"
+  | Env dbm ->
+    let idx_to_name i =
+      if i = 0 then "v0"
+      else
+        match List.find_opt (fun (_, idx) -> idx = i) dbm.env with
+        | Some (ide, _) -> ide
+        | None -> "?"
+    in
+    let names = List.init (dbm.n + 1) idx_to_name in
+    let header = "\t" ^ String.concat "\t" names in
+    let rows =
+      List.init (dbm.n + 1) (fun i ->
+          let row_cells =
+            List.init (dbm.n + 1) (fun j -> bound_to_string dbm.matrix.(i).(j))
+          in
+          idx_to_name i ^ "\t" ^ String.concat "\t" row_cells)
+    in
+    header ^ "\n" ^ String.concat "\n" rows
 
   let b_leq b1 b2 = 
     match b1, b2 with
@@ -857,11 +881,12 @@ module Zones : WeakRelationalDomain = struct
   let filter_rel v1 v2 c env = match env with
   | Bottom -> Bottom
   | Env dbm -> 
-    let i = if v1 == "const" then 0 else resolve_index dbm.env v1 in
-    let j = if v2 == "const" then 0 else resolve_index dbm.env v2 in 
-    let new_m = copy_matrix dbm.matrix in 
-    new_m.(i).(j) <- min_bound new_m.(i).(j) (Int (c));
-    close_dbm (Env dbm)
+    let i = if v1 = "const" then 0 else resolve_index dbm.env v1 in
+    let j = if v2 = "const" then 0 else resolve_index dbm.env v2 in 
+    let new_m = copy_matrix dbm.matrix in
+    new_m.(i).(j) <- min_bound new_m.(i).(j) (Int (c)); 
+    let temp_m = close_dbm (create_type_dbm dbm.n dbm.env new_m) in 
+    temp_m
     
   (* modella assegnazioni di vincoli del tipo Vj = Vi + c *)
   let assign_var_offset ide1 ide2 c env = 
@@ -873,8 +898,8 @@ module Zones : WeakRelationalDomain = struct
       match forget i env with
       | Bottom -> Bottom
       | Env dbm -> 
-        dbm.matrix.(j).(i) <- Int c;
-        dbm.matrix.(i).(j) <- Int (-c);
+        dbm.matrix.(i).(j) <- Int c;
+        dbm.matrix.(j).(i) <- Int (-c);
         close_dbm (Env dbm )
   
   (* modella assegnazioni di vincoli del tipo Vj = c *)
@@ -906,10 +931,17 @@ module Zones : WeakRelationalDomain = struct
     done;
     create_type_dbm dbm.n dbm.env new_m
 
-  let string_of_value valore = to_string valore
-
-  (* let to_string env = failwith "not implemented" *)
+  let string_of_value valore = Shared_arithmetic.IntervalArith.to_string valore
   let print env = failwith "print not implemented"
+
+  let unpack_value (value : value) (flag : bool) : int option = 
+    match value with
+    | Bottom -> None
+    | Interval (lo, hi) -> 
+      let b = if flag then hi else lo in
+      match b with
+      | Int x -> Some x
+      | PosInf | NegInf -> None
 
   let abstract_int x = Interval(Int(x),Int(x))
   let abstract_range x y = if x > y then Interval(Int(y),Int(x)) else Interval(Int(x),Int(y))
@@ -922,26 +954,5 @@ module Zones : WeakRelationalDomain = struct
     let hi = dbm.matrix.(idx).(0) in
     Interval(lo,hi)
 
-  let compare_type b1 b2 = failwith "compare type not implemented"
-
-    let to_string t = match t with
-  | Bottom -> "Bottom"
-  | Env dbm ->
-    let idx_to_name i =
-      if i = 0 then "v0"
-      else
-        match List.find_opt (fun (_, idx) -> idx = i) dbm.env with
-        | Some (ide, _) -> ide
-        | None -> "?"
-    in
-    let names = List.init (dbm.n + 1) idx_to_name in
-    let header = "\t" ^ String.concat "\t" names in
-    let rows =
-      List.init (dbm.n + 1) (fun i ->
-          let row_cells =
-            List.init (dbm.n + 1) (fun j -> bound_to_string dbm.matrix.(i).(j))
-          in
-          idx_to_name i ^ "\t" ^ String.concat "\t" row_cells)
-    in
-    header ^ "\n" ^ String.concat "\n" rows
+  let compare_type b1 b2 env = Shared_arithmetic.IntervalArith.compare_type b1 b2 
 end

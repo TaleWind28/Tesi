@@ -299,23 +299,25 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
     | Or (cd1, cd2) -> And(negate_cond cd1, negate_cond cd2)
     | Comparison (e1,comp,e2) -> Comparison(e1,negate_comp comp ,e2)
 
-    let vincolize e1 e2 v1 v2 const env = 
-        let l1 = retrieve_var_from_exp e1 in 
-        let l2 = retrieve_var_from_exp e2 in 
-        let ide1 = if List.length l1 <> 1 then "const" else List.nth l1 0 in 
-        let ide2 = if List.length l2 <> 1 then "const" else List.nth l2 0 in 
-        let constV1 = D.string_of_value v1 in
-        let constV2 = D.string_of_value v2 in
-        match ide1,ide2 with
-        | "const","const" -> env
-        | x,"const" -> D.filter_rel x "const" 0 env
-        | "const",y -> D.filter_rel y "const" 0 env
-        | x,y -> D.filter_rel x y const env
+    let filter_diff e1 e2 v1 v2 offset env =
+        let as_var = function Var x -> Some x | _ -> None in
+        match as_var e1, as_var e2 with
+        | Some x, Some y -> (*Var x vs Var y*)
+            D.filter_rel x y offset env
+        | Some x, None -> (*Var x vs valore*)
+            (match D.unpack_value v2 true with
+            | Some hi -> D.filter_rel x "const" (hi + offset) env
+            | None -> env)
+        | None, Some y -> (*valore vs Var y*)
+            (match D.unpack_value v1 false with
+            | Some lo -> D.filter_rel "const" y (-(lo - offset)) env
+            | None -> env)
+        | None, None -> env (*valore vs valore*)
 
     let rec eval_cond (cond : cond) (env : D.t) : D.t = 
         match cond with
-        | Boolean true -> env
-        | Boolean false -> D.bottom
+        | Boolean true ->             print_string "passo\n";env
+        | Boolean false -> print_string "passo\n";D.bottom
         | Not(cond) -> eval_cond (negate_cond cond) env
         | And(cd1,cd2) -> 
             let env' = eval_cond cd1 env in
@@ -329,16 +331,13 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             let v2 = eval_exp e2 env in
             let condition = D.compare_type v1 v2 env in
             match comp, condition with
-            | Bigger, (1 | 2) ->
-                (* prendi il merda di valore *)
-                vincolize e1 e2 v1 v2 (-1) env  
-            | Smaller, (-1 | 2) -> vincolize e1 e2 v1 v2 (-1) env 
-            | BiggerEquals, (1 | 0| 2) -> vincolize e1 e2 v1 v2 (-1) env 
-            | SmallerEquals, (-1| 0 | 2) -> vincolize e1 e2 v1 v2 (-1) env 
-            | Equals, (0 | 2) -> 
-                let env' = vincolize e1 e2 v1 v2 (0) env in 
-                vincolize e1 e2 v2 v1 (0) env' 
-            | NotEquals, (-1 | 1 | 2) -> env
+            | Smaller, (-1 | 2)           -> filter_diff e1 e2 v1 v2 (-1) env
+            | SmallerEquals, (-1 | 0 | 2) -> filter_diff e1 e2 v1 v2 0 env
+            | Bigger, (1 | 2)             -> filter_diff e2 e1 v2 v1 (-1) env
+            | BiggerEquals, (1 | 0 | 2)   -> filter_diff e2 e1 v2 v1 0 env
+            | Equals, (0 | 2)             ->
+                eval_cond (And (Comparison (e1, SmallerEquals, e2), Comparison (e2, SmallerEquals, e1))) env
+            | NotEquals, (-1 | 1 | 2)     -> env
             | _ -> D.bottom
 
     let rec eval_cmd (cmd : cmd) (env : D.t) : D.t = 
