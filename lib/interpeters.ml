@@ -356,7 +356,6 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             let env1 = eval_cmd (Sequence(Filter(cond), thencmd)) env in
             let env2 = eval_cmd (Sequence(Filter(Not(cond)), elsecmd)) env in
             D.lub env1 env2
-            (* failwith "diomerda" *)
         | While(cond,cmd) -> 
             let f x = D.lub env (eval_cmd cmd (eval_cond cond x)) in 
             (* let lfp f =  *)

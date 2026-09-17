@@ -457,6 +457,7 @@ module Make_Zone_Tests (E : EXPECTED_ZONES with type value = Abstract_domains.Zo
   ]
 
   (* ------------------------------------------------------------ *)
+  (* ------------------------------------------------------------ *)
   (* TEST FILTRI CONTRADDITTORI (ATTESO BOTTOM)                   *)
   (* ------------------------------------------------------------ *)
   let bottomtests = [
@@ -474,6 +475,137 @@ module Make_Zone_Tests (E : EXPECTED_ZONES with type value = Abstract_domains.Zo
       (Sequence (Assign ("x", Const 5), Filter (And (Comparison (Var "x", Bigger, Const 10), Comparison (Var "x", Smaller, Const 2)))));
   ]
 
+  (* ------------------------------------------------------------ *)
+  (* TEST ISTRUZIONI CONDIZIONALI (IF)                            *)
+  (* ------------------------------------------------------------ *)
+  let iftests = [
+    make_prog_case
+      ( "If certo vero: if (x > 0) y = 1 else y = -1",
+        Sequence (Assign ("x", Const 5), If (Comparison (Var "x", Bigger, Const 0), Assign ("y", Const 1), Assign ("y", Const (-1)))),
+        [ "x", E.if_true_x; "y", E.if_true_y ] );
+
+    make_prog_case
+      ( "If certo falso: if (x < 0) y = 1 else y = -1",
+        Sequence (Assign ("x", Const 5), If (Comparison (Var "x", Smaller, Const 0), Assign ("y", Const 1), Assign ("y", Const (-1)))),
+        [ "x", E.if_false_x; "y", E.if_false_y ] );
+
+    make_prog_case
+      ( "If ambiguo: x=Random(1,10); if (x <= 5) y = 1 else y = 2",
+        Sequence (Assign ("x", Random (1, 10)), If (Comparison (Var "x", SmallerEquals, Const 5), Assign ("y", Const 1), Assign ("y", Const 2))),
+        [ "y", E.if_ambig_y ] );
+
+    make_prog_case
+      ( "If ambiguo con range: x=Random(1,10); if (x <= 5) y = 10 else y = 20",
+        Sequence (Assign ("x", Random (1, 10)), If (Comparison (Var "x", SmallerEquals, Const 5), Assign ("y", Const 10), Assign ("y", Const 20))),
+        [ "y", E.if_ambig_range_y ] );
+
+    make_prog_case
+      ( "If con raffinamento variabile: x=Random(1,10); if (x <= 5) x = x+10 else x = x-5",
+        Sequence (
+          Assign ("x", Random (1, 10)),
+          If (
+            Comparison (Var "x", SmallerEquals, Const 5),
+            Assign ("x", BinaryOperation (Var "x", Add, Const 10)),
+            Assign ("x", BinaryOperation (Var "x", Add, Const (-5))))),
+        [ "x", E.if_refine_x ] );
+
+    make_prog_case
+      ( "If relazionale certo: x=10; y=20; if (x < y) z = 1 else z = 2",
+        Sequence (
+          Assign ("x", Const 10),
+          Sequence (
+            Assign ("y", Const 20),
+            If (Comparison (Var "x", Smaller, Var "y"), Assign ("z", Const 1), Assign ("z", Const 2)))),
+        [ "z", E.if_rel_true_z ] );
+
+    make_prog_case
+      ( "If relazionale ambiguo: x=Random(1,10); y=Random(1,10); if (x < y) k = 1 else k = 2",
+        Sequence (
+          Assign ("x", Random (1, 10)),
+          Sequence (
+            Assign ("y", Random (1, 10)),
+            If (Comparison (Var "x", Smaller, Var "y"), Assign ("k", Const 1), Assign ("k", Const 2)))),
+        [ "k", E.if_rel_ambig_k ] );
+
+    make_prog_case
+      ( "If annidato: x=5; if (x > 0) then (if (x < 10) y = 1 else y = 2) else y = 3",
+        Sequence (
+          Assign ("x", Const 5),
+          If (
+            Comparison (Var "x", Bigger, Const 0),
+            If (Comparison (Var "x", Smaller, Const 10), Assign ("y", Const 1), Assign ("y", Const 2)),
+            Assign ("y", Const 3))),
+        [ "y", E.if_nested_y ] );
+
+    make_prog_case
+      ( "If con assegnamento parziale: y=0; x=Random(1,5); if (x > 3) y = 7 else Skip",
+        Sequence (
+          Assign ("y", Const 0),
+          Sequence (
+            Assign ("x", Random (1, 5)),
+            If (Comparison (Var "x", Bigger, Const 3), Assign ("y", Const 7), Skip))),
+        [ "y", E.if_partial_assign_y ] );
+
+    expect_bottom "If con filtro falso prima dell'If"
+      (Sequence (Assign ("x", Const 5), Sequence (Filter (Boolean false), If (Boolean true, Assign ("y", Const 1), Assign ("y", Const 2)))));
+  ]
+
+  (* ------------------------------------------------------------ *)
+  (* TEST CICLI WHILE                                             *)
+  (* ------------------------------------------------------------ *)
+  let whiletests = [
+    make_prog_case
+      ( "While mai eseguito: x = 5; while (x < 0) x = x + 1",
+        Sequence (Assign ("x", Const 5), While (Comparison (Var "x", Smaller, Const 0), Assign ("x", BinaryOperation (Var "x", Add, Const 1)))),
+        [ "x", E.while_not_executed_x ] );
+
+    make_prog_case
+      ( "While incremento da negativo a zero: x = -5; while (x < 0) x = x + 1",
+        Sequence (Assign ("x", Const (-5)), While (Comparison (Var "x", Smaller, Const 0), Assign ("x", BinaryOperation (Var "x", Add, Const 1)))),
+        [ "x", E.while_inc_from_neg_x ] );
+
+    make_prog_case
+      ( "While incremento da zero a dieci: x = 0; while (x < 10) x = x + 1",
+        Sequence (Assign ("x", Const 0), While (Comparison (Var "x", Smaller, Const 10), Assign ("x", BinaryOperation (Var "x", Add, Const 1)))),
+        [ "x", E.while_inc_from_zero_x ] );
+
+    make_prog_case
+      ( "While decremento a zero: x = 10; while (x > 0) x = x - 1",
+        Sequence (Assign ("x", Const 10), While (Comparison (Var "x", Bigger, Const 0), Assign ("x", BinaryOperation (Var "x", Add, Const (-1))))),
+        [ "x", E.while_dec_to_zero_x ] );
+
+    make_prog_case
+      ( "While step 2: x = 0; while (x < 10) x = x + 2",
+        Sequence (Assign ("x", Const 0), While (Comparison (Var "x", Smaller, Const 10), Assign ("x", BinaryOperation (Var "x", Add, Const 2)))),
+        [ "x", E.while_step_two_x ] );
+
+    make_prog_case
+      ( "While relazionale tra due variabili: x = 0; y = 10; while (x < y) x = x + 1",
+        Sequence (
+          Assign ("x", Const 0),
+          Sequence (
+            Assign ("y", Const 10),
+            While (Comparison (Var "x", Smaller, Var "y"), Assign ("x", BinaryOperation (Var "x", Add, Const 1))))),
+        [ "x", E.while_relational_x; "y", E.while_relational_y ] );
+
+    make_prog_case
+      ( "While con invariante preservata: x = 0; y = 42; while (x < 5) x = x + 1",
+        Sequence (
+          Assign ("x", Const 0),
+          Sequence (
+            Assign ("y", Const 42),
+            While (Comparison (Var "x", Smaller, Const 5), Assign ("x", BinaryOperation (Var "x", Add, Const 1))))),
+        [ "x", E.while_invariant_x; "y", E.while_invariant_y ] );
+
+    make_prog_case
+      ( "While convergenza rapida: x = 5; while (x != 0) x = 0",
+        Sequence (Assign ("x", Const 5), While (Comparison (Var "x", NotEquals, Const 0), Assign ("x", Const 0))),
+        [ "x", E.while_fast_converge_x ] );
+
+    expect_bottom "While con filtro falso prima del ciclo"
+      (Sequence (Assign ("x", Const 5), Sequence (Filter (Boolean false), While (Comparison (Var "x", Smaller, Const 10), Assign ("x", Const 1)))));
+  ]
+
   let tests = [
     "Assegnamenti", assigntests;
     "Shift e Offset", shifttests;
@@ -482,6 +614,8 @@ module Make_Zone_Tests (E : EXPECTED_ZONES with type value = Abstract_domains.Zo
     "Skip", skiptests;
     "Filtri", filtertests;
     "Filtri Contraddittori (Bottom)", bottomtests;
+    "Istruzioni Condizionali", iftests;
+    "Cicli While", whiletests;
   ]
 end
 

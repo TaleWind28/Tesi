@@ -880,6 +880,31 @@ module type EXPECTED_ZONES = sig
   val filter_true_x : value
   val filter_not_x : value
   val filter_and_x : value
+
+  (* Istruzioni Condizionali (If) *)
+  val if_true_x : value
+  val if_true_y : value
+  val if_false_x : value
+  val if_false_y : value
+  val if_ambig_y : value
+  val if_ambig_range_y : value
+  val if_refine_x : value
+  val if_rel_true_z : value
+  val if_rel_ambig_k : value
+  val if_nested_y : value
+  val if_partial_assign_y : value
+
+  (* Cicli While *)
+  val while_not_executed_x : value
+  val while_inc_from_neg_x : value
+  val while_inc_from_zero_x : value
+  val while_dec_to_zero_x : value
+  val while_step_two_x : value
+  val while_relational_x : value
+  val while_relational_y : value
+  val while_invariant_x : value
+  val while_invariant_y : value
+  val while_fast_converge_x : value
 end
 
 module Expected_Zones : EXPECTED_ZONES with type value = Abstract_domains.Zones.value = struct
@@ -935,5 +960,30 @@ module Expected_Zones : EXPECTED_ZONES with type value = Abstract_domains.Zones.
   let filter_true_x = const 5
   let filter_not_x = const 5
   let filter_and_x = const 5
+
+  (* Istruzioni Condizionali (If) *)
+  let if_true_x = const 5
+  let if_true_y = const 1
+  let if_false_x = const 5
+  let if_false_y = const (-1)
+  let if_ambig_y = interval 1 2
+  let if_ambig_range_y = interval 10 20
+  let if_refine_x = interval 1 15
+  let if_rel_true_z = const 1
+  let if_rel_ambig_k = interval 1 2
+  let if_nested_y = const 1
+  let if_partial_assign_y = interval 0 7
+
+  (* Cicli While *)
+  let while_not_executed_x = const 5
+  let while_inc_from_neg_x = const 0
+  let while_inc_from_zero_x = const 10
+  let while_dec_to_zero_x = const 0
+  let while_step_two_x = interval 10 11
+  let while_relational_x = const 10
+  let while_relational_y = const 10
+  let while_invariant_x = const 5
+  let while_invariant_y = const 42
+  let while_fast_converge_x = const 0
 end
 
