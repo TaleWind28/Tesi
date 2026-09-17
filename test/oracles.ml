@@ -829,3 +829,111 @@ module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Inter
   let while_4_2 = interval 2 2
   let while_4_3 = interval (-3) 5
 end
+
+module type EXPECTED_ZONES = sig
+  type value
+
+  (* Assegnamenti Costanti *)
+  val assign_const_1 : value
+  val assign_const_2 : value
+  val assign_const_3 : value
+
+  (* Assegnamenti con Random *)
+  val assign_rand_1 : value
+  val assign_rand_2 : value
+
+  (* Assegnamenti tra variabili *)
+  val assign_var_1_x : value
+  val assign_var_1_y : value
+  val assign_var_rand_x : value
+  val assign_var_rand_y : value
+
+  (* Assegnamenti con offset / shift *)
+  val shift_pos : value
+  val shift_neg : value
+  val assign_var_offset_x : value
+  val assign_var_offset_y : value
+
+  (* Operazioni Aritmetiche *)
+  val binop_add : value
+  val binop_sub : value
+  val binop_mul : value
+  val binop_div : value
+  val unop_neg : value
+
+  (* Sequenze e Skip *)
+  val seq_x : value
+  val seq_y : value
+  val skip_val : value
+
+  (* Filtri e Raffinamento *)
+  val filter_refine_ub : value
+  val filter_refine_lb : value
+  val filter_refine_lt : value
+  val filter_refine_gt : value
+  val filter_rel_x : value
+  val filter_rel_y : value
+  val filter_expr_x : value
+  val filter_expr_y : value
+  val filter_eq_x : value
+  val filter_eq_y : value
+  val filter_true_x : value
+  val filter_not_x : value
+  val filter_and_x : value
+end
+
+module Expected_Zones : EXPECTED_ZONES with type value = Abstract_domains.Zones.value = struct
+  type value = Abstract_domains.Zones.value
+
+  let interval lo hi = Abstract_domains.Zones.abstract_range lo hi
+  let const c = Abstract_domains.Zones.abstract_int c
+
+  (* Assegnamenti Costanti *)
+  let assign_const_1 = const 5
+  let assign_const_2 = const (-5)
+  let assign_const_3 = const 0
+
+  (* Assegnamenti con Random *)
+  let assign_rand_1 = interval 1 10
+  let assign_rand_2 = interval (-5) 5
+
+  (* Assegnamenti tra variabili *)
+  let assign_var_1_x = const 5
+  let assign_var_1_y = const 5
+  let assign_var_rand_x = interval 1 5
+  let assign_var_rand_y = interval 1 5
+
+  (* Assegnamenti con offset / shift *)
+  let shift_pos = const 8
+  let shift_neg = const (-5)
+  let assign_var_offset_x = const 5
+  let assign_var_offset_y = const 7
+
+  (* Operazioni Aritmetiche *)
+  let binop_add = const 7
+  let binop_sub = const 8
+  let binop_mul = const 20
+  let binop_div = const 5
+  let unop_neg = const (-7)
+
+  (* Sequenze e Skip *)
+  let seq_x = const 1
+  let seq_y = const 2
+  let skip_val = const 42
+
+  (* Filtri e Raffinamento *)
+  let filter_refine_ub = interval 1 5
+  let filter_refine_lb = interval 6 10
+  let filter_refine_lt = interval 1 4
+  let filter_refine_gt = interval 6 10
+  let filter_rel_x = const 5
+  let filter_rel_y = const 3
+  let filter_expr_x = const 4
+  let filter_expr_y = const (-3)
+  let filter_eq_x = const 5
+  let filter_eq_y = const 5
+  let filter_true_x = const 5
+  let filter_not_x = const 5
+  let filter_and_x = const 5
+end
+

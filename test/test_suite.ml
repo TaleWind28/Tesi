@@ -324,6 +324,169 @@ module TestSuite_SimplifiedSigns = Make_Sign_Tests (Abstract_domains.SimplifiedS
 module TestSuite_StrangeSigns = Make_Sign_Tests (Abstract_domains.StrangeSigns) (Expected_StrangeSigns)
 module TestSuite_Intervals = Make_Sign_Tests (Abstract_domains.Intervals) (Expected_Intervals)
 
+module Make_Zone_Tests (E : EXPECTED_ZONES with type value = Abstract_domains.Zones.value) = struct
+  let zone_val_testable =
+    Alcotest.testable
+      (fun fmt v -> Format.fprintf fmt "%s" (Abstract_domains.Zones.string_of_value v))
+      (fun a b -> a = b)
+
+  let check_vars desc final_env expected_vars =
+    if Abstract_domains.Zones.is_bottom final_env then
+      Alcotest.fail (Printf.sprintf "%s: lo stato finale è Bottom inaspettatamente" desc)
+    else
+      List.iter
+        (fun (var, expected) ->
+          let v = Abstract_domains.Zones.retrieve_variable var final_env in
+          Alcotest.(check zone_val_testable) (desc ^ " - " ^ var) expected v)
+        expected_vars
+
+  let make_prog_case (desc, prog, expected_vars) =
+    (desc, `Quick, fun () -> check_vars desc (ZoneInterp.eval prog) expected_vars)
+
+  let expect_bottom desc prog =
+    ( desc,
+      `Quick,
+      fun () ->
+        let res = ZoneInterp.eval prog in
+        if not (Abstract_domains.Zones.is_bottom res) then
+          Alcotest.fail (Printf.sprintf "%s: atteso Bottom, ottenuto stato valido" desc) )
+
+  (* ------------------------------------------------------------ *)
+  (* TEST ASSEGNAMENTI                                            *)
+  (* ------------------------------------------------------------ *)
+  let assigntests = List.map make_prog_case [
+    "Assign costante positiva: x = 5", Assign ("x", Const 5), [ "x", E.assign_const_1 ];
+    "Assign costante negativa: x = -5", Assign ("x", Const (-5)), [ "x", E.assign_const_2 ];
+    "Assign zero: x = 0", Assign ("x", Const 0), [ "x", E.assign_const_3 ];
+    "Assign Random positivo: x = Random(1,10)", Assign ("x", Random (1, 10)), [ "x", E.assign_rand_1 ];
+    "Assign Random misto: x = Random(-5,5)", Assign ("x", Random (-5, 5)), [ "x", E.assign_rand_2 ];
+    "Assign tra variabili: x = 5; y = x",
+      Sequence (Assign ("x", Const 5), Assign ("y", Var "x")),
+      [ "x", E.assign_var_1_x; "y", E.assign_var_1_y ];
+    "Assign tra variabili con Random: x = Random(1,5); y = x",
+      Sequence (Assign ("x", Random (1, 5)), Assign ("y", Var "x")),
+      [ "x", E.assign_var_rand_x; "y", E.assign_var_rand_y ];
+  ]
+
+  (* ------------------------------------------------------------ *)
+  (* TEST SHIFT E OFFSET                                          *)
+  (* ------------------------------------------------------------ *)
+  let shifttests = List.map make_prog_case [
+    "Shift positivo: x = 5; x = x + 3",
+      Sequence (Assign ("x", Const 5), Assign ("x", BinaryOperation (Var "x", Add, Const 3))),
+      [ "x", E.shift_pos ];
+    "Shift negativo: x = 5; x = x + (-10)",
+      Sequence (Assign ("x", Const 5), Assign ("x", BinaryOperation (Var "x", Add, Const (-10)))),
+      [ "x", E.shift_neg ];
+    "Assign con offset tra due variabili: x = 5; y = x + 2",
+      Sequence (Assign ("x", Const 5), Assign ("y", BinaryOperation (Var "x", Add, Const 2))),
+      [ "x", E.assign_var_offset_x; "y", E.assign_var_offset_y ];
+  ]
+
+  let binoptests = List.map make_prog_case [
+    "BinOp Add: x=3; y=4; z=x+y",
+      Sequence (Assign ("x", Const 3), Sequence (Assign ("y", Const 4), Assign ("z", BinaryOperation (Var "x", Add, Var "y")))),
+      [ "z", E.binop_add ];
+    "BinOp Sub: x=10; y=2; z=x-y",
+      Sequence (Assign ("x", Const 10), Sequence (Assign ("y", Const 2), Assign ("z", BinaryOperation (Var "x", Sub, Var "y")))),
+      [ "z", E.binop_sub ];
+    "BinOp Mul: x=10; y=2; z=x*y",
+      Sequence (Assign ("x", Const 10), Sequence (Assign ("y", Const 2), Assign ("z", BinaryOperation (Var "x", Mul, Var "y")))),
+      [ "z", E.binop_mul ];
+    "BinOp Div: x=10; y=2; z=x/y",
+      Sequence (Assign ("x", Const 10), Sequence (Assign ("y", Const 2), Assign ("z", BinaryOperation (Var "x", Div, Var "y")))),
+      [ "z", E.binop_div ];
+    "UnOp Negation: x=7; y=-x",
+      Sequence (Assign ("x", Const 7), Assign ("y", UnaryOperation (Negation, Var "x"))),
+      [ "y", E.unop_neg ];
+  ]
+
+  (* ------------------------------------------------------------ *)
+  (* TEST SEQUENZE E SKIP                                         *)
+  (* ------------------------------------------------------------ *)
+  let sequencetests = List.map make_prog_case [
+    "Sequence: x = 1; y = 2",
+      Sequence (Assign ("x", Const 1), Assign ("y", Const 2)),
+      [ "x", E.seq_x; "y", E.seq_y ];
+    "Skip in sequenza: x = 42; Skip",
+      Sequence (Assign ("x", Const 42), Skip),
+      [ "x", E.skip_val ];
+  ]
+
+  let skiptests = [
+    ( "Skip da solo", `Quick, fun () ->
+        let res = ZoneInterp.eval Skip in
+        if Abstract_domains.Zones.is_bottom res then
+          Alcotest.fail "Skip: stato inaspettatamente Bottom" );
+  ]
+
+  (* ------------------------------------------------------------ *)
+  (* TEST FILTRI E RAFFINAMENTO                                   *)
+  (* ------------------------------------------------------------ *)
+  let filtertests = List.map make_prog_case [
+    "Filter raffina limite superiore: x=Random(1,10); Filter(x <= 5)",
+      Sequence (Assign ("x", Random (1, 10)), Filter (Comparison (Var "x", SmallerEquals, Const 5))),
+      [ "x", E.filter_refine_ub ];
+    "Filter raffina limite inferiore: x=Random(1,10); Filter(x >= 6)",
+      Sequence (Assign ("x", Random (1, 10)), Filter (Comparison (Var "x", BiggerEquals, Const 6))),
+      [ "x", E.filter_refine_lb ];
+    "Filter raffina strettamente minore: x=Random(1,10); Filter(x < 5)",
+      Sequence (Assign ("x", Random (1, 10)), Filter (Comparison (Var "x", Smaller, Const 5))),
+      [ "x", E.filter_refine_lt ];
+    "Filter raffina strettamente maggiore: x=Random(1,10); Filter(x > 5)",
+      Sequence (Assign ("x", Random (1, 10)), Filter (Comparison (Var "x", Bigger, Const 5))),
+      [ "x", E.filter_refine_gt ];
+    "Filter tra variabili: x=5; y=3; Filter(x > y)",
+      Sequence (Assign ("x", Const 5), Sequence (Assign ("y", Const 3), Filter (Comparison (Var "x", Bigger, Var "y")))),
+      [ "x", E.filter_rel_x; "y", E.filter_rel_y ];
+    "Filter tra variabile ed espressione: x=4; y=-3; Filter(x > x+y)",
+      Sequence (Assign ("x", Const 4), Sequence (Assign ("y", Const (-3)), Filter (Comparison (Var "x", Bigger, BinaryOperation (Var "x", Add, Var "y"))))),
+      [ "x", E.filter_expr_x; "y", E.filter_expr_y ];
+    "Filter uguaglianza: x=5; y=5; Filter(x == y)",
+      Sequence (Assign ("x", Const 5), Sequence (Assign ("y", Const 5), Filter (Comparison (Var "x", Equals, Var "y")))),
+      [ "x", E.filter_eq_x; "y", E.filter_eq_y ];
+    "Filter booleano true: x=5; Filter(true)",
+      Sequence (Assign ("x", Const 5), Filter (Boolean true)),
+      [ "x", E.filter_true_x ];
+    "Filter Not: x=5; Filter(not (x < 0))",
+      Sequence (Assign ("x", Const 5), Filter (Not (Comparison (Var "x", Smaller, Const 0)))),
+      [ "x", E.filter_not_x ];
+    "Filter And: x=5; Filter(x > 0 and x < 10)",
+      Sequence (Assign ("x", Const 5), Filter (And (Comparison (Var "x", Bigger, Const 0), Comparison (Var "x", Smaller, Const 10)))),
+      [ "x", E.filter_and_x ];
+  ]
+
+  (* ------------------------------------------------------------ *)
+  (* TEST FILTRI CONTRADDITTORI (ATTESO BOTTOM)                   *)
+  (* ------------------------------------------------------------ *)
+  let bottomtests = [
+    expect_bottom "Filtro impossibile su costante: x=5; Filter(x < 0)"
+      (Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", Smaller, Const 0))));
+    expect_bottom "Filtro impossibile su costante: x=5; Filter(x > 10)"
+      (Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", Bigger, Const 10))));
+    expect_bottom "Filtro uguaglianza incompatibile: x=5; Filter(x == 6)"
+      (Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", Equals, Const 6))));
+    expect_bottom "Filtro tra variabili incompatibile: x=5; y=10; Filter(x > y)"
+      (Sequence (Assign ("x", Const 5), Sequence (Assign ("y", Const 10), Filter (Comparison (Var "x", Bigger, Var "y")))));
+    expect_bottom "Filtro booleano false: x=5; Filter(false)"
+      (Sequence (Assign ("x", Const 5), Filter (Boolean false)));
+    expect_bottom "Filtro congiunzione incompatibile: x=5; Filter(x > 10 and x < 2)"
+      (Sequence (Assign ("x", Const 5), Filter (And (Comparison (Var "x", Bigger, Const 10), Comparison (Var "x", Smaller, Const 2)))));
+  ]
+
+  let tests = [
+    "Assegnamenti", assigntests;
+    "Shift e Offset", shifttests;
+    "Operazioni Aritmetiche", binoptests;
+    "Sequenze", sequencetests;
+    "Skip", skiptests;
+    "Filtri", filtertests;
+    "Filtri Contraddittori (Bottom)", bottomtests;
+  ]
+end
+
+module TestSuite_Zones = Make_Zone_Tests (Expected_Zones)
+
 (* 2. Esecuzione tramite Alcotest *)
 let () =
   Alcotest.run "Abstract Interpreter Tests" (
@@ -332,5 +495,6 @@ let () =
     List.map (fun (name,test_list) -> ("SimpleSigns: " ^ name, test_list)) TestSuite_SimpleSigns.tests @
     List.map (fun (name,test_list) -> ("StrangeSigns: " ^ name, test_list)) TestSuite_StrangeSigns.tests @
     List.map (fun (name,test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests @
-    List.map ( fun (name,test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests
+    List.map ( fun (name,test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests @
+    List.map (fun (name, test_list) -> ("Zones: " ^ name, test_list)) TestSuite_Zones.tests
   )
