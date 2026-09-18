@@ -4,7 +4,7 @@
 ![Dune](https://img.shields.io/badge/Build%20System-Dune-blue.svg)
 ![Test](https://img.shields.io/badge/Testing-Alcotest-green.svg)
 
-Un tool di analisi statica ed interpretazione astratta scritto in OCaml per un linguaggio di programmazione imperativo personalizzato. L'interprete è parametrizzato su **Domini Astratti** generici (tra cui diverse varianti del dominio dei Segni e il dominio degli Intervalli) e calcola l'approssimazione corretta dell'esecuzione dei programmi mediante l'iterazione del **Minimo Punto Fisso (Least Fixpoint - LFP)**, tecniche di **Widening**, **Narrowing** e **Raffinamento Relazionale dell'Ambiente**.
+Un tool di analisi statica ed interpretazione astratta scritto in OCaml per un linguaggio di programmazione imperativo. L'interprete è parametrizzato su **Domini Astratti** generici, includendo sia domini non-relazionali (5 varianti del dominio dei Segni e il dominio degli Intervalli) sia un dominio debolmente relazionale (il dominio delle **Zone** basato su DBM). Calcola l'approssimazione corretta dell'esecuzione dei programmi mediante punto fisso, tecniche di **Widening**, **Narrowing** e **Raffinamento dei Vincoli**.
 
 ---
 
@@ -13,6 +13,8 @@ Un tool di analisi statica ed interpretazione astratta scritto in OCaml per un l
 - [Panoramica](#-panoramica)
 - [Caratteristiche Principali](#-caratteristiche-principali)
 - [Domini Astratti](#-domini-astratti)
+  - [Domini Non-Relazionali](#domini-non-relazionali)
+  - [Dominio Debolmente Relazionale (Zone)](#dominio-debolmente-relazionale-zone)
 - [Struttura del Progetto](#-struttura-del-progetto)
 - [Prerequisiti](#-prerequisiti)
 - [Installazione](#-installazione)
@@ -21,45 +23,69 @@ Un tool di analisi statica ed interpretazione astratta scritto in OCaml per un l
   - [Eseguire il Programma Principale](#eseguire-il-programma-principale)
   - [Eseguire i Test Unitari (Alcotest)](#eseguire-i-test-unitari-alcotest)
   - [REPL Interattivo (utop)](#repl-interattivo-utop)
-- [Sintassi del Linguaggio ed Esempio](#-sintassi-del-linguaggio-ed-esempio)
+- [Sintassi del Linguaggio ed Esempi](#-sintassi-del-linguaggio-ed-esempi)
 - [Licenza](#-licenza)
 
 ---
 
 ## 🔍 Panoramica
 
-Questo progetto implementa un interprete astratto parametrico (`AbsInterp`) per analizzare staticamente i programmi imperativi senza eseguirli dinamicamente.
+Questo progetto implementa un analizzatore statico basato sulla teoria dell'interpretazione astratta per analizzare programmi imperativi garantendo correttezza e terminazione.
 
 L'analizzatore valuta programmi composti da:
-- **Espressioni**: Costanti, variabili, operazioni aritmetiche (`+`, `-`, `*`, `/`), negazione unaria e scelte non deterministiche (`Random(min, max)`).
-- **Condizioni**: Comparazioni (`=`, `>`, `<`, `>=`, `<=`, `<>`), logica booleana (`Not`, `And`, `Or`).
+- **Espressioni**: Costanti, variabili, operazioni aritmetiche (`+`, `-`, `*`, `/`), negazione unaria (`-x`) e scelte non deterministiche (`Random(min, max)`).
+- **Condizioni**: Comparazioni relazionali (`=`, `<>`, `>`, `<`, `>=`, `<=`), logica booleana (`Not`, `And`, `Or`).
 - **Comandi**: Assegnamento a variabili (`Assign`), sequenze di comandi (`Sequence`), istruzioni condizionali (`If`), filtri di guardia (`Filter`), no-op (`Skip`) e cicli (`While`).
 
-Determina le proprietà di sicurezza, i limiti dei valori delle variabili e i segni nello stato finale di terminazione del programma utilizzando l'iterazione di Kleene su strutture a reticolo (lattice).
+Determina le proprietà di sicurezza, i limiti numerici delle variabili, i segni o le relazioni di differenza nello stato finale di terminazione del programma.
 
 ---
 
 ## ✨ Caratteristiche Principali
 
-- **Architettura Parametrica**: Progettazione basata su funtori OCaml (`module AbsInterp (D : DOMAIN)`) che permette di collegare all'interprete qualsiasi dominio astratto conforme alla firma `DOMAIN`.
-- **Molteplici Domini Astratti**: Supporto per 5 varianti del Dominio dei Segni e per un Dominio degli Intervalli con estremi infiniti ($-\infty, +\infty$).
-- **Calcolo del Punto Fisso e Widening/Narrowing**: Garantisce la terminazione dell'analisi dei cicli (`While`) tramite widening (`widen`) per accelerare la convergenza e narrowing (`narrow`) per recuperare la precisione persa.
-- **Raffinamento Relazionale nelle Condizioni**: Raffina lo stato delle variabili nell'ambiente (`refine_vars`) durante la valutazione delle condizioni (`If` / `Filter`) attraverso operazioni di Greatest Lower Bound (`glb`).
-- **Suite di Test Completa**: Engine di testing integrato basato su [Alcotest](https://github.com/mirage/alcotest) per verificare la correttezza di espressioni, diramazioni condizionali e cicli while su tutti i domini implementati.
+- **Architettura Parametrica a Funtori**:
+  - `NonRelationalAbsInterp (D : NonRelationalDomain)`: motore per domini non-relazionali che mappano identificatori a valori astratti indipendenti (`(string, D.t) Hashtbl.t`).
+  - `WeakRelationalAbsInterp (D : WeakRelationalDomain)`: motore relazionale per vincoli tra variabili.
+- **Molteplici Domini Astratti**:
+  - 5 varianti del Dominio dei Segni con diversi livelli di granularità.
+  - Dominio degli Intervalli con estremi estesi (`-oo`, `+oo`).
+  - Dominio delle Zone basato su matrici di vincoli di differenza (DBM).
+- **Calcolo del Punto Fisso e Widening/Narrowing**:
+  - Accelerazione della convergenza nei cicli `While` tramite operatore di **Widening** (`widen`).
+  - Recupero della precisione persa post-convergenza tramite operatore di **Narrowing** (`narrow`).
+- **Raffinamento delle Condizioni**:
+  - Filtri e diramazioni (`If`, `Filter`) raffinano lo stato delle variabili tramite intersezione/least upper bound (`lub`) e vincoli di disuguaglianza.
+- **Suite di Test Completa**:
+  - Oltre 500 test automatizzati basati su [Alcotest](https://github.com/mirage/alcotest) per verificare la correttezza di ogni operatore e costrutto sintattico su ciascun dominio implementato.
 
 ---
 
 ## 📐 Domini Astratti
 
-L'interprete include diverse implementazioni di domini astratti definite in `lib/abstract_domains.ml`:
+I domini astratti sono implementati in `lib/abstract_domains.ml`:
 
-1. **`Signs`**: Dominio dei segni completo a 8 elementi:
-   $$\{\top, >0, \ge 0, =0, \le 0, <0, \neq 0, \bot\}$$
-2. **`SimpleSigns`**: Dominio a 5 elementi $\{\top, \ge 0, 0, \le 0, \bot\}$.
-3. **`SimplifiedSigns`**: Dominio a 5 elementi $\{\top, >0, 0, <0, \bot\}$.
-4. **`ReducedSigns`**: Dominio essenziale a 4 elementi $\{\top, >0, <0, \bot\}$.
-5. **`StrangeSigns`**: Dominio sperimentale a 5 elementi $\{\top, \ge 0, 0, <0, \bot\}$.
-6. **`Intervals`**: Dominio degli intervalli $[l, u]$ dove $l, u \in \{-\infty, \mathbb{Z}, +\infty\}$, con supporto ad aritmetica degli intervalli, raffinamento dei limiti e confini infiniti.
+### Domini Non-Relazionali
+
+1. **`ExtendedSigns`**: Dominio completo dei segni a 8 elementi:
+   `{ Top, >0, >=0, 0, <=0, <0, !=0, Bottom }`
+2. **`SimpleSigns`**: Dominio a 5 elementi con lo zero compreso nei semipiani:
+   `{ Top, >=0, 0, <=0, Bottom }`
+3. **`SimplifiedSigns`**: Dominio a 5 elementi con segni stretti:
+   `{ Top, >0, 0, <0, Bottom }`
+4. **`Signs`**: Dominio minimale a 4 elementi senza zero esplicito:
+   `{ Top, >0, <0, Bottom }`
+5. **`StrangeSigns`**: Dominio asimmetrico a 5 elementi:
+   `{ Top, >=0, 0, <0, Bottom }`
+6. **`Intervals`**: Dominio degli intervalli `[lo, hi]` con `lo, hi` in `{-oo, Int n, +oo}`, con aritmetica per intervalli, estensione non deterministica e raffinamento dei limiti.
+
+### Dominio Debolmente Relazionale (Zone)
+
+7. **`Zones`**: Dominio relazionale basato su **Difference Bound Matrices (DBM)** per tracciare vincoli del tipo:
+   - Differenze tra coppie di variabili: `x - y <= c`
+   - Limiti individuali rispetto alla variabile zero `v0`: `x <= c` e `x >= c`
+   - Chiusura canonica dei cammini minimi mediante algoritmo di **Floyd-Warshall**
+   - Rilevamento di cicli di peso negativo per identificare stati irraggiungibili (`Bottom`)
+   - Operazioni di riassegnamento (`assign_const`, `assign_var_offset`), traslazione (`shift_var`), widening e narrowing relazionali.
 
 ---
 
@@ -68,19 +94,20 @@ L'interprete include diverse implementazioni di domini astratti definite in `lib
 ```text
 .
 ├── bin/
-│   ├── dune             # Configurazione Dune per l'eseguibile
-│   └── main.ml          # Entry point per l'esecuzione e il test di AST di esempio
+│   ├── dune                  # Configurazione Dune per l'eseguibile main
+│   └── main.ml               # Entry point di esempio con analisi su tutti i domini
 ├── lib/
-│   ├── abstract_domains.ml  # Definizione della signature DOMAIN e dei moduli dei domini
-│   ├── dune                 # Configurazione Dune per la libreria
-│   ├── interpeters.ml       # Funtore AbsInterp & motore di analisi statica
-│   └── syntax.ml            # Definizione dell'AST (bop, uop, exp, cond, cmd)
+│   ├── abstract_domains.ml   # Firme (NonRelationalDomain, WeakRelationalDomain) e moduli dei domini
+│   ├── dune                  # Configurazione Dune per la libreria (tesi_lib)
+│   ├── interpeters.ml        # Funtori di analisi statica (NonRelationalAbsInterp, WeakRelationalAbsInterp)
+│   ├── shared_arithmetic.ml  # Operazioni aritmetiche su bound estesi (+/- inf) e intervalli
+│   └── syntax.ml             # Abstract Syntax Tree (bop, uop, exp, cond, cmd)
 ├── test/
-│   ├── dune             # Configurazione Dune per la suite di test
-│   ├── oracles.ml       # Risultati attesi (oracoli) per i test unitari
-│   └── test_suite.ml    # Test case Alcotest (espressioni, flusso di controllo, cicli)
-├── dune-project         # Definizione del progetto Dune
-└── README.md            # Documentazione del progetto (in italiano)
+│   ├── dune                  # Configurazione Dune per la suite di test
+│   ├── oracles.ml            # Risultati attesi (oracoli) specifici per ogni dominio
+│   └── test_suite.ml         # Suite di test Alcotest per tutti i domini
+├── dune-project              # File di progetto Dune
+└── README.md                 # Documentazione del progetto
 ```
 
 ---
@@ -89,9 +116,9 @@ L'interprete include diverse implementazioni di domini astratti definite in `lib
 
 Per compilare ed eseguire il progetto sono necessari:
 
-- **OCaml** ($\ge 4.12$)
+- **OCaml** (>= 4.12)
 - **Opam** (OCaml Package Manager)
-- **Dune** ($\ge 3.0$)
+- **Dune** (>= 3.0)
 - **Alcotest** (per l'esecuzione dei test unitari)
 - **Utop** (opzionale, per esplorazione interattiva tramite REPL)
 
@@ -122,8 +149,6 @@ Per compilare ed eseguire il progetto sono necessari:
 
 ### Compilare il Progetto
 
-Se il tuo terminale ha già l'ambiente opam attivo (dopo aver eseguito `eval $(opam env)`), puoi usare direttamente i comandi `dune`. In alternativa, puoi premettere `opam exec --` per assicurarti di usare lo switch opam corretto.
-
 ```bash
 dune build
 # Oppure: opam exec -- dune build
@@ -131,7 +156,7 @@ dune build
 
 ### Eseguire il Programma Principale
 
-Esegue lo script di analisi principale (`bin/main.ml`):
+Esegue lo script di dimostrazione principale (`bin/main.ml`):
 ```bash
 dune exec bin/main.exe
 # Oppure: opam exec -- dune exec bin/main.exe
@@ -139,7 +164,7 @@ dune exec bin/main.exe
 
 ### Eseguire i Test Unitari (Alcotest)
 
-Esegue la suite di test automatizzati su tutti i domini astratti implementati:
+Esegue la suite completa di test automatizzati su tutti i domini:
 ```bash
 dune runtest
 # Oppure: opam exec -- dune runtest
@@ -147,17 +172,17 @@ dune runtest
 
 #### Flag Utili per il Testing:
 
-- **Forzare la riesecuzione (ignorando la cache di build)**:
+- **Forzare la riesecuzione ignorando la cache**:
   ```bash
   dune runtest -f
   ```
-- **Modalità Watch (riesegue i test automaticamente ad ogni modifica del codice)**:
+- **Modalità Watch (riesegue i test automaticamente ad ogni salvataggio)**:
   ```bash
   dune runtest -f -w
   ```
-- **Eseguire un test specifico per nome**:
+- **Eseguire un gruppo o test specifico per nome**:
   ```bash
-  dune exec ./test/test_suite.exe -- test "Signs: Somma"
+  dune exec ./test/test_suite.exe -- test "Zones: Cicli While"
   ```
 - **Elencare tutti i test disponibili**:
   ```bash
@@ -166,34 +191,33 @@ dune runtest
 
 ### REPL Interattivo (utop)
 
-Per sperimentare in modo interattivo con i domini astratti e l'esecuzione dei programmi:
+Per sperimentare in modo interattivo con i domini astratti:
 
-1. Avviare `utop` precaricando le librerie del progetto:
+1. Avviare `utop` caricando la libreria di progetto:
    ```bash
    opam exec -- dune utop lib
    ```
 
-2. All'interno di `utop`, caricare i moduli o il file principale:
+2. All'interno di `utop`:
    ```ocaml
    open Syntax;;
    open Abstract_domains;;
    open Interpeters;;
 
-   (* Oppure caricare direttamente main.ml *)
-   #use "bin/main.ml";;
-   ```
+   (* Analisi con il Dominio degli Intervalli *)
+   let p1 = Sequence (Assign ("x", Const 0), While (Comparison (Var "x", Smaller, Const 10), Assign ("x", BinaryOperation (Var "x", Add, Const 2))));;
+   IntervalInterp.eval p1;;
 
-3. Valutare manualmente un programma astratto:
-   ```ocaml
-   let prog = Assign ("x", Const 5);;
-   IntervalInterp.eval prog;;
+   (* Analisi con il Dominio delle Zone (DBM) *)
+   let res_zone = ZoneInterp.eval p1;;
+   ZoneInterp.print_result res_zone;;
    ```
 
 ---
 
-## 💻 Sintassi del Linguaggio ed Esempio
+## 💻 Sintassi del Linguaggio ed Esempi
 
-I programmi vengono costruiti utilizzando i costruttori AST definiti in `lib/syntax.ml`:
+I programmi vengono costruiti mediante i costruttori AST definiti in `lib/syntax.ml`:
 
 ```ocaml
 open Syntax
@@ -215,9 +239,15 @@ let program =
   )
 
 let () =
-  let result = IntervalInterp.eval program in
-  print_string "Stato Astratto Risultante (Intervalli):\n";
-  IntervalInterp.outputStatePrinter result
+  (* Valutazione con Intervalli *)
+  let res_intervals = IntervalInterp.eval program in
+  print_endline "Risultato con Intervalli:";
+  IntervalInterp.outputStatePrinter res_intervals;
+
+  (* Valutazione con il Dominio delle Zone (DBM) *)
+  let res_zones = ZoneInterp.eval program in
+  print_endline "\nRisultato con Zone (DBM):";
+  ZoneInterp.print_result res_zones
 ```
 
 ---
