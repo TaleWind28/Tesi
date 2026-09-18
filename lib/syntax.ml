@@ -8,6 +8,13 @@ type ide = string
 
 type comparator = Equals | Bigger | Smaller | BiggerEquals | SmallerEquals | NotEquals
 
+type sign = Pos | Neg 
+
+type rel_atom = 
+  | Unary of sign * ide * int 
+  | Binary of sign * ide * sign * ide * int
+
+
 (* Espressioni *)
 type exp =
   | Const of int

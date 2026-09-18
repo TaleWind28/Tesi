@@ -684,11 +684,12 @@ module type WeakRelationalDomain = sig
 
   (** Forget / Reset: rimuove tutti i vincoli che coinvolgono la variabile x.
       Richiede la chiusura preventiva della DBM prima di impostare riga e colonna a +infinity *)
-  val forget : int -> t -> t (*done*)
+  val forget : ide -> t -> t (*done*)
 
   (** Filtro condizionale: raffina la DBM applicando la guardia c
       (es. vincoli di differenza Vj - Vi <= c o guardie unari Vi <= c) *)
   val filter_rel : ide -> ide -> int -> t -> t (*done*)
+  (* val filter_atom : rel_atom -> t -> t *)
 
   val abstract_int   : int -> value
   val abstract_range : int -> int -> value
@@ -893,10 +894,11 @@ module Zones : WeakRelationalDomain = struct
 
   (* Operazioni su valori di dbm *)
   (* Reset non deterministico *)
-  let forget i env =  
+  let forget ide env =  
     match close_dbm env with
     |Bottom -> Bottom
     |Env dbm -> 
+      let i = resolve_index  dbm.env ide in 
       for k = 0 to dbm.n do
         if k<> i then begin 
           dbm.matrix.(i).(k) <- PosInf;
@@ -922,7 +924,7 @@ module Zones : WeakRelationalDomain = struct
     | Env dbm -> 
       let i = resolve_index dbm.env ide1 in
       let j = if ide2 = "const" then 0 else resolve_index dbm.env ide2 in 
-      match forget i env with
+      match forget ide1 env with
       | Bottom -> Bottom
       | Env dbm -> 
         dbm.matrix.(i).(j) <- Int c;
@@ -936,7 +938,7 @@ module Zones : WeakRelationalDomain = struct
   | Bottom,_ | _,Shared_arithmetic.IntervalArith.Bottom -> Bottom
   | Env dbm, Interval(lo,hi) -> 
     let i = resolve_index dbm.env ide in 
-    match forget i env with
+    match forget ide env with
     | Bottom -> Bottom
     | Env dbm' ->
       dbm'.matrix.(i).(0) <- hi;              (* x <= hi *)
@@ -980,6 +982,5 @@ module Zones : WeakRelationalDomain = struct
     let lo  = neg_bound(dbm.matrix.(0).(idx)) in
     let hi = dbm.matrix.(idx).(0) in
     Interval(lo,hi)
-
   let compare_type b1 b2 env = Shared_arithmetic.IntervalArith.compare_type b1 b2 
 end
