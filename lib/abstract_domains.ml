@@ -679,6 +679,7 @@ module type WeakRelationalDomain = sig
   val assign_var_offset : ide -> ide -> int -> t -> t (*done*)
 
   val assign : ide -> value -> t -> t 
+  val assign_var : ide -> sign -> ide -> int -> t -> t  
 
   val shift_var : ide -> int -> t -> t (*done*)
 
@@ -687,9 +688,9 @@ module type WeakRelationalDomain = sig
   val forget : ide -> t -> t (*done*)
 
   (** Filtro condizionale: raffina la DBM applicando la guardia c
-      (es. vincoli di differenza Vj - Vi <= c o guardie unari Vi <= c) *)
+      (es. vincoli di differenza Vj - Vi <= c o guardie unarie Vi <= c) *)
   val filter_rel : ide -> ide -> int -> t -> t (*done*)
-  (* val filter_atom : rel_atom -> t -> t *)
+  val filter_atom : rel_atom -> t -> t
 
   val abstract_int   : int -> value
   val abstract_range : int -> int -> value
@@ -916,7 +917,38 @@ module Zones : WeakRelationalDomain = struct
     new_m.(i).(j) <- min_bound new_m.(i).(j) (Int (c)); 
     let temp_m = close_dbm (create_type_dbm dbm.n dbm.env new_m) in 
     temp_m
-    
+
+  let filter_atom rel env = 
+    match rel,env with
+    | _, Bottom -> Bottom
+    (* Vincolo Unario x <= c *)
+    | Unary(Pos,x,c),Env dbm ->
+      let i = resolve_index dbm.env x in 
+      let new_m = copy_matrix dbm.matrix in
+      new_m.(i).(0) <- min_bound new_m.(i).(0) (Int (c)); 
+      close_dbm (create_type_dbm dbm.n dbm.env new_m) 
+    (* Vincolo Unario -x <= c *)
+    | Unary(Neg,x,c),Env dbm ->
+      let i = resolve_index dbm.env x in 
+      let new_m = copy_matrix dbm.matrix in
+      new_m.(0).(i) <- min_bound new_m.(0).(i) (Int (c)); 
+      close_dbm (create_type_dbm dbm.n dbm.env new_m)
+    | Binary(Pos,x,Neg,y,c),Env dbm ->
+      let i = resolve_index dbm.env x in 
+      let new_m = copy_matrix dbm.matrix in
+      let j = resolve_index dbm.env y in 
+      new_m.(i).(j) <- min_bound new_m.(i).(j) (Int (c)); 
+      close_dbm (create_type_dbm dbm.n dbm.env new_m)
+    | Binary(Neg,x,Pos,y,c),Env dbm -> 
+      let i = resolve_index dbm.env x in 
+      let j = resolve_index dbm.env y in 
+      let new_m = copy_matrix dbm.matrix in
+      new_m.(j).(i) <- min_bound new_m.(j).(i) (Int (c)); 
+      close_dbm (create_type_dbm dbm.n dbm.env new_m)
+    (* Somme concordi -> Safe over-approximation perchè le zone non possono rappresentarli *)
+    | Binary(Pos,x,Pos,y,c),Env dbm -> Env dbm
+    | Binary(Neg,x,Neg,y,c),Env dbm -> Env dbm
+
   (* modella assegnazioni di vincoli del tipo Vj = Vi + c *)
   let assign_var_offset ide1 ide2 c env = 
     match env with
@@ -930,8 +962,8 @@ module Zones : WeakRelationalDomain = struct
         dbm.matrix.(i).(j) <- Int c;
         dbm.matrix.(j).(i) <- Int (-c);
         close_dbm (Env dbm )
-  
-  (* modella assegnazioni di vincoli del tipo Vj = c *)
+
+   (* modella assegnazioni di vincoli del tipo Vj = c *)
   let assign_const ide c env = assign_var_offset ide "const" c env
 
   let assign ide value env = match env,value with
@@ -960,6 +992,38 @@ module Zones : WeakRelationalDomain = struct
     done;
     create_type_dbm dbm.n dbm.env new_m
 
+  let retrieve_variable ide env = match env with
+  | Bottom -> Shared_arithmetic.IntervalArith.Bottom
+  | Env dbm -> 
+    let idx = resolve_index dbm.env ide in
+    let lo  = neg_bound(dbm.matrix.(0).(idx)) in
+    let hi = dbm.matrix.(idx).(0) in
+    Interval(lo,hi)
+    let assign_var x sign y c env = 
+      match sign,env with
+      | Pos,Env dbm -> 
+        (* x:= x + c *)
+        if x = y then shift_var x c env
+        else
+          (* x:= y + c *)
+          let i = resolve_index dbm.env x in 
+          let j = resolve_index dbm.env y in
+          (match forget x env with
+          | Bottom -> Bottom
+          | Env dbm' -> 
+            let new_m = copy_matrix dbm'.matrix in 
+            new_m.(i).(j) <- Int c;
+            new_m.(j).(i) <- Int (-c);
+            close_dbm (create_type_dbm dbm'.n dbm'.env new_m)        
+          )
+        | Neg,Env dbm -> 
+          (* x := -y + c questo va approssimato tramite gli intervalli*)
+          let y' = retrieve_variable y env in 
+          let new_val = sum (negate y') (abstract_int c) in 
+          assign x new_val env
+        
+        | _ , Bottom -> Bottom
+
   let string_of_value valore = Shared_arithmetic.IntervalArith.to_string valore
   let print env = failwith "print not implemented"
 
@@ -975,12 +1039,6 @@ module Zones : WeakRelationalDomain = struct
   let abstract_int x = Interval(Int(x),Int(x))
   let abstract_range x y = if x > y then Interval(Int(y),Int(x)) else Interval(Int(x),Int(y))
 
-  let retrieve_variable ide env = match env with
-  | Bottom -> Shared_arithmetic.IntervalArith.Bottom
-  | Env dbm -> 
-    let idx = resolve_index dbm.env ide in
-    let lo  = neg_bound(dbm.matrix.(0).(idx)) in
-    let hi = dbm.matrix.(idx).(0) in
-    Interval(lo,hi)
+ 
   let compare_type b1 b2 env = Shared_arithmetic.IntervalArith.compare_type b1 b2 
 end

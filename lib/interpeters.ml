@@ -339,11 +339,11 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | Assign(ide,Const(c)) ->
             D.assign_const ide c env
         | Assign(ide,Var(x)) -> 
-            if ide = x then env (*se sto assegnando x a sè stessa non devo aggiungere vincoli*)
-            else D.assign_var_offset ide x 0 env
+            D.assign_var ide Pos x 0 env
         | Assign(ide,BinaryOperation(Var(x),Add,Const c)) -> 
-            if ide <> x then D.assign_var_offset ide x c env (*se non sto assegnando x a sè stessa devo fare qualcosa che devo ancora capire*)
-            else D.shift_var ide c env
+            D.assign_var ide Pos x c env 
+        | Assign(ide,BinaryOperation((UnaryOperation(Negation, Var(x)),Add,Const c))) -> 
+            D.assign_var ide Neg x c env 
         | Assign(ide,exp) -> 
             let v = eval_exp exp env in 
             D.assign ide v env
