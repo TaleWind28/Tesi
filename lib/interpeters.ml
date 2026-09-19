@@ -284,49 +284,6 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
 
     let init var_list = D.init var_list 
 
-    
-         
-
-
-    let extract_rel_helper (e1:exp) (e2:exp) (offset:int) : rel_atom option =
-        match e1, e2 with
-            (* 1. x <= y  -->  x - y <= offset *)
-            | Var x, Var y ->
-                Some (Binary(Pos, x, Neg, y, offset))
-            (* 2. x <= y + c  -->  x - y <= c + offset *)
-            | Var x, BinaryOperation(Var y, Add, Const c) ->
-                Some (Binary(Pos, x, Neg, y, c + offset))
-            (* 3. x <= y - c  -->  x - y <= -c + offset *)
-            | Var x, BinaryOperation(Var y, Sub, Const c) ->
-                Some (Binary(Pos, x, Neg, y, -c + offset))
-            (* 4. x - y <= c *)
-            | BinaryOperation(Var x, Sub, Var y), Const c ->
-                Some (Binary(Pos, x, Neg, y, c + offset))
-            (* 5. x + y <= c  (fondamentale per gli ottagoni!) *)
-            | BinaryOperation(Var x, Add, Var y), Const c ->
-                Some (Binary(Pos, x, Pos, y, c + offset))
-            (* 6. -x - y <= c *)
-            | BinaryOperation(UnaryOperation(Negation, Var x), Sub, Var y), Const c ->
-                Some (Binary(Neg, x, Neg, y, c + offset))
-            (* 7. x <= c (vincolo unario) *)
-            | Var x, Const c ->
-                Some (Unary(Pos, x, c + offset))
-            (* 8. c <= x  -->  -x <= -c *)
-            | Const c, Var x ->
-                Some (Unary(Neg, x, -c + offset))
-            (* 9. -x <= c *)
-            | UnaryOperation(Negation, Var x), Const c ->
-                Some (Unary(Neg, x, c + offset))
-            | _ -> None
-
-    let extract_rel_atom (e1:exp) (comp:comparator) (e2:exp) : rel_atom option =
-        match comp with
-        | Smaller ->  extract_rel_helper e1 e2 (-1)
-        | SmallerEquals ->  extract_rel_helper e1 e2 (0)
-        | Bigger ->  extract_rel_helper e1 e2 (-1)
-        | BiggerEquals ->  extract_rel_helper e1 e2 (0)
-        | Equals | NotEquals -> None
-
     let rec eval_exp (exp : exp) (env : D.t) : D.value = 
         match exp with
         | BinaryOperation(e1,Add,e2) -> D.sum (eval_exp e1 env) (eval_exp e2 env)
@@ -338,7 +295,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | Const c -> D.abstract_int c
         | Var x -> D.retrieve_variable x env 
 
-    let filter_diff e1 e2 v1 v2 offset env =
+    let filter_diff e1 e2 offset env =
         let atom = match e1,e2 with
         (* x <= y --> x - y <= offset *)
         | Var x, Var y -> 
@@ -360,7 +317,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             Some(Unary(Neg,y,(-c + offset )))
         (* 7. Fallback: Var x <= exp_generica *)
         | Var x, _ ->
-            (match D.unpack_value (eval_exp e2 env) false with
+            (match D.unpack_value (eval_exp e2 env) true with
             | Some hi -> Some (Unary(Pos, x, hi +offset))
             | None -> None
             )
@@ -392,10 +349,10 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             let v2 = eval_exp e2 env in
             let condition = D.compare_type v1 v2 env in
             match comp, condition with
-            | Smaller, (-1 | 2)           -> filter_diff e1 e2 v1 v2 (-1) env
-            | SmallerEquals, (-1 | 0 | 2) -> filter_diff e1 e2 v1 v2 0 env
-            | Bigger, (1 | 2)             -> filter_diff e2 e1 v2 v1 (-1) env
-            | BiggerEquals, (1 | 0 | 2)   -> filter_diff e2 e1 v2 v1 0 env
+            | Smaller, (-1 | 2)           -> filter_diff e1 e2 (-1) env
+            | SmallerEquals, (-1 | 0 | 2) -> filter_diff e1 e2 0 env
+            | Bigger, (1 | 2)             -> filter_diff e2 e1 (-1) env
+            | BiggerEquals, (1 | 0 | 2)   -> filter_diff e2 e1 0 env
             | Equals, (0 | 2)             ->
                 eval_cond (And (Comparison (e1, SmallerEquals, e2), Comparison (e2, SmallerEquals, e1))) env
             | NotEquals, (-1 | 1 | 2)     -> env
@@ -447,8 +404,6 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         let initial_env = init var_list in
         (* Valuta il programma *)
         eval_cmd prog initial_env
-
-    let print_value result = print_endline (D.string_of_value result)
 
 end
 

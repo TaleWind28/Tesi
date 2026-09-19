@@ -676,8 +676,6 @@ module type WeakRelationalDomain = sig
       sia assegnamenti affini approssimati tramite intervalli *)
   val assign_const : ide -> int -> t -> t (*done*)
 
-  val assign_var_offset : ide -> ide -> int -> t -> t (*done*)
-
   val assign : ide -> value -> t -> t 
   val assign_var : ide -> sign -> ide -> int -> t -> t  
 
@@ -687,9 +685,8 @@ module type WeakRelationalDomain = sig
       Richiede la chiusura preventiva della DBM prima di impostare riga e colonna a +infinity *)
   val forget : ide -> t -> t (*done*)
 
-  (** Filtro condizionale: raffina la DBM applicando la guardia c
+  (** Filtro atomico sulle condizioni: raffina la DBM applicando la guardia c
       (es. vincoli di differenza Vj - Vi <= c o guardie unarie Vi <= c) *)
-  val filter_rel : ide -> ide -> int -> t -> t (*done*)
   val filter_atom : rel_atom -> t -> t
 
   val abstract_int   : int -> value
@@ -706,181 +703,147 @@ module type WeakRelationalDomain = sig
 
   val to_string : t -> string
   val string_of_value : value -> string
-  val print : t -> unit
 end
 
 module Zones : WeakRelationalDomain = struct
   include Shared_arithmetic.IntervalArith
-  type dbm = 
-  {
-    n : int; 
-    env : (ide * int) list ;
-    matrix : bound array array 
+
+  (** {2 Struttura DBM e Inizializzazione} *)
+
+  type dbm = {
+    n : int;
+    env : (ide * int) list;
+    matrix : bound array array;
   }
-  type t  = Bottom | Env of dbm
+
+  type t = Bottom | Env of dbm
+
   let bottom = Bottom
 
-  let create_type_dbm n env matrix = Env{n; env;matrix}
-  
   let is_bottom env = match env with
     | Bottom -> true
     | _ -> false
 
+  let create_type_dbm n env matrix = Env { n; env; matrix }
+
   let copy_matrix m = Array.map Array.copy m
-  (* ottieni index della x *)
+
   let index_of env x = try Some (List.assoc x env) with Not_found -> None
- 
+
   let resolve_index env x =
     match index_of env x with
     | Some i -> i
     | None -> failwith (Printf.sprintf "Zones: variabile '%s' non dichiarata" x)
 
   let init (vars : ide list) : t =
-    (* 1. Ordino la lista ed elimino i duplicati *)
     let xs = List.sort_uniq compare vars in
     let n = List.length xs in
-
-    (* 2. Mappo gli identificatori con indici da 1 a n
-      (l'indice 0 è riservato a V0) *)
     let env = List.mapi (fun i x -> (x, i + 1)) xs in
-
-    (* 3. Creo la matrice (n+1) x (n+1)
-      inizializzata a PosInf (Top) *)
     let dim = n + 1 in
     let matrix = Array.make_matrix dim dim PosInf in
-
-    (* 4. Imposto solo la diagonale a Int 0 (m_ii = 0) *)
     for i = 0 to dim - 1 do
       matrix.(i).(i) <- Int 0
     done;
     create_type_dbm n env matrix
 
-  let to_string t = match t with
-  | Bottom -> "Bottom"
-  | Env dbm ->
-    let idx_to_name i =
-      if i = 0 then "v0"
-      else
-        match List.find_opt (fun (_, idx) -> idx = i) dbm.env with
-        | Some (ide, _) -> ide
-        | None -> "?"
-    in
-    let names = List.init (dbm.n + 1) idx_to_name in
-    let header = "\t" ^ String.concat "\t" names in
-    let rows =
-      List.init (dbm.n + 1) (fun i ->
-          let row_cells =
-            List.init (dbm.n + 1) (fun j -> bound_to_string dbm.matrix.(i).(j))
-          in
-          idx_to_name i ^ "\t" ^ String.concat "\t" row_cells)
-    in
-    header ^ "\n" ^ String.concat "\n" rows
+  (** {2 Chiusura e Normalizzazione DBM} *)
 
   let b_leq b1 b2 = 
     match b1, b2 with
     | NegInf, _ -> true
     | Int x, Int y -> x <= y
     | PosInf, Int _ -> false
-    |_, PosInf -> true
+    | _, PosInf -> true
     | _ -> false
 
-  (* Algoritmo di chiusura della DBM *)
   let close_dbm env = match env with
-  | Bottom -> Bottom
-  | Env dbm ->
-    (* let s = dbm.n +1 in  *)
-    let iter_cube dim f = 
-    for k = 0 to dim -1 do 
-      for i = 0 to dim -1 do 
-        for j = 0 to dim -1 do
-          f k i j
+    | Bottom -> Bottom
+    | Env dbm ->
+      let iter_cube dim f = 
+        for k = 0 to dim - 1 do 
+          for i = 0 to dim - 1 do 
+            for j = 0 to dim - 1 do
+              f k i j
+            done
+          done
         done
-      done
-    done in 
-    let floyd_wharshall matrix n = 
-      let res_m = copy_matrix matrix in 
-      iter_cube n (fun k i j ->  
-      match res_m.(i).(k), res_m.(k).(j) with
-      | Int x, Int y -> 
-        let actual_val = res_m.(i).(j) in  
-        let k_path = Int(x + y) in
-        if b_leq k_path actual_val 
-        then res_m.(i).(j) <- k_path;
-      | _ ->  ()); 
-      res_m in 
-    let rec has_neg_cycle matrix dim i = 
-    if i >= dim then false
-    else match matrix.(i).(i) with
-    | Int x -> if x < 0 then true else has_neg_cycle matrix dim (i+1)
-    | _ -> has_neg_cycle matrix dim (i+1) in 
+      in 
+      let floyd_wharshall matrix n = 
+        let res_m = copy_matrix matrix in 
+        iter_cube n (fun k i j ->  
+          match res_m.(i).(k), res_m.(k).(j) with
+          | Int x, Int y -> 
+            let actual_val = res_m.(i).(j) in  
+            let k_path = Int (x + y) in
+            if b_leq k_path actual_val then res_m.(i).(j) <- k_path
+          | _ -> ()); 
+        res_m
+      in 
+      let rec has_neg_cycle matrix dim i = 
+        if i >= dim then false
+        else match matrix.(i).(i) with
+        | Int x -> if x < 0 then true else has_neg_cycle matrix dim (i + 1)
+        | _ -> has_neg_cycle matrix dim (i + 1)
+      in 
+      let computated_matrix = floyd_wharshall dbm.matrix (dbm.n + 1) in 
+      if has_neg_cycle computated_matrix (dbm.n + 1) 0 then Bottom
+      else create_type_dbm dbm.n dbm.env computated_matrix 
 
-    let computated_matrix = floyd_wharshall dbm.matrix (dbm.n + 1) in 
-    if (has_neg_cycle computated_matrix (dbm.n + 1) 0 ) then Bottom
-    else create_type_dbm dbm.n dbm.env computated_matrix 
-
-  (* Normalizzazione della dbm *)
   let normalize dbm = close_dbm dbm 
 
-  (* Operazioni su dbm *)
-  let leq m n = (* confrontando le celle elemento per elemento m* < n  *)
-    match normalize m,n with
-    | Bottom,_ -> true
-    | _,Bottom -> false
+  (** {2 Operazioni di Reticolo} *)
+
+  let leq m n = 
+    match normalize m, n with
+    | Bottom, _ -> true
+    | _, Bottom -> false
     | Env m1, Env n1 -> 
-      (* 
-      For_all2 scorre contemporaneamente due array ed applica una funzione ai loro elementi 
-      il primo scorre le colonne applicando la funzione che scorre le righe ed applica b_leq
-      appena b_leq dà false termina, altrimenti restituisce true
-      *) 
-      Array.for_all2  (
+      Array.for_all2 (
         fun riga1 riga2 -> Array.for_all2 b_leq riga1 riga2
       ) m1.matrix n1.matrix
 
-  let lub m n = (* m U n -> m* U n* -> min(leq) o t.c. y(m) U y(n) contenuto y(o)    *)
-  match normalize m,normalize n with
-    | Bottom,Env e | Env e,Bottom -> Env e
-    | Bottom,Bottom -> Bottom
+  let lub m n = 
+    match normalize m, normalize n with
+    | Bottom, Env e | Env e, Bottom -> Env e
+    | Bottom, Bottom -> Bottom
     | Env m1, Env n1 ->
-      (* 
-      map2 scorre contemporaneamente due array ed applica una funzione ai loro elementi 
-      il primo scorre le colonne applicando la funzione che scorre le righe ed applica b_max
-      *) 
       let maxmat = 
-      Array.map2 (
-        fun rigam rigan -> Array.map2 max_bound rigam rigan
-      ) m1.matrix n1.matrix in
+        Array.map2 (
+          fun rigam rigan -> Array.map2 max_bound rigam rigan
+        ) m1.matrix n1.matrix 
+      in
       close_dbm (create_type_dbm m1.n m1.env maxmat)
 
-  let glb m n = (* stringenti tramite il minimo cella per cella *)
-    match m,n with
-    | Bottom,_ | _,Bottom -> Bottom
+  let glb m n = 
+    match m, n with
+    | Bottom, _ | _, Bottom -> Bottom
     | Env m1, Env n1 ->
-      (* 
-      map2 scorre contemporaneamente due array ed applica una funzione ai loro elementi 
-      il primo scorre le colonne applicando la funzione che scorre le righe ed applica b_min
-      *) 
       let minmat = 
-      Array.map2 (
-        fun rigam rigan -> Array.map2 min_bound rigam rigan
-      ) m1.matrix n1.matrix in
+        Array.map2 (
+          fun rigam rigan -> Array.map2 min_bound rigam rigan
+        ) m1.matrix n1.matrix 
+      in
       close_dbm (create_type_dbm m1.n m1.env minmat)
+
   let widen m n = 
     match normalize m, normalize n with
-    | Bottom,Bottom -> Bottom 
-    | Bottom,Env e | Env e ,Bottom -> Env e
-    | Env m1 , Env n1 -> 
+    | Bottom, Bottom -> Bottom 
+    | Bottom, Env e | Env e, Bottom -> Env e
+    | Env m1, Env n1 -> 
       let widen_bound bm bn = 
-        if b_leq bn bm then bm 
-        else PosInf
-      in let widen_mat = 
-        Array.map2(
+        if b_leq bn bm then bm else PosInf
+      in
+      let widen_mat = 
+        Array.map2 (
           fun rigam rigan -> Array.map2 widen_bound rigam rigan
         ) m1.matrix n1.matrix
-      in close_dbm(create_type_dbm m1.n m1.env widen_mat)
+      in
+      close_dbm (create_type_dbm m1.n m1.env widen_mat)
+
   let narrow m n = 
     match normalize m, normalize n with
-    | Bottom,_ -> Bottom
-    | x,Bottom -> x
+    | Bottom, _ -> Bottom
+    | x, Bottom -> x
     | Env m1, Env n1 -> 
       let narrow_bound bm bn = 
         match bm with
@@ -888,144 +851,129 @@ module Zones : WeakRelationalDomain = struct
         | _ -> bm
       in 
       let narrow_mat = 
-        Array.map2(
+        Array.map2 (
           fun rigam rigan -> Array.map2 narrow_bound rigam rigan
         ) m1.matrix n1.matrix 
-      in close_dbm (create_type_dbm m1.n m1.env narrow_mat)
+      in
+      close_dbm (create_type_dbm m1.n m1.env narrow_mat)
 
-  (* Operazioni su valori di dbm *)
-  (* Reset non deterministico *)
+  (** {2 Confronti e Proiezioni} *)
+
+  let compare_type b1 b2 env = Shared_arithmetic.IntervalArith.compare_type b1 b2 
+
+  let retrieve_variable ide env = match env with
+    | Bottom -> Shared_arithmetic.IntervalArith.Bottom
+    | Env dbm -> 
+      let idx = resolve_index dbm.env ide in
+      let lo  = neg_bound (dbm.matrix.(0).(idx)) in
+      let hi = dbm.matrix.(idx).(0) in
+      Interval (lo, hi)
+
+  (** {2 Funzioni di Trasferimento: Assegnamenti e Filtri} *)
+
   let forget ide env =  
     match close_dbm env with
-    |Bottom -> Bottom
-    |Env dbm -> 
-      let i = resolve_index  dbm.env ide in 
+    | Bottom -> Bottom
+    | Env dbm -> 
+      let i = resolve_index dbm.env ide in 
       for k = 0 to dbm.n do
-        if k<> i then begin 
+        if k <> i then begin 
           dbm.matrix.(i).(k) <- PosInf;
           dbm.matrix.(k).(i) <- PosInf;
         end
       done;
       create_type_dbm dbm.n dbm.env dbm.matrix
 
-  let filter_rel v1 v2 c env = match env with
-  | Bottom -> Bottom
-  | Env dbm -> 
-    let i = if v1 = "const" then 0 else resolve_index dbm.env v1 in
-    let j = if v2 = "const" then 0 else resolve_index dbm.env v2 in 
-    let new_m = copy_matrix dbm.matrix in
-    new_m.(i).(j) <- min_bound new_m.(i).(j) (Int (c)); 
-    let temp_m = close_dbm (create_type_dbm dbm.n dbm.env new_m) in 
-    temp_m
-
   let filter_atom rel env = 
-    match rel,env with
+    match rel, env with
     | _, Bottom -> Bottom
-    (* Vincolo Unario x <= c *)
-    | Unary(Pos,x,c),Env dbm ->
+    (* Vincolo Unario: x <= c *)
+    | Unary (Pos, x, c), Env dbm ->
       let i = resolve_index dbm.env x in 
       let new_m = copy_matrix dbm.matrix in
-      new_m.(i).(0) <- min_bound new_m.(i).(0) (Int (c)); 
+      new_m.(i).(0) <- min_bound new_m.(i).(0) (Int c); 
       close_dbm (create_type_dbm dbm.n dbm.env new_m) 
-    (* Vincolo Unario -x <= c *)
-    | Unary(Neg,x,c),Env dbm ->
+    (* Vincolo Unario: -x <= c *)
+    | Unary (Neg, x, c), Env dbm ->
       let i = resolve_index dbm.env x in 
       let new_m = copy_matrix dbm.matrix in
-      new_m.(0).(i) <- min_bound new_m.(0).(i) (Int (c)); 
+      new_m.(0).(i) <- min_bound new_m.(0).(i) (Int c); 
       close_dbm (create_type_dbm dbm.n dbm.env new_m)
-    | Binary(Pos,x,Neg,y,c),Env dbm ->
-      let i = resolve_index dbm.env x in 
-      let new_m = copy_matrix dbm.matrix in
-      let j = resolve_index dbm.env y in 
-      new_m.(i).(j) <- min_bound new_m.(i).(j) (Int (c)); 
-      close_dbm (create_type_dbm dbm.n dbm.env new_m)
-    | Binary(Neg,x,Pos,y,c),Env dbm -> 
+    (* Vincolo Binario: x - y <= c *)
+    | Binary (Pos, x, Neg, y, c), Env dbm ->
       let i = resolve_index dbm.env x in 
       let j = resolve_index dbm.env y in 
       let new_m = copy_matrix dbm.matrix in
-      new_m.(j).(i) <- min_bound new_m.(j).(i) (Int (c)); 
+      new_m.(i).(j) <- min_bound new_m.(i).(j) (Int c); 
       close_dbm (create_type_dbm dbm.n dbm.env new_m)
-    (* Somme concordi -> Safe over-approximation perchè le zone non possono rappresentarli *)
-    | Binary(Pos,x,Pos,y,c),Env dbm -> Env dbm
-    | Binary(Neg,x,Neg,y,c),Env dbm -> Env dbm
+    (* Vincolo Binario: y - x <= c *)
+    | Binary (Neg, x, Pos, y, c), Env dbm -> 
+      let i = resolve_index dbm.env x in 
+      let j = resolve_index dbm.env y in 
+      let new_m = copy_matrix dbm.matrix in
+      new_m.(j).(i) <- min_bound new_m.(j).(i) (Int c); 
+      close_dbm (create_type_dbm dbm.n dbm.env new_m)
+    (* Somme concordi: Safe over-approximation (le Zone non le supportano) *)
+    | Binary (Pos, _, Pos, _, _), Env dbm -> Env dbm
+    | Binary (Neg, _, Neg, _, _), Env dbm -> Env dbm
 
-  (* modella assegnazioni di vincoli del tipo Vj = Vi + c *)
-  let assign_var_offset ide1 ide2 c env = 
-    match env with
-    | Bottom -> Bottom
-    | Env dbm -> 
-      let i = resolve_index dbm.env ide1 in
-      let j = if ide2 = "const" then 0 else resolve_index dbm.env ide2 in 
-      match forget ide1 env with
+  let assign ide value env = match env, value with
+    | Bottom, _ | _, Shared_arithmetic.IntervalArith.Bottom -> Bottom
+    | Env dbm, Interval (lo, hi) -> 
+      let i = resolve_index dbm.env ide in 
+      match forget ide env with
       | Bottom -> Bottom
-      | Env dbm -> 
-        dbm.matrix.(i).(j) <- Int c;
-        dbm.matrix.(j).(i) <- Int (-c);
-        close_dbm (Env dbm )
+      | Env dbm' ->
+        dbm'.matrix.(i).(0) <- hi;          (* x <= hi *)
+        dbm'.matrix.(0).(i) <- neg_bound lo; (* v0 - x <= -lo, cioè x >= lo *)
+        close_dbm (Env dbm')
 
-   (* modella assegnazioni di vincoli del tipo Vj = c *)
-  let assign_const ide c env = assign_var_offset ide "const" c env
+  let assign_const ide c env = assign ide (abstract_int c) env
 
-  let assign ide value env = match env,value with
-  | Bottom,_ | _,Shared_arithmetic.IntervalArith.Bottom -> Bottom
-  | Env dbm, Interval(lo,hi) -> 
-    let i = resolve_index dbm.env ide in 
-    match forget ide env with
-    | Bottom -> Bottom
-    | Env dbm' ->
-      dbm'.matrix.(i).(0) <- hi;              (* x <= hi *)
-      dbm'.matrix.(0).(i) <- neg_bound lo;     (* v0 - x <= -lo, cioè x >= lo *)
-      close_dbm (Env dbm')
-
-
-  (* modella assegnazioni di vincoli del tipo Vj = Vj + c *)
   let shift_var ide c env = match env with
-  | Bottom -> Bottom
-  | Env dbm ->
-    let new_m = copy_matrix dbm.matrix in
-    let i = resolve_index dbm.env ide  in 
-    for k = 0 to dbm.n do 
-      if k <> i then begin 
-        new_m.(i).(k) <- add_bound new_m.(i).(k) (Int c );
-        new_m.(k).(i) <- add_bound new_m.(k).(i) (Int(-c));
-      end
-    done;
-    create_type_dbm dbm.n dbm.env new_m
+    | Bottom -> Bottom
+    | Env dbm ->
+      let new_m = copy_matrix dbm.matrix in
+      let i = resolve_index dbm.env ide in 
+      for k = 0 to dbm.n do 
+        if k <> i then begin 
+          new_m.(i).(k) <- add_bound new_m.(i).(k) (Int c);
+          new_m.(k).(i) <- add_bound new_m.(k).(i) (Int (-c));
+        end
+      done;
+      create_type_dbm dbm.n dbm.env new_m
 
-  let retrieve_variable ide env = match env with
-  | Bottom -> Shared_arithmetic.IntervalArith.Bottom
-  | Env dbm -> 
-    let idx = resolve_index dbm.env ide in
-    let lo  = neg_bound(dbm.matrix.(0).(idx)) in
-    let hi = dbm.matrix.(idx).(0) in
-    Interval(lo,hi)
-    let assign_var x sign y c env = 
-      match sign,env with
-      | Pos,Env dbm -> 
-        (* x:= x + c *)
-        if x = y then shift_var x c env
-        else
-          (* x:= y + c *)
-          let i = resolve_index dbm.env x in 
-          let j = resolve_index dbm.env y in
-          (match forget x env with
-          | Bottom -> Bottom
-          | Env dbm' -> 
-            let new_m = copy_matrix dbm'.matrix in 
-            new_m.(i).(j) <- Int c;
-            new_m.(j).(i) <- Int (-c);
-            close_dbm (create_type_dbm dbm'.n dbm'.env new_m)        
-          )
-        | Neg,Env dbm -> 
-          (* x := -y + c questo va approssimato tramite gli intervalli*)
-          let y' = retrieve_variable y env in 
-          let new_val = sum (negate y') (abstract_int c) in 
-          assign x new_val env
-        
-        | _ , Bottom -> Bottom
+  let assign_var x sign y c env = 
+    match sign, env with
+    | Pos, Env dbm -> 
+      if x = y then 
+        (* x := x + c *)
+        shift_var x c env
+      else
+        (* x := y + c *)
+        let i = resolve_index dbm.env x in 
+        let j = resolve_index dbm.env y in
+        (match forget x env with
+        | Bottom -> Bottom
+        | Env dbm' -> 
+          let new_m = copy_matrix dbm'.matrix in 
+          new_m.(i).(j) <- Int c;
+          new_m.(j).(i) <- Int (-c);
+          close_dbm (create_type_dbm dbm'.n dbm'.env new_m))
+    | Neg, Env dbm -> 
+      (* x := -y + c approssimato tramite intervalli *)
+      let y' = retrieve_variable y env in 
+      let new_val = sum (negate y') (abstract_int c) in 
+      assign x new_val env
+    | _, Bottom -> Bottom
 
-  let string_of_value valore = Shared_arithmetic.IntervalArith.to_string valore
-  let print env = failwith "print not implemented"
+  (** {2 Costruzione e Scomposizione Valori Astratti} *)
+
+  let abstract_int x = Interval (Int x, Int x)
+
+  let abstract_range x y = 
+    if x > y then Interval (Int y, Int x) 
+    else Interval (Int x, Int y)
 
   let unpack_value (value : value) (flag : bool) : int option = 
     match value with
@@ -1036,9 +984,28 @@ module Zones : WeakRelationalDomain = struct
       | Int x -> Some x
       | PosInf | NegInf -> None
 
-  let abstract_int x = Interval(Int(x),Int(x))
-  let abstract_range x y = if x > y then Interval(Int(y),Int(x)) else Interval(Int(x),Int(y))
+  (** {2 Pretty Printing} *)
 
- 
-  let compare_type b1 b2 env = Shared_arithmetic.IntervalArith.compare_type b1 b2 
+  let to_string t = match t with
+    | Bottom -> "Bottom"
+    | Env dbm ->
+      let idx_to_name i =
+        if i = 0 then "v0"
+        else
+          match List.find_opt (fun (_, idx) -> idx = i) dbm.env with
+          | Some (ide, _) -> ide
+          | None -> "?"
+      in
+      let names = List.init (dbm.n + 1) idx_to_name in
+      let header = "\t" ^ String.concat "\t" names in
+      let rows =
+        List.init (dbm.n + 1) (fun i ->
+          let row_cells =
+            List.init (dbm.n + 1) (fun j -> bound_to_string dbm.matrix.(i).(j))
+          in
+          idx_to_name i ^ "\t" ^ String.concat "\t" row_cells)
+      in
+      header ^ "\n" ^ String.concat "\n" rows
+
+  let string_of_value valore = Shared_arithmetic.IntervalArith.to_string valore
 end
