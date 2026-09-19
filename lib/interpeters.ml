@@ -259,17 +259,6 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | Filter(cd) -> retrieve_var_from_cond cd
         | Assign(ide,e1) -> ide :: retrieve_var_from_exp e1
 
-    let rec eval_exp (exp : exp) (env : D.t) : D.value = 
-        match exp with
-        | BinaryOperation(e1,Add,e2) -> D.sum (eval_exp e1 env) (eval_exp e2 env)
-        | BinaryOperation(e1,Sub,e2) -> D.sum (eval_exp e1 env) ((eval_exp (UnaryOperation(Negation,e2)) env))
-        | BinaryOperation(e1,Mul,e2) -> D.mul (eval_exp e1 env) (eval_exp e2 env)
-        | BinaryOperation(e1,Div,e2) -> D.div (eval_exp e1 env) (eval_exp e2 env)
-        | UnaryOperation(Negation,e) -> D.negate (eval_exp e env)
-        | Random(a,b) -> D.abstract_range a b
-        | Const c -> D.abstract_int c
-        | Var x -> D.retrieve_variable x env 
-
     let negate_comp comp = match comp with
     | Bigger -> SmallerEquals
     | Smaller -> BiggerEquals
@@ -293,21 +282,99 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
     | Or (cd1, cd2) -> And(negate_cond cd1, negate_cond cd2)
     | Comparison (e1,comp,e2) -> Comparison(e1,negate_comp comp ,e2)
 
-    let filter_diff e1 e2 v1 v2 offset env =
-        let as_var = function Var x -> Some x | _ -> None in
-        match as_var e1, as_var e2 with
-        | Some x, Some y -> (*Var x vs Var y*)
-            D.filter_rel x y offset env
-        | Some x, None -> (*Var x vs valore*)
-            (match D.unpack_value v2 true with
-            | Some hi -> D.filter_rel x "const" (hi + offset) env
-            | None -> env)
-        | None, Some y -> (*valore vs Var y*)
-            (match D.unpack_value v1 false with
-            | Some lo -> D.filter_rel "const" y (-(lo - offset)) env
-            | None -> env)
-        | None, None -> env (*valore vs valore*)
+    let init var_list = D.init var_list 
 
+    
+         
+
+
+    let extract_rel_helper (e1:exp) (e2:exp) (offset:int) : rel_atom option =
+        match e1, e2 with
+            (* 1. x <= y  -->  x - y <= offset *)
+            | Var x, Var y ->
+                Some (Binary(Pos, x, Neg, y, offset))
+            (* 2. x <= y + c  -->  x - y <= c + offset *)
+            | Var x, BinaryOperation(Var y, Add, Const c) ->
+                Some (Binary(Pos, x, Neg, y, c + offset))
+            (* 3. x <= y - c  -->  x - y <= -c + offset *)
+            | Var x, BinaryOperation(Var y, Sub, Const c) ->
+                Some (Binary(Pos, x, Neg, y, -c + offset))
+            (* 4. x - y <= c *)
+            | BinaryOperation(Var x, Sub, Var y), Const c ->
+                Some (Binary(Pos, x, Neg, y, c + offset))
+            (* 5. x + y <= c  (fondamentale per gli ottagoni!) *)
+            | BinaryOperation(Var x, Add, Var y), Const c ->
+                Some (Binary(Pos, x, Pos, y, c + offset))
+            (* 6. -x - y <= c *)
+            | BinaryOperation(UnaryOperation(Negation, Var x), Sub, Var y), Const c ->
+                Some (Binary(Neg, x, Neg, y, c + offset))
+            (* 7. x <= c (vincolo unario) *)
+            | Var x, Const c ->
+                Some (Unary(Pos, x, c + offset))
+            (* 8. c <= x  -->  -x <= -c *)
+            | Const c, Var x ->
+                Some (Unary(Neg, x, -c + offset))
+            (* 9. -x <= c *)
+            | UnaryOperation(Negation, Var x), Const c ->
+                Some (Unary(Neg, x, c + offset))
+            | _ -> None
+
+    let extract_rel_atom (e1:exp) (comp:comparator) (e2:exp) : rel_atom option =
+        match comp with
+        | Smaller ->  extract_rel_helper e1 e2 (-1)
+        | SmallerEquals ->  extract_rel_helper e1 e2 (0)
+        | Bigger ->  extract_rel_helper e1 e2 (-1)
+        | BiggerEquals ->  extract_rel_helper e1 e2 (0)
+        | Equals | NotEquals -> None
+
+    let rec eval_exp (exp : exp) (env : D.t) : D.value = 
+        match exp with
+        | BinaryOperation(e1,Add,e2) -> D.sum (eval_exp e1 env) (eval_exp e2 env)
+        | BinaryOperation(e1,Sub,e2) -> D.sum (eval_exp e1 env) ((eval_exp (UnaryOperation(Negation,e2)) env))
+        | BinaryOperation(e1,Mul,e2) -> D.mul (eval_exp e1 env) (eval_exp e2 env)
+        | BinaryOperation(e1,Div,e2) -> D.div (eval_exp e1 env) (eval_exp e2 env)
+        | UnaryOperation(Negation,e) -> D.negate (eval_exp e env)
+        | Random(a,b) -> D.abstract_range a b
+        | Const c -> D.abstract_int c
+        | Var x -> D.retrieve_variable x env 
+
+    let filter_diff e1 e2 v1 v2 offset env =
+        let atom = match e1,e2 with
+        (* x <= y --> x - y <= offset *)
+        | Var x, Var y -> 
+            Some(Binary (Pos,x,Neg,y,offset))
+        (* 2. x <= y + c  -->  x - y <= c + offset *)
+        | Var x, BinaryOperation(Var y ,Add, Const c) ->
+            Some(Binary (Pos,x,Neg,y,c + offset))
+        (* 3. x - y <= c *)
+        | BinaryOperation(Var x, Sub, Var y), Const c -> 
+            Some (Binary (Pos, x, Neg, y, c + offset))
+        (* 4. x + y <= c  (fondamentale per gli ottagoni!) *)
+        | BinaryOperation(Var x, Add, Var y),Const c ->
+            Some(Binary (Pos, x, Pos, y, c+ offset))
+        (* 5. x <= c (vincolo unario) *)
+        | Var x, Const c -> 
+            Some(Unary(Pos,x, c + offset))
+        (* 6. c <= y  -->  -y <= -c + offset *)
+        | Const c, Var y ->
+            Some(Unary(Neg,y,(-c + offset )))
+        (* 7. Fallback: Var x <= exp_generica *)
+        | Var x, _ ->
+            (match D.unpack_value (eval_exp e2 env) false with
+            | Some hi -> Some (Unary(Pos, x, hi +offset))
+            | None -> None
+            )
+        (* 8. Fallback: exp_generica <= Var y *)
+        | _,Var y -> 
+            (match D.unpack_value (eval_exp e1 env) false with
+            | Some lo -> Some (Unary(Neg, y, -(lo - offset)))
+            | None -> None
+            )
+        | _ -> None
+        in match atom with
+        | Some a -> D.filter_atom a env
+        | None -> env
+    
     let rec eval_cond (cond : cond) (env : D.t) : D.t = 
         match cond with
         | Boolean true -> env
@@ -373,7 +440,6 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
                 in 
                     eval_cmd (Filter(Not(cond))) invariant
 
-    let init var_list = D.init var_list 
     let eval (prog: cmd) : D.t = 
         (* Raccoglie la lista variabili del programma dall'albero di sintassi astratta*)
         let var_list  = get_all_var prog in
