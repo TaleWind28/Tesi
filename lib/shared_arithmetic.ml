@@ -1,3 +1,5 @@
+open Syntax
+
 module IntervalArith = struct
   type bound = NegInf | Int of int | PosInf 
   type value = Interval of bound * bound | Bottom
@@ -147,4 +149,90 @@ module IntervalArith = struct
       else if d <= Int(-1) then  Interval(min_bound (div_bound b c) (div_bound b d), max_bound (div_bound a c) (div_bound a d))
       else div_helper a b c d
 
+end
+
+module DBMOperations = struct
+include IntervalArith
+
+  type dbm = {
+    n : int;
+    env : (ide * int) list;
+    matrix : bound array array;
+  }
+
+  type t = Bottom | Env of dbm
+
+  let create_type_dbm n env matrix = Env { n; env; matrix }
+
+  let copy_matrix m = Array.map Array.copy m
+
+  let index_of env x = try Some (List.assoc x env) with Not_found -> None
+
+  let resolve_index env x =
+    match index_of env x with
+    | Some i -> i
+    | None -> failwith (Printf.sprintf "Zones: variabile '%s' non dichiarata" x)
+
+  let b_leq b1 b2 = 
+    match b1, b2 with
+    | NegInf, _ -> true
+    | Int x, Int y -> x <= y
+    | PosInf, Int _ -> false
+    | _, PosInf -> true
+    | _ -> false
+
+  let leq_matrix m n = 
+    Array.for_all2 (
+      fun riga1 riga2 -> Array.for_all2 b_leq riga1 riga2
+    ) m.matrix n.matrix
+
+  let lub_matrix m n = 
+        Array.map2 (
+          fun rigam rigan -> Array.map2 max_bound rigam rigan
+        ) m.matrix n.matrix 
+
+  let glb_matrix m n = 
+      Array.map2 (
+          fun rigam rigan -> Array.map2 min_bound rigam rigan
+        ) m.matrix n.matrix 
+
+  let widen_matrix m n = 
+    let widen_bound bm bn = if b_leq bn bm then bm else PosInf in 
+    Array.map2 (
+      fun rigam rigan -> Array.map2 widen_bound rigam rigan
+    ) m.matrix n.matrix
+  
+  let narrow_matrix m n = 
+    let narrow_bound bm bn = 
+        match bm with
+        | PosInf -> bn 
+        | _ -> bm
+      in 
+        Array.map2 (
+          fun rigam rigan -> Array.map2 narrow_bound rigam rigan
+        ) m.matrix n.matrix 
+  let iter_cube dim f = 
+    for k = 0 to dim - 1 do 
+      for i = 0 to dim - 1 do 
+        for j = 0 to dim - 1 do
+          f k i j
+        done
+      done
+    done
+
+  let floyd_wharshall matrix n = 
+    let res_m = copy_matrix matrix in 
+    iter_cube n (fun k i j ->  
+      match res_m.(i).(k), res_m.(k).(j) with
+      | Int x, Int y -> 
+        let actual_val = res_m.(i).(j) in  
+        let k_path = Int (x + y) in
+        if b_leq k_path actual_val then res_m.(i).(j) <- k_path
+      | _ -> ()); 
+    res_m
+  let rec has_neg_cycle matrix dim i = 
+        if i >= dim then false
+        else match matrix.(i).(i) with
+        | Int x -> if x < 0 then true else has_neg_cycle matrix dim (i + 1)
+        | _ -> has_neg_cycle matrix dim (i + 1)
 end

@@ -707,33 +707,14 @@ end
 
 module Zones : WeakRelationalDomain = struct
   include Shared_arithmetic.IntervalArith
+  include Shared_arithmetic.DBMOperations
 
   (** {2 Struttura DBM e Inizializzazione} *)
-
-  type dbm = {
-    n : int;
-    env : (ide * int) list;
-    matrix : bound array array;
-  }
-
-  type t = Bottom | Env of dbm
-
   let bottom = Bottom
 
   let is_bottom env = match env with
     | Bottom -> true
     | _ -> false
-
-  let create_type_dbm n env matrix = Env { n; env; matrix }
-
-  let copy_matrix m = Array.map Array.copy m
-
-  let index_of env x = try Some (List.assoc x env) with Not_found -> None
-
-  let resolve_index env x =
-    match index_of env x with
-    | Some i -> i
-    | None -> failwith (Printf.sprintf "Zones: variabile '%s' non dichiarata" x)
 
   let init (vars : ide list) : t =
     let xs = List.sort_uniq compare vars in
@@ -748,43 +729,9 @@ module Zones : WeakRelationalDomain = struct
 
   (** {2 Chiusura e Normalizzazione DBM} *)
 
-  let b_leq b1 b2 = 
-    match b1, b2 with
-    | NegInf, _ -> true
-    | Int x, Int y -> x <= y
-    | PosInf, Int _ -> false
-    | _, PosInf -> true
-    | _ -> false
-
   let close_dbm env = match env with
     | Bottom -> Bottom
     | Env dbm ->
-      let iter_cube dim f = 
-        for k = 0 to dim - 1 do 
-          for i = 0 to dim - 1 do 
-            for j = 0 to dim - 1 do
-              f k i j
-            done
-          done
-        done
-      in 
-      let floyd_wharshall matrix n = 
-        let res_m = copy_matrix matrix in 
-        iter_cube n (fun k i j ->  
-          match res_m.(i).(k), res_m.(k).(j) with
-          | Int x, Int y -> 
-            let actual_val = res_m.(i).(j) in  
-            let k_path = Int (x + y) in
-            if b_leq k_path actual_val then res_m.(i).(j) <- k_path
-          | _ -> ()); 
-        res_m
-      in 
-      let rec has_neg_cycle matrix dim i = 
-        if i >= dim then false
-        else match matrix.(i).(i) with
-        | Int x -> if x < 0 then true else has_neg_cycle matrix dim (i + 1)
-        | _ -> has_neg_cycle matrix dim (i + 1)
-      in 
       let computated_matrix = floyd_wharshall dbm.matrix (dbm.n + 1) in 
       if has_neg_cycle computated_matrix (dbm.n + 1) 0 then Bottom
       else create_type_dbm dbm.n dbm.env computated_matrix 
@@ -797,47 +744,28 @@ module Zones : WeakRelationalDomain = struct
     match normalize m, n with
     | Bottom, _ -> true
     | _, Bottom -> false
-    | Env m1, Env n1 -> 
-      Array.for_all2 (
-        fun riga1 riga2 -> Array.for_all2 b_leq riga1 riga2
-      ) m1.matrix n1.matrix
-
+    | Env m1, Env n1 -> leq_matrix m1 n1 
   let lub m n = 
     match normalize m, normalize n with
     | Bottom, Env e | Env e, Bottom -> Env e
     | Bottom, Bottom -> Bottom
     | Env m1, Env n1 ->
-      let maxmat = 
-        Array.map2 (
-          fun rigam rigan -> Array.map2 max_bound rigam rigan
-        ) m1.matrix n1.matrix 
-      in
-      close_dbm (create_type_dbm m1.n m1.env maxmat)
-
+      let minmat = lub_matrix m1 n1 in
+      close_dbm (create_type_dbm m1.n m1.env minmat)
   let glb m n = 
     match m, n with
     | Bottom, _ | _, Bottom -> Bottom
     | Env m1, Env n1 ->
-      let minmat = 
-        Array.map2 (
-          fun rigam rigan -> Array.map2 min_bound rigam rigan
-        ) m1.matrix n1.matrix 
+      let maxmat = glb_matrix m1 n1 
       in
-      close_dbm (create_type_dbm m1.n m1.env minmat)
+      close_dbm (create_type_dbm m1.n m1.env maxmat)
 
   let widen m n = 
     match normalize m, normalize n with
     | Bottom, Bottom -> Bottom 
     | Bottom, Env e | Env e, Bottom -> Env e
     | Env m1, Env n1 -> 
-      let widen_bound bm bn = 
-        if b_leq bn bm then bm else PosInf
-      in
-      let widen_mat = 
-        Array.map2 (
-          fun rigam rigan -> Array.map2 widen_bound rigam rigan
-        ) m1.matrix n1.matrix
-      in
+      let widen_mat = widen_matrix m1 n1 in
       close_dbm (create_type_dbm m1.n m1.env widen_mat)
 
   let narrow m n = 
@@ -845,19 +773,10 @@ module Zones : WeakRelationalDomain = struct
     | Bottom, _ -> Bottom
     | x, Bottom -> x
     | Env m1, Env n1 -> 
-      let narrow_bound bm bn = 
-        match bm with
-        | PosInf -> bn 
-        | _ -> bm
-      in 
-      let narrow_mat = 
-        Array.map2 (
-          fun rigam rigan -> Array.map2 narrow_bound rigam rigan
-        ) m1.matrix n1.matrix 
-      in
+      let narrow_mat = narrow_matrix m1 n1  in
       close_dbm (create_type_dbm m1.n m1.env narrow_mat)
 
-  (** {2 Confronti e Proiezioni} *)
+  (** {3 Confronti e Proiezioni} *)
 
   let compare_type b1 b2 env = Shared_arithmetic.IntervalArith.compare_type b1 b2 
 
@@ -967,7 +886,7 @@ module Zones : WeakRelationalDomain = struct
       assign x new_val env
     | _, Bottom -> Bottom
 
-  (** {2 Costruzione e Scomposizione Valori Astratti} *)
+  (** {4 Costruzione e Scomposizione Valori Astratti} *)
 
   let abstract_int x = Interval (Int x, Int x)
 
@@ -984,7 +903,7 @@ module Zones : WeakRelationalDomain = struct
       | Int x -> Some x
       | PosInf | NegInf -> None
 
-  (** {2 Pretty Printing} *)
+  (** {5 Pretty Printing} *)
 
   let to_string t = match t with
     | Bottom -> "Bottom"
@@ -1008,4 +927,67 @@ module Zones : WeakRelationalDomain = struct
       header ^ "\n" ^ String.concat "\n" rows
 
   let string_of_value valore = Shared_arithmetic.IntervalArith.to_string valore
+end
+
+module Octagons = struct 
+include Shared_arithmetic.IntervalArith
+
+  type dbm = {
+    n : int;
+    env : (ide * int) list;
+    matrix : bound array array;
+  }
+
+  type t = Bottom | Env of dbm
+
+  let bottom = Bottom
+  let is_bottom env = 
+    match env with
+    |Bottom -> true
+    |_ -> false
+  (* val init : ide list -> t 
+  val normalize : t -> t 
+  val leq : t -> t -> bool 
+  val lub : t -> t -> t 
+  val glb : t -> t -> t 
+  val widen : t -> t -> t 
+  val narrow : t -> t -> t *)
+
+  (* val compare_type :  value -> value -> t -> int
+
+  val retrieve_variable : ide -> t -> value *)
+
+  (** {4 Funzioni di Trasferimento} *)
+
+  (** Assegnamento astratto: aggiorna la DBM a seguito dell'istruzione x := e.
+      Gestisce sia assegnamenti esatti (costanti, traslazioni x := x + c)
+      sia assegnamenti affini approssimati tramite intervalli *)
+  (* val assign_const : ide -> int -> t -> t 
+  val assign : ide -> value -> t -> t 
+  val assign_var : ide -> sign -> ide -> int -> t -> t  
+
+  val shift_var : ide -> int -> t -> t  *)
+
+  (** Forget / Reset: rimuove tutti i vincoli che coinvolgono la variabile x.
+      Richiede la chiusura preventiva della DBM prima di impostare riga e colonna a +infinity *)
+  (* val forget : ide -> t -> t  *)
+
+  (** Filtro atomico sulle condizioni: raffina la DBM applicando la guardia c
+      (es. vincoli di differenza Vj - Vi <= c o guardie unarie Vi <= c) *)
+  (* val filter_atom : rel_atom -> t -> t
+
+  val abstract_int   : int -> value
+  val abstract_range : int -> int -> value
+
+  val sum    : value -> value -> value
+  val mul    : value -> value -> value
+  val div    : value -> value -> value
+  val negate : value -> value
+
+  val resolve_index : (ide * int)list  -> ide -> int
+
+  val unpack_value : value -> bool -> int option
+
+  val to_string : t -> string
+  val string_of_value : value -> string *)
 end
