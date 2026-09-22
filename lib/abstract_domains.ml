@@ -930,34 +930,121 @@ module Zones : WeakRelationalDomain = struct
 end
 
 module Octagons = struct 
-include Shared_arithmetic.IntervalArith
-
-  type dbm = {
-    n : int;
-    env : (ide * int) list;
-    matrix : bound array array;
-  }
-
-  type t = Bottom | Env of dbm
-
+  include Shared_arithmetic.IntervalArith
+  include Shared_arithmetic.DBMOperations
   let bottom = Bottom
   let is_bottom env = 
     match env with
     |Bottom -> true
     |_ -> false
-  (* val init : ide list -> t 
-  val normalize : t -> t 
-  val leq : t -> t -> bool 
-  val lub : t -> t -> t 
-  val glb : t -> t -> t 
-  val widen : t -> t -> t 
-  val narrow : t -> t -> t *)
-
-  (* val compare_type :  value -> value -> t -> int
-
-  val retrieve_variable : ide -> t -> value *)
-
+  let init (vars : ide list) : t =
+    let xs = List.sort_uniq compare vars in
+    let n = List.length xs in
+    let env = List.mapi (fun i x -> (x, i)) xs in
+    let dim = n * 2 in
+    let matrix = Array.make_matrix dim dim PosInf in
+    for i = 0 to dim - 1 do
+      matrix.(i).(i) <- Int 0
+    done;
+    create_type_dbm n env matrix
+  let has_inconsistency m dim =
+    let rec check k = 
+    if k >= dim/2 then false
+    else
+      let pos = 2*k in 
+      let neg = pos+1 in
+      match m.(pos).(neg), m.(neg).(pos) with
+      | Int pos',Int neg' -> if (pos' asr 1) + (neg' asr 1) < 0 then true else check (k+1)
+      | _ -> check (k+1)
+    in check 0
+  let dual i = if i mod 2 = 0 then i+1 else i-1
+  let div_2_bound = function
+  | Int x -> Int (x asr 1)
+  | b -> b
+  let strenghten_elements m dim = 
+    let res = copy_matrix m in 
+    for i = 0 to dim -1 do 
+      for j = 0 to dim -1 do 
+        let mii = m.(i).(dual i) in 
+        let mjj = m.(dual j).(j) in 
+        match add_bound mii mjj with
+        | Int s -> 
+          res.(i).(j) <- min_bound (res.(i).(j)) (div_2_bound (Int(s)))
+        | _ -> ()
+        done;
+      done;
+    res
+  let strong_closure env = match env with
+  | Bottom -> Bottom
+  | Env dbm -> 
+    let dim = 2 * dbm.n in 
+    let m' = floyd_wharshall dbm.matrix dim in 
+    if has_neg_cycle m' dim 0 ||  has_inconsistency m' dim then Bottom 
+    else 
+      let m3 = floyd_wharshall (strenghten_elements m' dim) dim in 
+      if has_neg_cycle m3 dim 0 then Bottom 
+      else create_type_dbm dbm.n dbm.env m3
+  let normalize env = strong_closure env
+  let lub m n = match m,n  with
+  | Bottom,x | x,Bottom -> x
+  | Env m1, Env n1  -> strong_closure(create_type_dbm m1.n m1.env (lub_matrix m1 n1))  
+  let glb m n = match strong_closure m,strong_closure n with
+  | Bottom,_ | _,Bottom -> Bottom
+  | Env m1, Env n1 -> create_type_dbm m1.n m1.env (glb_matrix  m1 n1)
+  let leq m n =  match strong_closure m, n with
+  | Bottom, _ -> true
+  | _, Bottom -> false
+  | Env m1, Env n1 -> leq_matrix m1 n1 
+  let widen m n = 
+    match normalize m, normalize n with
+    | Bottom, Bottom -> Bottom 
+    | Bottom, Env e | Env e, Bottom -> Env e
+    | Env m1, Env n1 -> 
+      let widen_mat = widen_matrix m1 n1 in
+      strong_closure (create_type_dbm m1.n m1.env widen_mat)
+  let narrow m n = 
+    match normalize m, normalize n with
+    | Bottom, _ -> Bottom
+    | x, Bottom -> x
+    | Env m1, Env n1 -> 
+      let narrow_mat = narrow_matrix m1 n1  in
+      strong_closure (create_type_dbm m1.n m1.env narrow_mat)
+  let compare_type b1 b2 env = Shared_arithmetic.IntervalArith.compare_type b1 b2 
+ 
   (** {4 Funzioni di Trasferimento} *)
+
+  let retrieve_variable id env = 
+    match normalize env with
+    | Bottom -> Shared_arithmetic.IntervalArith.Bottom
+    | Env dbm -> 
+      let k = resolve_index dbm.env id in 
+      let pos = 2*k in 
+      let neg = pos +1 in
+      let hi = div_2_bound(dbm.matrix.(pos).(neg)) in 
+      let lo = neg_bound (div_2_bound(dbm.matrix.(neg).(pos))) in 
+      Interval(lo,hi)
+
+  (* val forget : ide -> t -> t  *)
+  let forget id env = 
+    match strong_closure env with
+    | Bottom -> Bottom
+    | Env dbm -> 
+      let k = resolve_index dbm.env id in 
+      let pos = 2*k in 
+      let neg = pos +1 in 
+      let dim = dbm.n * 2 in 
+      let new_m = copy_matrix dbm.matrix in 
+      for c = 0 to dim -1 do 
+        if c <> pos then begin 
+          new_m.(pos).(c) <- PosInf;
+          new_m.(c).(pos) <- PosInf;
+        end;
+        if c <> neg then begin 
+          new_m.(neg).(c) <- PosInf;
+          new_m.(c).(neg) <- PosInf;
+        end;
+      done;
+      create_type_dbm dbm.n dbm.env new_m
 
   (** Assegnamento astratto: aggiorna la DBM a seguito dell'istruzione x := e.
       Gestisce sia assegnamenti esatti (costanti, traslazioni x := x + c)
@@ -967,27 +1054,16 @@ include Shared_arithmetic.IntervalArith
   val assign_var : ide -> sign -> ide -> int -> t -> t  
 
   val shift_var : ide -> int -> t -> t  *)
-
-  (** Forget / Reset: rimuove tutti i vincoli che coinvolgono la variabile x.
-      Richiede la chiusura preventiva della DBM prima di impostare riga e colonna a +infinity *)
-  (* val forget : ide -> t -> t  *)
+  
 
   (** Filtro atomico sulle condizioni: raffina la DBM applicando la guardia c
       (es. vincoli di differenza Vj - Vi <= c o guardie unarie Vi <= c) *)
   (* val filter_atom : rel_atom -> t -> t
 
-  val abstract_int   : int -> value
-  val abstract_range : int -> int -> value
-
-  val sum    : value -> value -> value
-  val mul    : value -> value -> value
-  val div    : value -> value -> value
-  val negate : value -> value
-
   val resolve_index : (ide * int)list  -> ide -> int
 
   val unpack_value : value -> bool -> int option
 
-  val to_string : t -> string
-  val string_of_value : value -> string *)
+  val to_string : t -> string *)
+  let string_of_value value = Shared_arithmetic.IntervalArith.to_string value
 end
