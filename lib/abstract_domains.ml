@@ -990,7 +990,7 @@ module Octagons = struct
   | Env m1, Env n1  -> strong_closure(create_type_dbm m1.n m1.env (lub_matrix m1 n1))  
   let glb m n = match strong_closure m,strong_closure n with
   | Bottom,_ | _,Bottom -> Bottom
-  | Env m1, Env n1 -> create_type_dbm m1.n m1.env (glb_matrix  m1 n1)
+  | Env m1, Env n1 -> strong_closure(create_type_dbm m1.n m1.env (glb_matrix  m1 n1))
   let leq m n =  match strong_closure m, n with
   | Bottom, _ -> true
   | _, Bottom -> false
@@ -1024,7 +1024,6 @@ module Octagons = struct
       let lo = neg_bound (div_2_bound(dbm.matrix.(neg).(pos))) in 
       Interval(lo,hi)
 
-  (* val forget : ide -> t -> t  *)
   let forget id env = 
     match strong_closure env with
     | Bottom -> Bottom
@@ -1046,24 +1045,104 @@ module Octagons = struct
       done;
       create_type_dbm dbm.n dbm.env new_m
 
-  (** Assegnamento astratto: aggiorna la DBM a seguito dell'istruzione x := e.
-      Gestisce sia assegnamenti esatti (costanti, traslazioni x := x + c)
-      sia assegnamenti affini approssimati tramite intervalli *)
-  (* val assign_const : ide -> int -> t -> t 
-  val assign : ide -> value -> t -> t 
-  val assign_var : ide -> sign -> ide -> int -> t -> t  
+  let assign x value env = match env,value with
+  | Bottom,_ | _,Shared_arithmetic.IntervalArith.Bottom -> Bottom
+  | Env dbm, Interval (lo,hi) ->
+    let k = resolve_index dbm.env x in 
+    match forget x env with
+    | Bottom -> Bottom
+    | Env dbm' ->
+      let pos = 2*k in 
+      let neg = pos +1 in 
+      dbm'.matrix.(pos).(neg) <- mul_bound (Int(2)) hi;
+      dbm'.matrix.(neg).(pos) <- mul_bound (Int(2)) (neg_bound lo);
+      strong_closure (Env dbm')
+    
+  let shift_var x c env = 
+    match env with
+    | Bottom -> Bottom
+    | Env dbm -> 
+      let k = resolve_index dbm.env x in 
+      let pos = 2*k in 
+      let neg = pos +1 in 
+      let dim = dbm.n * 2 in 
+      let new_m = copy_matrix dbm.matrix in 
+      for i = 0 to dim -1 do 
+        if i <> pos then begin 
+          new_m.(pos).(i) <- add_bound new_m.(pos).(i) (Int c);
+          new_m.(i).(pos) <- add_bound new_m.(i).(pos) (Int (-c));
+        end;
+        if i <> neg then begin 
+          new_m.(neg).(i) <- add_bound new_m.(neg).(i) (Int (-c));
+          new_m.(i).(neg) <- add_bound new_m.(i).(neg) (Int c);
+        end;
+      done;
+      create_type_dbm dbm.n dbm.env new_m
 
-  val shift_var : ide -> int -> t -> t  *)
+  let assign_var x sign y c env = 
+    match env with
+    | Bottom -> Bottom
+    | Env dbm ->
+      let i = resolve_index dbm.env x in 
+      let j = resolve_index dbm.env y in 
+      let px = 2*i in 
+      let nx = px + 1 in 
+      let py = 2*j in
+      let ny = py +1 in 
+      match sign with
+      | Pos ->
+        if x = y then shift_var x c env
+        else (match forget x env with
+        | Bottom -> Bottom
+        | Env dbm' -> 
+          let new_m = copy_matrix dbm'.matrix in 
+          new_m.(px).(py) <- Int c;
+          new_m.(py).(px) <- Int (-c);
+          new_m.(nx).(ny) <- Int (-c);
+          new_m.(ny).(nx) <- Int c;
+          strong_closure (create_type_dbm dbm'.n dbm'.env new_m)
+        )
+      | Neg ->
+        if x = y then begin
+          (* x := -x + c: approssimazione o inversione *)
+          let x' = retrieve_variable x env in
+          let new_val = sum (negate x') (abstract_int c) in
+          assign x new_val env
+        end
+        else (match forget x env with
+        | Bottom -> Bottom
+        | Env dbm' -> 
+          let new_m = copy_matrix dbm'.matrix in 
+          new_m.(px).(ny) <- Int c;
+          new_m.(ny).(px) <- Int (-c);
+          new_m.(py).(nx) <- Int c;
+          new_m.(nx).(py) <- Int (-c);
+          strong_closure (create_type_dbm dbm'.n dbm'.env new_m)
+        )
   
+  let assign_const ide c env = assign ide (abstract_int c) env
+  (* 
+    Filtro atomico sulle condizioni: raffina la DBM applicando la guardia c
+    (es. vincoli di differenza Vj - Vi <= c o guardie unarie Vi <= c) 
+  *)
+  (* 
+  val filter_atom : rel_atom -> t -> t
 
-  (** Filtro atomico sulle condizioni: raffina la DBM applicando la guardia c
-      (es. vincoli di differenza Vj - Vi <= c o guardie unarie Vi <= c) *)
-  (* val filter_atom : rel_atom -> t -> t
+  val to_string : t -> string 
+  *)
+  let unpack_value (value : value) (flag : bool) : int option = 
+    match value with
+    | Bottom -> None
+    | Interval (lo, hi) -> 
+      let b = if flag then hi else lo in
+      match b with
+      | Int x -> Some x
+      | PosInf | NegInf -> None
+  
+  let filte_atom rel env =
+    match rel,env with
+    | _,Bottom -> Bottom
+    | Env dbm 
 
-  val resolve_index : (ide * int)list  -> ide -> int
-
-  val unpack_value : value -> bool -> int option
-
-  val to_string : t -> string *)
   let string_of_value value = Shared_arithmetic.IntervalArith.to_string value
 end
