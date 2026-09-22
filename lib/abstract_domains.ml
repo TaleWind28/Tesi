@@ -929,7 +929,7 @@ module Zones : WeakRelationalDomain = struct
   let string_of_value valore = Shared_arithmetic.IntervalArith.to_string valore
 end
 
-module Octagons = struct 
+module Octagons : WeakRelationalDomain = struct 
   include Shared_arithmetic.IntervalArith
   include Shared_arithmetic.DBMOperations
   let bottom = Bottom
@@ -1121,15 +1121,6 @@ module Octagons = struct
         )
   
   let assign_const ide c env = assign ide (abstract_int c) env
-  (* 
-    Filtro atomico sulle condizioni: raffina la DBM applicando la guardia c
-    (es. vincoli di differenza Vj - Vi <= c o guardie unarie Vi <= c) 
-  *)
-  (* 
-  val filter_atom : rel_atom -> t -> t
-
-  val to_string : t -> string 
-  *)
   let unpack_value (value : value) (flag : bool) : int option = 
     match value with
     | Bottom -> None
@@ -1139,10 +1130,82 @@ module Octagons = struct
       | Int x -> Some x
       | PosInf | NegInf -> None
   
-  let filte_atom rel env =
-    match rel,env with
-    | _,Bottom -> Bottom
-    | Env dbm 
+  let filter_atom rel env =
+    match env with
+    | Bottom -> Bottom
+    | Env dbm -> 
+      let new_m = copy_matrix dbm.matrix in 
+      match rel with
+      (* Vincolo Unario: x <= c *)
+      | Unary(Pos,x,c) -> 
+        let k = resolve_index dbm.env x in 
+        let pos, neg = 2 * k, 2 * k + 1 in
+        new_m.(pos).(neg) <- min_bound new_m.(pos).(neg) (Int (2*c));
+        strong_closure(create_type_dbm dbm.n dbm.env new_m)
+      (* Vincolo Binario: -x <= c (Supportato!) *)
+      | Unary(Neg,x,c) -> 
+        let k = resolve_index dbm.env x in 
+        let pos, neg = 2 * k, 2 * k + 1 in
+        new_m.(neg).(pos) <- min_bound new_m.(neg).(pos) (Int (2*c));
+        strong_closure(create_type_dbm dbm.n dbm.env new_m)
+      (* Vincolo Binario: x - y <= c (Supportato!) *)
+      | Binary(Pos,x,Neg,y,c) -> 
+        let kx = resolve_index dbm.env x in 
+        let ky = resolve_index dbm.env y in 
+        let px,nx = 2*kx, 2*kx +1 in 
+        let py,ny = 2*ky, 2*ky +1 in
+        new_m.(px).(py) <- min_bound new_m.(px).(py) (Int c);
+        new_m.(ny).(nx) <- min_bound new_m.(ny).(nx) (Int c);
+        strong_closure(create_type_dbm dbm.n dbm.env new_m)
+      (* Vincolo Binario: -x + y <= c (Supportato!) *)
+      | Binary(Neg,x,Pos,y,c) -> 
+        let kx = resolve_index dbm.env x in 
+        let ky = resolve_index dbm.env y in 
+        let px,nx = 2*kx, 2*kx +1 in 
+        let py,ny = 2*ky, 2*ky +1 in
+        new_m.(py).(px) <- min_bound new_m.(py).(px) (Int c);
+        new_m.(nx).(ny) <- min_bound new_m.(nx).(ny) (Int c);
+        strong_closure(create_type_dbm dbm.n dbm.env new_m)
+      (* Vincolo Binario: x + y <= c (Supportato!) *)
+      | Binary(Pos,x,Pos,y,c) -> 
+        let kx = resolve_index dbm.env x in 
+        let ky = resolve_index dbm.env y in 
+        let px,nx = 2*kx, 2*kx +1 in 
+        let py,ny = 2*ky, 2*ky +1 in
+        new_m.(px).(ny) <- min_bound new_m.(px).(ny) (Int c);
+        new_m.(py).(nx) <- min_bound new_m.(py).(nx) (Int c);
+        strong_closure(create_type_dbm dbm.n dbm.env new_m)
+      (* Vincolo Binario: -x - y <= c (Supportato!) *)
+      | Binary(Neg,x,Neg,y,c) -> 
+        let kx = resolve_index dbm.env x in 
+        let ky = resolve_index dbm.env y in 
+        let px,nx = 2*kx, 2*kx +1 in 
+        let py,ny = 2*ky, 2*ky +1 in
+        new_m.(nx).(py) <- min_bound new_m.(nx).(py) (Int c);
+        new_m.(ny).(px) <- min_bound new_m.(ny).(px) (Int c);
+        strong_closure(create_type_dbm dbm.n dbm.env new_m)
+
+  let to_string t = match t with
+    | Bottom -> "Bottom"
+    | Env dbm ->
+      let dim = 2 * dbm.n in
+      let idx_to_name i =
+        let k = i / 2 in
+        let sign = if i mod 2 = 0 then "+" else "-" in
+        match List.find_opt (fun (_, idx) -> idx = k) dbm.env with
+        | Some (ide, _) -> sign ^ ide
+        | None -> "?"
+      in
+      let names = List.init dim idx_to_name in
+      let header = "\t" ^ String.concat "\t" names in
+      let rows =
+        List.init dim (fun i ->
+          let row_cells =
+            List.init dim (fun j -> bound_to_string dbm.matrix.(i).(j))
+          in
+          idx_to_name i ^ "\t" ^ String.concat "\t" row_cells)
+      in
+      header ^ "\n" ^ String.concat "\n" rows
 
   let string_of_value value = Shared_arithmetic.IntervalArith.to_string value
 end
