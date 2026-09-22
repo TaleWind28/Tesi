@@ -987,3 +987,6 @@ module Expected_Zones : EXPECTED_ZONES with type value = Abstract_domains.Zones.
   let while_fast_converge_x = const 0
 end
 
+module Expected_Octagons : EXPECTED_ZONES with type value = Abstract_domains.Octagons.value = struct
+  include Expected_Zones
+end

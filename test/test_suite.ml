@@ -324,31 +324,34 @@ module TestSuite_SimplifiedSigns = Make_Sign_Tests (Abstract_domains.SimplifiedS
 module TestSuite_StrangeSigns = Make_Sign_Tests (Abstract_domains.StrangeSigns) (Expected_StrangeSigns)
 module TestSuite_Intervals = Make_Sign_Tests (Abstract_domains.Intervals) (Expected_Intervals)
 
-module Make_Zone_Tests (E : EXPECTED_ZONES with type value = Abstract_domains.Zones.value) = struct
-  let zone_val_testable =
+module Make_WeakRelational_Tests
+    (D : Abstract_domains.WeakRelationalDomain)
+    (Interp : sig val eval : cmd -> D.t end)
+    (E : EXPECTED_ZONES with type value = D.value) = struct
+  let val_testable =
     Alcotest.testable
-      (fun fmt v -> Format.fprintf fmt "%s" (Abstract_domains.Zones.string_of_value v))
+      (fun fmt v -> Format.fprintf fmt "%s" (D.string_of_value v))
       (fun a b -> a = b)
 
   let check_vars desc final_env expected_vars =
-    if Abstract_domains.Zones.is_bottom final_env then
+    if D.is_bottom final_env then
       Alcotest.fail (Printf.sprintf "%s: lo stato finale è Bottom inaspettatamente" desc)
     else
       List.iter
         (fun (var, expected) ->
-          let v = Abstract_domains.Zones.retrieve_variable var final_env in
-          Alcotest.(check zone_val_testable) (desc ^ " - " ^ var) expected v)
+          let v = D.retrieve_variable var final_env in
+          Alcotest.(check val_testable) (desc ^ " - " ^ var) expected v)
         expected_vars
 
   let make_prog_case (desc, prog, expected_vars) =
-    (desc, `Quick, fun () -> check_vars desc (ZoneInterp.eval prog) expected_vars)
+    (desc, `Quick, fun () -> check_vars desc (Interp.eval prog) expected_vars)
 
   let expect_bottom desc prog =
     ( desc,
       `Quick,
       fun () ->
-        let res = ZoneInterp.eval prog in
-        if not (Abstract_domains.Zones.is_bottom res) then
+        let res = Interp.eval prog in
+        if not (D.is_bottom res) then
           Alcotest.fail (Printf.sprintf "%s: atteso Bottom, ottenuto stato valido" desc) )
 
   (* ------------------------------------------------------------ *)
@@ -415,8 +418,8 @@ module Make_Zone_Tests (E : EXPECTED_ZONES with type value = Abstract_domains.Zo
 
   let skiptests = [
     ( "Skip da solo", `Quick, fun () ->
-        let res = ZoneInterp.eval Skip in
-        if Abstract_domains.Zones.is_bottom res then
+        let res = Interp.eval Skip in
+        if D.is_bottom res then
           Alcotest.fail "Skip: stato inaspettatamente Bottom" );
   ]
 
@@ -619,16 +622,90 @@ module Make_Zone_Tests (E : EXPECTED_ZONES with type value = Abstract_domains.Zo
   ]
 end
 
-module TestSuite_Zones = Make_Zone_Tests (Expected_Zones)
+module TestSuite_Zones = Make_WeakRelational_Tests (Abstract_domains.Zones) (ZoneInterp) (Expected_Zones)
+module TestSuite_Octagons = Make_WeakRelational_Tests (Abstract_domains.Octagons) (OctagonInterp) (Expected_Octagons)
+
+module OctagonSpecificTests = struct
+  open Abstract_domains.Octagons
+  let oct_val_testable =
+    Alcotest.testable
+      (fun fmt v -> Format.fprintf fmt "%s" (string_of_value v))
+      (fun a b -> a = b)
+
+  let check_vars desc final_env expected_vars =
+    if is_bottom final_env then
+      Alcotest.fail (Printf.sprintf "%s: lo stato finale è Bottom inaspettatamente" desc)
+    else
+      List.iter
+        (fun (var, expected) ->
+          let v = retrieve_variable var final_env in
+          Alcotest.(check oct_val_testable) (desc ^ " - " ^ var) expected v)
+        expected_vars
+
+  let make_case (desc, prog, expected_vars) =
+    (desc, `Quick, fun () -> check_vars desc (OctagonInterp.eval prog) expected_vars)
+
+  let expect_bottom desc prog =
+    ( desc, `Quick, fun () ->
+        let res = OctagonInterp.eval prog in
+        if not (is_bottom res) then
+          Alcotest.fail (Printf.sprintf "%s: atteso Bottom, ottenuto stato valido" desc) )
+
+  let tests = [
+    "Ottagoni: Funzionalità Specifiche", [
+      make_case (
+        "Assegnamento variabile negativa esatto: x=5; y=-x",
+        Sequence (Assign ("x", Const 5), Assign ("y", UnaryOperation (Negation, Var "x"))),
+        [ "x", abstract_int 5; "y", abstract_int (-5) ]
+      );
+      make_case (
+        "Assegnamento affine variabile negativa: x=5; y=-x+2",
+        Sequence (Assign ("x", Const 5), Assign ("y", BinaryOperation (UnaryOperation (Negation, Var "x"), Add, Const 2))),
+        [ "x", abstract_int 5; "y", abstract_int (-3) ]
+      );
+      make_case (
+        "Filtro somma concorde positiva: x=Random(1,10); y=Random(1,10); Filter(x+y <= 12)",
+        Sequence (
+          Assign ("x", Random (1, 10)),
+          Sequence (
+            Assign ("y", Random (1, 10)),
+            Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), SmallerEquals, Const 12))
+          )
+        ),
+        [ "x", abstract_range 1 10; "y", abstract_range 1 10 ]
+      );
+      expect_bottom
+        "Filtro somma concorde contraddittorio: x=10; y=10; Filter(x+y <= 15)"
+        (Sequence (
+          Assign ("x", Const 10),
+          Sequence (
+            Assign ("y", Const 10),
+            Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), SmallerEquals, Const 15))
+          )
+        ));
+      expect_bottom
+        "Filtro somma negativa contraddittorio: x=-10; y=-10; Filter(-x-y <= 15)"
+        (Sequence (
+          Assign ("x", Const (-10)),
+          Sequence (
+            Assign ("y", Const (-10)),
+            Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Var "y"), SmallerEquals, Const 15))
+          )
+        ));
+    ]
+  ]
+end
 
 (* 2. Esecuzione tramite Alcotest *)
 let () =
   Alcotest.run "Abstract Interpreter Tests" (
     List.map (fun (name, test_list) -> ("ExtendedSigns: " ^ name, test_list)) TestSuite_ExtendedSigns.tests @
     List.map (fun (name, test_list) -> ("SimplifiedSigns: " ^ name, test_list)) TestSuite_SimplifiedSigns.tests @
-    List.map (fun (name,test_list) -> ("SimpleSigns: " ^ name, test_list)) TestSuite_SimpleSigns.tests @
-    List.map (fun (name,test_list) -> ("StrangeSigns: " ^ name, test_list)) TestSuite_StrangeSigns.tests @
-    List.map (fun (name,test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests @
-    List.map ( fun (name,test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests @
-    List.map (fun (name, test_list) -> ("Zones: " ^ name, test_list)) TestSuite_Zones.tests
+    List.map (fun (name, test_list) -> ("SimpleSigns: " ^ name, test_list)) TestSuite_SimpleSigns.tests @
+    List.map (fun (name, test_list) -> ("StrangeSigns: " ^ name, test_list)) TestSuite_StrangeSigns.tests @
+    List.map (fun (name, test_list) -> ("Signs: " ^ name, test_list)) TestSuite_Signs.tests @
+    List.map (fun (name, test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests @
+    List.map (fun (name, test_list) -> ("Zones: " ^ name, test_list)) TestSuite_Zones.tests @
+    List.map (fun (name, test_list) -> ("Octagons: " ^ name, test_list)) TestSuite_Octagons.tests @
+    OctagonSpecificTests.tests
   )
