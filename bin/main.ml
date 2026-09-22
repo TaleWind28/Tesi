@@ -39,7 +39,7 @@ let () =
   print_string "\nZones\n";
   ZoneInterp.print_result (ZoneInterp.eval test_prog);
   print_string "\nOctagones\n";
-  OcatagonInterp.print_result (OcatagonInterp.eval test_prog)
+  OctagonInterp.print_result (OctagonInterp.eval test_prog)
 
 
 

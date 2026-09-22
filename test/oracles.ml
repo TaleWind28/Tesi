@@ -907,11 +907,11 @@ module type EXPECTED_ZONES = sig
   val while_fast_converge_x : value
 end
 
-module Expected_Zones : EXPECTED_ZONES with type value = Abstract_domains.Zones.value = struct
-  type value = Abstract_domains.Zones.value
+module Make_Expected_Relational (D : Abstract_domains.WeakRelationalDomain) : EXPECTED_ZONES with type value = D.value = struct
+  type value = D.value
 
-  let interval lo hi = Abstract_domains.Zones.abstract_range lo hi
-  let const c = Abstract_domains.Zones.abstract_int c
+  let interval lo hi = D.abstract_range lo hi
+  let const c = D.abstract_int c
 
   (* Assegnamenti Costanti *)
   let assign_const_1 = const 5
@@ -987,6 +987,5 @@ module Expected_Zones : EXPECTED_ZONES with type value = Abstract_domains.Zones.
   let while_fast_converge_x = const 0
 end
 
-module Expected_Octagons : EXPECTED_ZONES with type value = Abstract_domains.Octagons.value = struct
-  include Expected_Zones
-end
+module Expected_Zones = Make_Expected_Relational (Abstract_domains.Zones)
+module Expected_Octagons = Make_Expected_Relational (Abstract_domains.Octagons)
