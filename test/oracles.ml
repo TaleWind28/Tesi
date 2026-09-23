@@ -929,7 +929,7 @@ module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Inter
   let while_1_1 = interval 5 5   (* while mai eseguito: x resta 5 *)
   let while_1_2 = top_val        (* non usato dai test attuali *)
   let while_2_1 = interval 0 0   (* x=5; while x!=0 x=0 -> x=0 esatto *)
-  let while_3_1 = to_pos_inf 0   (* perdita di precisione: [0,+Inf] *)
+  let while_3_1 = interval 0 0  (* perdita di precisione: [0,+Inf] *)
   let while_3_2 = to_pos_inf 0
   let while_4_1 = interval 1 1   (* x!=y deciso subito -> loop mai eseguito *)
   let while_4_2 = interval 2 2

@@ -215,14 +215,19 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
                     
             | While(cond,cmd) -> (* Ciclo che tramite Least Fixpoint valuta  *)
                 let f x = lub_env (Env(env)) (eval_cmd cmd (eval_cond cond x)) in (* Funzione che si occupa di valutare lo stato aggiornandolo ad ogni iterazione *)
-                let lfp f = (*Tramite funzione ausiliaria kleene lfp restituisce, se possibile, il punto dopo il quale il ciclo smette di produrre risultati che espandono lo stato corrente *)
+                (* let lfp f = Tramite funzione ausiliaria kleene lfp restituisce, se possibile, il punto dopo il quale il ciclo smette di produrre risultati che espandono lo stato corrente *)
                     let rec kleene x = 
                         let x' = widen_env x (f x) in (* Viene effettuato un Widening sullo stato attuale e lo stato dopo aver applicato f *) 
                             if leq_env x' x then x (* Se gli stati sono uguali allora ho raggiunto il Least Fixpoint, altrimenti continuo ad iterare *)
-                            else kleene x' 
-                    in kleene (Env(env)) (* Parto dallo stato Vuoto e vado a "salire" *)
-                in eval_cmd (Filter((Not(cond)))) (lfp f) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*) 
-               
+                            else kleene x'
+                        in 
+                    let post_fp =  kleene (Env(env)) in 
+                    let rec descend x = 
+                        let x' = narrow_env x (f x) in 
+                        if leq_env x x' then x
+                        else descend x' in 
+                    let invariant = descend post_fp
+                in eval_cmd (Filter((Not(cond)))) (invariant) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*) 
     (* Funzione eval generale *)
     let eval (prog : cmd) : state =
         let initial_env = Env(Hashtbl.create 10) in

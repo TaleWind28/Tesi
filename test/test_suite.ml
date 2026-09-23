@@ -996,6 +996,256 @@ module OctagonSpecificTests = struct
   ]
 end
 
+module AdvancedInterpreterTests = struct
+  open Syntax
+
+  let expect_bottom is_bottom eval desc prog =
+    ( desc,
+      `Quick,
+      fun () ->
+        if not (is_bottom (eval prog)) then
+          Alcotest.fail (Printf.sprintf "%s: atteso Bottom, ottenuto stato valido" desc) )
+
+  (* 1. TEST RELAZIONALI CONDIVISI (Zone e Ottagoni) *)
+  let make_shared_relational_tests is_bottom eval = [
+    expect_bottom is_bottom eval
+      "Lockstep While: x=0; y=0; while(x<10) {x++; y++}; Filter(x != y)"
+      (Sequence (
+        Assign ("x", Const 0),
+        Sequence (
+          Assign ("y", Const 0),
+          Sequence (
+            While (Comparison (Var "x", Smaller, Const 10),
+              Sequence (
+                Assign ("x", BinaryOperation (Var "x", Add, Const 1)),
+                Assign ("y", BinaryOperation (Var "y", Add, Const 1))
+              )
+            ),
+            Filter (Comparison (Var "x", NotEquals, Var "y"))
+          )
+        )
+      ));
+
+    expect_bottom is_bottom eval
+      "Swap di variabili: x=10; y=20; t=x; x=y; y=t; Filter(x <= y)"
+      (Sequence (
+        Assign ("x", Const 10),
+        Sequence (
+          Assign ("y", Const 20),
+          Sequence (
+            Assign ("t", Var "x"),
+            Sequence (
+              Assign ("x", Var "y"),
+              Sequence (
+                Assign ("y", Var "t"),
+                Filter (Comparison (Var "x", SmallerEquals, Var "y"))
+              )
+            )
+          )
+        )
+      ));
+
+    expect_bottom is_bottom eval
+      "Transitivita a 5 nodi: a-b<=-2; b-c<=-3; c-d<=-1; d-e<=-2; Filter(a-e >= -5)"
+      (Sequence (
+        Assign ("a", Random (0, 100)),
+        Sequence (
+          Assign ("b", Random (0, 100)),
+          Sequence (
+            Assign ("c", Random (0, 100)),
+            Sequence (
+              Assign ("d", Random (0, 100)),
+              Sequence (
+                Assign ("e", Random (0, 100)),
+                Sequence (
+                  Filter (Comparison (BinaryOperation (Var "a", Sub, Var "b"), SmallerEquals, Const (-2))),
+                  Sequence (
+                    Filter (Comparison (BinaryOperation (Var "b", Sub, Var "c"), SmallerEquals, Const (-3))),
+                    Sequence (
+                      Filter (Comparison (BinaryOperation (Var "c", Sub, Var "d"), SmallerEquals, Const (-1))),
+                      Sequence (
+                        Filter (Comparison (BinaryOperation (Var "d", Sub, Var "e"), SmallerEquals, Const (-2))),
+                        Filter (Comparison (BinaryOperation (Var "a", Sub, Var "e"), BiggerEquals, Const (-5)))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      ));
+
+    expect_bottom is_bottom eval
+      "Assegnamenti affini concatenati: x=Random(0,50); y=x-4; z=y+2; Filter(x-z != 2)"
+      (Sequence (
+        Assign ("x", Random (0, 50)),
+        Sequence (
+          Assign ("y", BinaryOperation (Var "x", Sub, Const 4)),
+          Sequence (
+            Assign ("z", BinaryOperation (Var "y", Add, Const 2)),
+            Filter (Comparison (BinaryOperation (Var "x", Sub, Var "z"), NotEquals, Const 2))
+          )
+        )
+      ));
+
+    expect_bottom is_bottom eval
+      "If con branch merging e bound relazionale: y=x+2 o y=x+5; Filter(y-x < 2)"
+      (Sequence (
+        Assign ("x", Random (0, 20)),
+        Sequence (
+          If (Comparison (Random (0, 1), Equals, Const 0),
+              Assign ("y", BinaryOperation (Var "x", Add, Const 2)),
+              Assign ("y", BinaryOperation (Var "x", Add, Const 5))),
+          Filter (Comparison (BinaryOperation (Var "y", Sub, Var "x"), Smaller, Const 2))
+        )
+      ));
+  ]
+
+  (* 2. TEST SPECIFICI PER GLI OTTAGONI (relazioni con somme e variabili negate) *)
+  let octagon_advanced_tests = [
+    expect_bottom Abstract_domains.Octagons.is_bottom OctagonInterp.eval
+      "Ottagoni: Assegnamento affine negativo y=-x+10; Filter(x+y != 10)"
+      (Sequence (
+        Assign ("x", Random (0, 20)),
+        Sequence (
+          Assign ("y", BinaryOperation (UnaryOperation (Negation, Var "x"), Add, Const 10)),
+          Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), NotEquals, Const 10))
+        )
+      ));
+
+    expect_bottom Abstract_domains.Octagons.is_bottom OctagonInterp.eval
+      "Ottagoni: Chiusura forte mista x+y<=4; -y+z<=2; Filter(x+z >= 10)"
+      (Sequence (
+        Assign ("x", Random (0, 50)),
+        Sequence (
+          Assign ("y", Random (0, 50)),
+          Sequence (
+            Assign ("z", Random (0, 50)),
+            Sequence (
+              Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), SmallerEquals, Const 4)),
+              Sequence (
+                Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "y"), Add, Var "z"), SmallerEquals, Const 2)),
+                Filter (Comparison (BinaryOperation (Var "x", Add, Var "z"), BiggerEquals, Const 10))
+              )
+            )
+          )
+        )
+      ));
+
+    expect_bottom Abstract_domains.Octagons.is_bottom OctagonInterp.eval
+      "Ottagoni: Doppia negazione affine y=-x; z=-y; Filter(x-z != 0)"
+      (Sequence (
+        Assign ("x", Random (1, 10)),
+        Sequence (
+          Assign ("y", UnaryOperation (Negation, Var "x")),
+          Sequence (
+            Assign ("z", UnaryOperation (Negation, Var "y")),
+            Filter (Comparison (BinaryOperation (Var "x", Sub, Var "z"), NotEquals, Const 0))
+          )
+        )
+      ));
+  ]
+
+  (* 3. TEST AVANZATI PER GLI INTERVALLI (Cicli, Narrowing e Aritmetica) *)
+  let is_interval_bottom = function
+    | IntervalInterp.BottomEnv -> true
+    | IntervalInterp.Env _ -> false
+
+  let intervals_advanced_tests = [
+    expect_bottom is_interval_bottom IntervalInterp.eval
+      "Intervals: While narrowing con incremento a passo 3: x=0; while(x<10) x=x+3; Filter(x > 15)"
+      (Sequence (
+        Assign ("x", Const 0),
+        Sequence (
+          While (Comparison (Var "x", Smaller, Const 10),
+            Assign ("x", BinaryOperation (Var "x", Add, Const 3))),
+          Filter (Comparison (Var "x", Bigger, Const 15))
+        )
+      ));
+
+    expect_bottom is_interval_bottom IntervalInterp.eval
+      "Intervals: While narrowing decremento a 0: x=10; while(x>0) x=x-2; Filter(x > 0)"
+      (Sequence (
+        Assign ("x", Const 10),
+        Sequence (
+          While (Comparison (Var "x", Bigger, Const 0),
+            Assign ("x", BinaryOperation (Var "x", Sub, Const 2))),
+          Filter (Comparison (Var "x", Bigger, Const 0))
+        )
+      ));
+
+    expect_bottom is_interval_bottom IntervalInterp.eval
+      "Intervals: Prodotto di intervalli discordi: x in [2,5]; y in [-4,-2]; z=x*y; Filter(z >= 0)"
+      (Sequence (
+        Assign ("x", Random (2, 5)),
+        Sequence (
+          Assign ("y", Random (-4, -2)),
+          Sequence (
+            Assign ("z", BinaryOperation (Var "x", Mul, Var "y")),
+            Filter (Comparison (Var "z", BiggerEquals, Const 0))
+          )
+        )
+      ));
+
+    expect_bottom is_interval_bottom IntervalInterp.eval
+      "Intervals: Divisione sicura: x in [20,40]; y in [2,4]; z=x/y; Filter(z < 4)"
+      (Sequence (
+        Assign ("x", Random (20, 40)),
+        Sequence (
+          Assign ("y", Random (2, 4)),
+          Sequence (
+            Assign ("z", BinaryOperation (Var "x", Div, Var "y")),
+            Filter (Comparison (Var "z", Smaller, Const 4))
+          )
+        )
+      ));
+  ]
+
+  (* 4. TEST AVANZATI PER I DOMINI DEI SEGNI *)
+  let make_sign_advanced_tests is_bottom eval = [
+    expect_bottom is_bottom eval
+      "Signs: Negazione di positivo: x in [1,10]; y=-x; Filter(y > 0)"
+      (Sequence (
+        Assign ("x", Random (1, 10)),
+        Sequence (
+          Assign ("y", UnaryOperation (Negation, Var "x")),
+          Filter (Comparison (Var "y", Bigger, Const 0))
+        )
+      ));
+
+    expect_bottom is_bottom eval
+      "Signs: Prodotto tra opposti: x in [1,10]; y in [-10,-1]; z=x*y; Filter(z > 0)"
+      (Sequence (
+        Assign ("x", Random (1, 10)),
+        Sequence (
+          Assign ("y", Random (-10, -1)),
+          Sequence (
+            Assign ("z", BinaryOperation (Var "x", Mul, Var "y")),
+            Filter (Comparison (Var "z", Bigger, Const 0))
+          )
+        )
+      ));
+
+    expect_bottom is_bottom eval
+      "Signs: If con entrambi rami positivi: if (b) x=5 else x=10; Filter(x < 0)"
+      (Sequence (
+        If (Boolean true, Assign ("x", Const 5), Assign ("x", Const 10)),
+        Filter (Comparison (Var "x", Smaller, Const 0))
+      ));
+
+    expect_bottom is_bottom eval
+      "Signs: While mai eseguito: x=-5; while(x>0) x=x+1; Filter(x > 0)"
+      (Sequence (
+        Assign ("x", Const (-5)),
+        Sequence (
+          While (Comparison (Var "x", Bigger, Const 0), Assign ("x", BinaryOperation (Var "x", Add, Const 1))),
+          Filter (Comparison (Var "x", Bigger, Const 0))
+        )
+      ));
+  ]
+end
+
 (* 2. Esecuzione tramite Alcotest *)
 let () =
   Alcotest.run "Abstract Interpreter Tests" (
@@ -1007,5 +1257,19 @@ let () =
     List.map (fun (name, test_list) -> ("Intervals: "^ name, test_list)) TestSuite_Intervals.tests @
     List.map (fun (name, test_list) -> ("Zones: " ^ name, test_list)) TestSuite_Zones.tests @
     List.map (fun (name, test_list) -> ("Octagons: " ^ name, test_list)) TestSuite_Octagons.tests @
-    OctagonSpecificTests.tests
+    OctagonSpecificTests.tests @
+    [
+      "Zones: Sfide Relazionali Avanzate",
+        AdvancedInterpreterTests.make_shared_relational_tests Abstract_domains.Zones.is_bottom ZoneInterp.eval;
+      "Octagons: Sfide Relazionali Avanzate",
+        AdvancedInterpreterTests.make_shared_relational_tests Abstract_domains.Octagons.is_bottom OctagonInterp.eval;
+      "Octagons: Sfide Specifiche Ottagonali",
+        AdvancedInterpreterTests.octagon_advanced_tests;
+      "Intervals: Sfide Avanzate Narrowing e Aritmetica",
+        AdvancedInterpreterTests.intervals_advanced_tests;
+      "ExtendedSigns: Sfide Avanzate Segni",
+        AdvancedInterpreterTests.make_sign_advanced_tests (function ExtendedSignInterp.BottomEnv -> true | _ -> false) ExtendedSignInterp.eval;
+      "SimplifiedSigns: Sfide Avanzate Segni",
+        AdvancedInterpreterTests.make_sign_advanced_tests (function SimplifiedSignInterp.BottomEnv -> true | _ -> false) SimplifiedSignInterp.eval;
+    ]
   )
