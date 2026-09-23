@@ -262,3 +262,43 @@ module VariableRetrieval = struct
     | Assign(ide,e1) -> ide :: retrieve_var_from_exp e1
   
 end
+
+module SyntaxUtils = struct
+  let negate_comp comp = match comp with
+    | Bigger -> SmallerEquals
+    | Smaller -> BiggerEquals
+    | BiggerEquals -> Smaller
+    | SmallerEquals -> Bigger
+    | Equals -> NotEquals
+    | NotEquals -> Equals
+
+  let rec negate_cond cd = match cd with
+    | Not cd -> cd
+    | Boolean b -> Boolean (not b)
+    | And (cd1,cd2) -> Or(negate_cond cd1,negate_cond cd2)
+    | Or (cd1, cd2) -> And(negate_cond cd1, negate_cond cd2)
+    | Comparison (e1,comp,e2) -> Comparison(e1,negate_comp comp ,e2)
+  
+  let inv_comp comp = match comp with
+    | Bigger -> Smaller
+    | Smaller -> Bigger
+    | BiggerEquals -> SmallerEquals
+    | SmallerEquals -> BiggerEquals
+    | Equals -> Equals
+    | NotEquals -> NotEquals
+
+end
+
+module Fixpoint = struct
+  let compute_invariant ~widen ~narrow ~leq ~f init =
+    let rec kleene x =
+      let x' = widen x (f x) in
+      if leq x' x then x else kleene x'
+    in
+    let post_fp = kleene init in
+    let rec descend x =
+      let x' = narrow x (f x) in
+      if leq x x' then x else descend x'
+    in
+    descend post_fp
+end

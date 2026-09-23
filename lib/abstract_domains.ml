@@ -626,7 +626,7 @@ end
 
 (*Dominio degli Intervalli*)
 module Intervals = struct
-  include Shared_arithmetic.IntervalArith
+  include Shared_modules.IntervalArith
   type t = value
 
   let abstract_int n = Interval (Int n,Int n)
@@ -706,8 +706,8 @@ module type WeakRelationalDomain = sig
 end
 
 module Zones : WeakRelationalDomain = struct
-  include Shared_arithmetic.IntervalArith
-  include Shared_arithmetic.DBMOperations
+  include Shared_modules.IntervalArith
+  include Shared_modules.DBMOperations
 
   (** {2 Struttura DBM e Inizializzazione} *)
   let bottom = Bottom
@@ -778,10 +778,10 @@ module Zones : WeakRelationalDomain = struct
 
   (** {3 Confronti e Proiezioni} *)
 
-  let compare_type b1 b2 env = Shared_arithmetic.IntervalArith.compare_type b1 b2 
+  let compare_type b1 b2 env = Shared_modules.IntervalArith.compare_type b1 b2 
 
   let retrieve_variable ide env = match env with
-    | Bottom -> Shared_arithmetic.IntervalArith.Bottom
+    | Bottom -> Shared_modules.IntervalArith.Bottom
     | Env dbm -> 
       let idx = resolve_index dbm.env ide in
       let lo  = neg_bound (dbm.matrix.(0).(idx)) in
@@ -837,7 +837,7 @@ module Zones : WeakRelationalDomain = struct
     | Binary (Neg, _, Neg, _, _), Env dbm -> Env dbm
 
   let assign ide value env = match env, value with
-    | Bottom, _ | _, Shared_arithmetic.IntervalArith.Bottom -> Bottom
+    | Bottom, _ | _, Shared_modules.IntervalArith.Bottom -> Bottom
     | Env dbm, Interval (lo, hi) -> 
       let i = resolve_index dbm.env ide in 
       match forget ide env with
@@ -926,12 +926,12 @@ module Zones : WeakRelationalDomain = struct
       in
       header ^ "\n" ^ String.concat "\n" rows
 
-  let string_of_value valore = Shared_arithmetic.IntervalArith.to_string valore
+  let string_of_value valore = Shared_modules.IntervalArith.to_string valore
 end
 
 module Octagons : WeakRelationalDomain = struct 
-  include Shared_arithmetic.IntervalArith
-  include Shared_arithmetic.DBMOperations
+  include Shared_modules.IntervalArith
+  include Shared_modules.DBMOperations
   let bottom = Bottom
   let is_bottom env = 
     match env with
@@ -1009,13 +1009,13 @@ module Octagons : WeakRelationalDomain = struct
     | Env m1, Env n1 -> 
       let narrow_mat = narrow_matrix m1 n1  in
       strong_closure (create_type_dbm m1.n m1.env narrow_mat)
-  let compare_type b1 b2 env = Shared_arithmetic.IntervalArith.compare_type b1 b2 
+  let compare_type b1 b2 env = Shared_modules.IntervalArith.compare_type b1 b2 
  
   (** {4 Funzioni di Trasferimento} *)
 
   let retrieve_variable id env = 
     match normalize env with
-    | Bottom -> Shared_arithmetic.IntervalArith.Bottom
+    | Bottom -> Shared_modules.IntervalArith.Bottom
     | Env dbm -> 
       let k = resolve_index dbm.env id in 
       let pos = 2*k in 
@@ -1046,7 +1046,7 @@ module Octagons : WeakRelationalDomain = struct
       create_type_dbm dbm.n dbm.env new_m
 
   let assign x value env = match env,value with
-  | Bottom,_ | _,Shared_arithmetic.IntervalArith.Bottom -> Bottom
+  | Bottom,_ | _,Shared_modules.IntervalArith.Bottom -> Bottom
   | Env dbm, Interval (lo,hi) ->
     let k = resolve_index dbm.env x in 
     match forget x env with
@@ -1207,5 +1207,5 @@ module Octagons : WeakRelationalDomain = struct
       in
       header ^ "\n" ^ String.concat "\n" rows
 
-  let string_of_value value = Shared_arithmetic.IntervalArith.to_string value
+  let string_of_value value = Shared_modules.IntervalArith.to_string value
 end

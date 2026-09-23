@@ -3,7 +3,9 @@ open Syntax
 
 (* Interprete astratto parametrico sul dominio D *)
 module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
-    include Shared_arithmetic.VariableRetrieval
+    include Shared_modules.VariableRetrieval
+    include Shared_modules.SyntaxUtils
+    include Shared_modules.Fixpoint
     type state =
     | Env of (string, D.t) Hashtbl.t
     | BottomEnv 
@@ -34,22 +36,7 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
         t2;
         Env(result)
 
-    let negate_comp comp = match comp with
-    | Bigger -> SmallerEquals
-    | Smaller -> BiggerEquals
-    | BiggerEquals -> Smaller
-    | SmallerEquals -> Bigger
-    | Equals -> NotEquals
-    | NotEquals -> Equals
-
-    let inv_comp comp = match comp with
-    | Bigger -> Smaller
-    | Smaller -> Bigger
-    | BiggerEquals -> SmallerEquals
-    | SmallerEquals -> BiggerEquals
-    | Equals -> Equals
-    | NotEquals -> NotEquals
-
+    
     let refine_vars e1 e2 v1 v2 env comp =
         let new_env = Hashtbl.copy env in
         let became_bottom = ref false in
@@ -83,12 +70,12 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
             let result = Hashtbl.create (Hashtbl.length t1) in
             Hashtbl.iter (fun var v1 ->
                 let v2 = try Hashtbl.find t2 var with Not_found -> D.bottom in
-                Hashtbl.add result var (D.widen v1 v2)
+                Hashtbl.replace result var (D.widen v1 v2)
             ) t1;
             (* eventuali variabili presenti solo in env2 *)
             Hashtbl.iter (fun var v2 ->
                 if not (Hashtbl.mem result var) then
-                Hashtbl.add result var (D.widen D.bottom v2)
+                Hashtbl.replace result var (D.widen D.bottom v2)
             ) t2;
         Env(result)
 
@@ -100,12 +87,12 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
         let result = Hashtbl.create (Hashtbl.length t1) in
         Hashtbl.iter (fun var v1 ->
             let v2 = try Hashtbl.find t2 var with Not_found -> v1 in
-            Hashtbl.add result var (D.narrow v1 v2)
+            Hashtbl.replace result var (D.narrow v1 v2)
         ) t1;
         (* variabili presenti solo in e2 (raro, ma per simmetria con widen_env) *)
         Hashtbl.iter (fun var v2 ->
             if not (Hashtbl.mem result var) then
-            Hashtbl.add result var (D.narrow D.top v2)
+            Hashtbl.replace result var (D.narrow D.top v2)
         ) t2;
         Env(result)
     
@@ -121,13 +108,6 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
                 D.leq v1 v2
             ) t1 true
             
-    let rec negate_cond cd = match cd with
-    | Not cd -> cd
-    | Boolean b -> Boolean (not b)
-    | And (cd1,cd2) -> Or(negate_cond cd1,negate_cond cd2)
-    | Or (cd1, cd2) -> And(negate_cond cd1, negate_cond cd2)
-    | Comparison (e1,comp,e2) -> Comparison(e1,negate_comp comp ,e2)
-  
     (* Valutazione Espressioni *)
     let rec eval_exp (exp : exp) (st : state) : D.t =
     (* Controllo lo stato *)
@@ -217,59 +197,28 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
             | While(cond,cmd) -> (* Ciclo che tramite Least Fixpoint valuta  *)
                 let f x = lub_env (Env(env)) (eval_cmd cmd (eval_cond cond x)) in (* Funzione che si occupa di valutare lo stato aggiornandolo ad ogni iterazione *)
                 (* let lfp f = Tramite funzione ausiliaria kleene lfp restituisce, se possibile, il punto dopo il quale il ciclo smette di produrre risultati che espandono lo stato corrente *)
-                    let rec kleene x = 
-                        let x' = widen_env x (f x) in (* Viene effettuato un Widening sullo stato attuale e lo stato dopo aver applicato f *) 
-                            if leq_env x' x then x (* Se gli stati sono uguali allora ho raggiunto il Least Fixpoint, altrimenti continuo ad iterare *)
-                            else kleene x'
-                        in 
-                    let post_fp =  kleene (Env(env)) in 
-                    let rec descend x = 
-                        let x' = narrow_env x (f x) in 
-                        if leq_env x x' then x
-                        else descend x' in 
-                    let invariant = descend post_fp
+                let invariant = compute_invariant ~widen:widen_env ~narrow:narrow_env ~leq:leq_env ~f (Env env)
                 in eval_cmd (Filter((Not(cond)))) (invariant) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*) 
     (* Funzione eval generale *)
     let eval (prog : cmd) : state =
         let var_list  = get_all_var prog in
-        let initial_env = Env(Hashtbl.create (List.length var_list)) in
-        eval_cmd prog initial_env
+        let initial_env = Hashtbl.create (List.length var_list) in
+        List.iter (fun x -> Hashtbl.replace initial_env x D.top) var_list;
+        eval_cmd prog (Env(initial_env))
 end
 
 module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
-    include Shared_arithmetic.VariableRetrieval
+    include Shared_modules.VariableRetrieval
+    include Shared_modules.SyntaxUtils
+    include Shared_modules.Fixpoint
     let print_result env : unit = 
         print_string ((D.to_string env) ^ "\n")
-    
-    let negate_comp comp = match comp with
-    | Bigger -> SmallerEquals
-    | Smaller -> BiggerEquals
-    | BiggerEquals -> Smaller
-    | SmallerEquals -> Bigger
-    | Equals -> NotEquals
-    | NotEquals -> Equals
-
-    let inv_comp comp = match comp with
-    | Bigger -> Smaller
-    | Smaller -> Bigger
-    | BiggerEquals -> SmallerEquals
-    | SmallerEquals -> BiggerEquals
-    | Equals -> Equals
-    | NotEquals -> NotEquals
-
-    let rec negate_cond cd = match cd with
-    | Not cd -> cd
-    | Boolean b -> Boolean (not b)
-    | And (cd1,cd2) -> Or(negate_cond cd1,negate_cond cd2)
-    | Or (cd1, cd2) -> And(negate_cond cd1, negate_cond cd2)
-    | Comparison (e1,comp,e2) -> Comparison(e1,negate_comp comp ,e2)
-
     let init var_list = D.init var_list 
 
     let rec eval_exp (exp : exp) (env : D.t) : D.value = 
         match exp with
         | BinaryOperation(e1,Add,e2) -> D.sum (eval_exp e1 env) (eval_exp e2 env)
-        | BinaryOperation(e1,Sub,e2) -> D.sum (eval_exp e1 env) ((eval_exp (UnaryOperation(Negation,e2)) env))
+        | BinaryOperation(e1,Sub,e2) -> D.sum (eval_exp e1 env) (D.negate (eval_exp e2 env))
         | BinaryOperation(e1,Mul,e2) -> D.mul (eval_exp e1 env) (eval_exp e2 env)
         | BinaryOperation(e1,Div,e2) -> D.div (eval_exp e1 env) (eval_exp e2 env)
         | UnaryOperation(Negation,e) -> D.negate (eval_exp e env)
@@ -406,7 +355,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | While(cond,cmd) -> 
             let f x = D.lub env (eval_cmd cmd (eval_cond cond x)) in 
             (* let lfp f =  *)
-                let rec kleene x = 
+                (* let rec kleene x = 
                     let x' = D.widen x ( f x ) in
                     if D.leq x' x then x 
                     else kleene x' 
@@ -416,9 +365,9 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
                     let x' = D.narrow x (f x) in 
                     if D.leq x x' then x 
                     else descend x' in 
-                    let invariant = descend post_fp 
-                in 
-                    eval_cmd (Filter(Not(cond))) invariant
+                    let invariant = descend post_fp  *)
+            let invariant = compute_invariant ~widen:D.widen ~narrow:D.narrow ~leq:D.leq ~f env
+            in eval_cmd (Filter(Not(cond))) invariant
 
     let eval (prog: cmd) : D.t = 
         (* Raccoglie la lista variabili del programma dall'albero di sintassi astratta*)
