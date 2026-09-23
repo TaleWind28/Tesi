@@ -394,7 +394,8 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             | BiggerEquals, (1 | 0 | 2)   -> filter_diff e2 e1 0 env
             | Equals, (0 | 2)             ->
                 eval_cond (And (Comparison (e1, SmallerEquals, e2), Comparison (e2, SmallerEquals, e1))) env
-            | NotEquals, (-1 | 1 | 2)     -> env
+            | NotEquals, (-1 | 1 | 2)     ->
+                eval_cond (Or(Comparison(e1,Smaller,e2),Comparison(e1,Bigger,e2))) env
             | _ -> D.bottom
 
     let rec eval_cmd (cmd : cmd) (env : D.t) : D.t = 
@@ -453,6 +454,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
 end
 
 (* Domini Non-Relazionali *)
+
 (* Dominio dei Segni *)
 module SignInterp = NonRelationalAbsInterp (Signs)
 (* Dominio Esteso dei Segni *)
@@ -467,6 +469,7 @@ module StrangeSignInterp = NonRelationalAbsInterp (StrangeSigns)
 module IntervalInterp = NonRelationalAbsInterp (Intervals)
 
 (* Domini Debolmente Relazionali *)
+
 (* Dominio delle Zone *)
 module ZoneInterp = WeakRelationalAbsInterp (Zones)
 (* Dominio degli ottagoni *)
