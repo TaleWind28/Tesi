@@ -1,3 +1,7 @@
+type 't filter_outcome =
+  | ExpectBottom
+  | ExpectEnv of (string * 't) list
+
 module type EXPECTED_VALUES = sig
   type t
 
@@ -111,6 +115,23 @@ module type EXPECTED_VALUES = sig
   val while_4_1 : t
   val while_4_2 : t
   val while_4_3 : t
+
+  (* Filtri e Contraddizioni *)
+  val filter_1 : t filter_outcome
+  val filter_2 : t filter_outcome
+  val filter_3 : t filter_outcome
+  val filter_4 : t filter_outcome
+  val filter_5 : t filter_outcome
+  val filter_6 : t filter_outcome
+  val filter_7 : t filter_outcome
+  val filter_8 : t filter_outcome
+  val filter_9 : t filter_outcome
+  val filter_10 : t filter_outcome
+  val filter_11 : t filter_outcome
+  val filter_12 : t filter_outcome
+  val filter_13 : t filter_outcome
+  val filter_14 : t filter_outcome
+  val filter_15 : t filter_outcome
 end
 
 module Expected_ExtendedSigns : EXPECTED_VALUES with type t = Abstract_domains.ExtendedSigns.t  = struct
@@ -228,6 +249,23 @@ module Expected_ExtendedSigns : EXPECTED_VALUES with type t = Abstract_domains.E
   let while_4_1 = top
   let while_4_2 = Pos
   let while_4_3 = top
+
+  (* Filtri e Contraddizioni *)
+  let filter_1 = ExpectBottom
+  let filter_2 = ExpectEnv []
+  let filter_3 = ExpectEnv []
+  let filter_4 = ExpectBottom
+  let filter_5 = ExpectBottom
+  let filter_6 = ExpectBottom
+  let filter_7 = ExpectBottom
+  let filter_8 = ExpectBottom
+  let filter_9 = ExpectBottom
+  let filter_10 = ExpectBottom
+  let filter_11 = ExpectBottom
+  let filter_12 = ExpectBottom
+  let filter_13 = ExpectBottom
+  let filter_14 = ExpectBottom
+  let filter_15 = ExpectBottom
 end
 
 module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.SimpleSigns.t = struct
@@ -343,6 +381,23 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let while_4_1 = top
   let while_4_2 = PosZero 
   let while_4_3 = top
+
+  (* Filtri e Contraddizioni *)
+  let filter_1 = ExpectBottom
+  let filter_2 = ExpectEnv []
+  let filter_3 = ExpectEnv []
+  let filter_4 = ExpectBottom
+  let filter_5 = ExpectEnv []
+  let filter_6 = ExpectBottom
+  let filter_7 = ExpectEnv [ "x", Zero ]
+  let filter_8 = ExpectEnv [ "y", Zero ]
+  let filter_9 = ExpectBottom
+  let filter_10 = ExpectBottom
+  let filter_11 = ExpectBottom
+  let filter_12 = ExpectBottom
+  let filter_13 = ExpectBottom
+  let filter_14 = ExpectBottom
+  let filter_15 = ExpectEnv [ "x", Zero ]
 end
 
 module Expected_StrangeSigns : EXPECTED_VALUES with type t = Abstract_domains.StrangeSigns.t = struct
@@ -465,6 +520,23 @@ module Expected_StrangeSigns : EXPECTED_VALUES with type t = Abstract_domains.St
   let while_4_1 = top
   let while_4_2 = PosZero        (* vedi nota sotto *)
   let while_4_3 = top
+
+  (* Filtri e Contraddizioni *)
+  let filter_1 = ExpectBottom
+  let filter_2 = ExpectEnv []
+  let filter_3 = ExpectEnv []
+  let filter_4 = ExpectBottom
+  let filter_5 = ExpectBottom
+  let filter_6 = ExpectBottom
+  let filter_7 = ExpectBottom
+  let filter_8 = ExpectBottom
+  let filter_9 = ExpectBottom
+  let filter_10 = ExpectBottom
+  let filter_11 = ExpectBottom
+  let filter_12 = ExpectBottom
+  let filter_13 = ExpectBottom
+  let filter_14 = ExpectBottom
+  let filter_15 = ExpectEnv [ "x", PosZero ]
 end
 
 module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.SimplifiedSigns.t = struct
@@ -583,6 +655,23 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let while_4_1 = top
   let while_4_2 = Pos
   let while_4_3 = top
+
+  (* Filtri e Contraddizioni *)
+  let filter_1 = ExpectBottom
+  let filter_2 = ExpectEnv []
+  let filter_3 = ExpectEnv []
+  let filter_4 = ExpectBottom
+  let filter_5 = ExpectBottom
+  let filter_6 = ExpectBottom
+  let filter_7 = ExpectBottom
+  let filter_8 = ExpectBottom
+  let filter_9 = ExpectBottom
+  let filter_10 = ExpectBottom
+  let filter_11 = ExpectBottom
+  let filter_12 = ExpectBottom
+  let filter_13 = ExpectBottom
+  let filter_14 = ExpectBottom
+  let filter_15 = ExpectBottom
 end
 
 module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t = struct
@@ -703,6 +792,23 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t =
   let while_4_1 = top
   let while_4_2 = Pos          (* ⚠️ stessa ambiguità di iterazione già segnalata per StrangeSigns/SimpleSigns: potrebbe diventare top a seconda della profondità del fixpoint *)
   let while_4_3 = top
+
+  (* Filtri e Contraddizioni *)
+  let filter_1 = ExpectBottom
+  let filter_2 = ExpectEnv []
+  let filter_3 = ExpectEnv []
+  let filter_4 = ExpectBottom
+  let filter_5 = ExpectEnv []
+  let filter_6 = ExpectEnv []
+  let filter_7 = ExpectEnv [ "x", Pos ]
+  let filter_8 = ExpectEnv [ "y", Neg ]
+  let filter_9 = ExpectEnv [ "z", SignTop ]
+  let filter_10 = ExpectBottom
+  let filter_11 = ExpectBottom
+  let filter_12 = ExpectBottom
+  let filter_13 = ExpectBottom
+  let filter_14 = ExpectBottom
+  let filter_15 = ExpectEnv [ "x", Pos ]
 end
 
 module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Intervals.t = struct
@@ -828,6 +934,23 @@ module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Inter
   let while_4_1 = interval 1 1   (* x!=y deciso subito -> loop mai eseguito *)
   let while_4_2 = interval 2 2
   let while_4_3 = interval (-3) 5
+
+  (* Filtri e Contraddizioni *)
+  let filter_1 = ExpectBottom
+  let filter_2 = ExpectBottom
+  let filter_3 = ExpectBottom
+  let filter_4 = ExpectBottom
+  let filter_5 = ExpectBottom
+  let filter_6 = ExpectBottom
+  let filter_7 = ExpectBottom
+  let filter_8 = ExpectBottom
+  let filter_9 = ExpectBottom
+  let filter_10 = ExpectBottom
+  let filter_11 = ExpectBottom
+  let filter_12 = ExpectBottom
+  let filter_13 = ExpectBottom
+  let filter_14 = ExpectBottom
+  let filter_15 = ExpectBottom
 end
 
 module type EXPECTED_ZONES = sig

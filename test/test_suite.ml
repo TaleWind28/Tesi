@@ -67,6 +67,27 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
 
   let expect_bottom_with_env desc prog = expect_bottom ~with_env:true desc prog
 
+  let check_filter_case ?(with_env = false) (desc, prog, outcome) =
+    ( desc,
+      `Quick,
+      fun () ->
+        let res =
+          if with_env then Interp.eval_cmd prog (Interp.Env (make_test_state ()))
+          else Interp.eval prog
+        in
+        match outcome with
+        | ExpectBottom ->
+            (match res with
+             | Interp.BottomEnv -> ()
+             | Interp.Env _ ->
+                 Alcotest.fail (Printf.sprintf "%s: atteso BottomEnv, ottenuto Env" desc))
+        | ExpectEnv expected_vars ->
+            (match res with
+             | Interp.BottomEnv ->
+                 Alcotest.fail (Printf.sprintf "%s: atteso Env, ottenuto BottomEnv" desc)
+             | Interp.Env _ ->
+                 check_vars desc res expected_vars) )
+
   (* ------------------------------------------------------------ *)
   (* TEST ESPRESSIONI                                             *)
   (* ------------------------------------------------------------ *)
@@ -302,6 +323,39 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
         [ "x", E.while_4_1; "y", E.while_4_2; "z", E.while_4_3 ] );
   ]
 
+  let contradiction_tests = [
+    check_filter_case
+      ("Filtro false booleano", Filter (Boolean false), E.filter_1);
+    check_filter_case
+      ("Filtro costante: 5 < 2", Filter (Comparison (Const 5, Smaller, Const 2)), E.filter_2);
+    check_filter_case
+      ("Filtro costante: 5 == 2", Filter (Comparison (Const 5, Equals, Const 2)), E.filter_3);
+    check_filter_case
+      ("Filtro costante contraddittorio: 5 <= -1", Filter (Comparison (Const 5, SmallerEquals, Const (-1))), E.filter_4);
+    check_filter_case
+      ("Filtro costante contraddittorio: -3 > 0", Filter (Comparison (Const (-3), Bigger, Const 0)), E.filter_5);
+    check_filter_case
+      ("Filtro costante contraddittorio: 0 != 0", Filter (Comparison (Const 0, NotEquals, Const 0)), E.filter_6);
+    check_filter_case ~with_env:true
+      ("Filtro x < 0 con x Pos", Filter (Comparison (Var "x", Smaller, Const 0)), E.filter_7);
+    check_filter_case ~with_env:true
+      ("Filtro y > 0 con y Neg", Filter (Comparison (Var "y", Bigger, Const 0)), E.filter_8);
+    check_filter_case ~with_env:true
+      ("Filtro z != 0 con z Zero", Filter (Comparison (Var "z", NotEquals, Const 0)), E.filter_9);
+    check_filter_case ~with_env:true
+      ("Filtro x < y con x Pos e y Neg", Filter (Comparison (Var "x", Smaller, Var "y")), E.filter_10);
+    check_filter_case ~with_env:true
+      ("Filtro y > x con x Pos e y Neg", Filter (Comparison (Var "y", Bigger, Var "x")), E.filter_11);
+    check_filter_case ~with_env:true
+      ("Filtro x == y con x Pos e y Neg", Filter (Comparison (Var "x", Equals, Var "y")), E.filter_12);
+    check_filter_case ~with_env:true
+      ("Filtro And (true, false)", Filter (And (Boolean true, Boolean false)), E.filter_13);
+    check_filter_case ~with_env:true
+      ("Filtro Not (x > y) con x Pos e y Neg", Filter (Not (Comparison (Var "x", Bigger, Var "y"))), E.filter_14);
+    check_filter_case
+      ("Filtro sequenza: x = 10; Filter(x <= 0)", Sequence (Assign ("x", Const 10), Filter (Comparison (Var "x", SmallerEquals, Const 0))), E.filter_15);
+  ]
+
   let tests = [
     "Somma", sumtests;
     "Sottrazione", subtests;
@@ -314,6 +368,7 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
     "Skip", skiptests;
     "Istruzioni Condizionali", iftests;
     "Cicli While", whiletests;
+    "Filtri Contraddittori Base", contradiction_tests;
   ]
 end
 
@@ -609,6 +664,103 @@ module Make_WeakRelational_Tests
       (Sequence (Assign ("x", Const 5), Sequence (Filter (Boolean false), While (Comparison (Var "x", Smaller, Const 10), Assign ("x", Const 1)))));
   ]
 
+  let relational_inconsistency_tests = [
+    expect_bottom "Transitivita negativa a 3 nodi: x-y<=2; y-z<=3; Filter(x-z >= 10)"
+      (Sequence (
+        Assign ("x", Random (0, 100)),
+        Sequence (
+          Assign ("y", Random (0, 100)),
+          Sequence (
+            Assign ("z", Random (0, 100)),
+            Sequence (
+              Filter (Comparison (BinaryOperation (Var "x", Sub, Var "y"), SmallerEquals, Const 2)),
+              Sequence (
+                Filter (Comparison (BinaryOperation (Var "y", Sub, Var "z"), SmallerEquals, Const 3)),
+                Filter (Comparison (BinaryOperation (Var "x", Sub, Var "z"), BiggerEquals, Const 10))
+              )
+            )
+          )
+        )
+      ));
+    expect_bottom "Transitivita a 4 nodi: x-y<=1; y-z<=1; z-w<=1; Filter(x-w >= 5)"
+      (Sequence (
+        Assign ("x", Random (0, 50)),
+        Sequence (
+          Assign ("y", Random (0, 50)),
+          Sequence (
+            Assign ("z", Random (0, 50)),
+            Sequence (
+              Assign ("w", Random (0, 50)),
+              Sequence (
+                Filter (Comparison (BinaryOperation (Var "x", Sub, Var "y"), SmallerEquals, Const 1)),
+                Sequence (
+                  Filter (Comparison (BinaryOperation (Var "y", Sub, Var "z"), SmallerEquals, Const 1)),
+                  Sequence (
+                    Filter (Comparison (BinaryOperation (Var "z", Sub, Var "w"), SmallerEquals, Const 1)),
+                    Filter (Comparison (BinaryOperation (Var "x", Sub, Var "w"), BiggerEquals, Const 5))
+                  )
+                )
+              )
+            )
+          )
+        )
+      ));
+    expect_bottom "Auto-contraddizione: Filter(x < x)"
+      (Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", Smaller, Var "x"))));
+    expect_bottom "Auto-contraddizione NotEquals: Filter(x != x)"
+      (Sequence (Assign ("x", Const 5), Filter (Comparison (Var "x", NotEquals, Var "x"))));
+    expect_bottom "Contraddizione diretta tra costanti: x=5; y=10; Filter(x >= y)"
+      (Sequence (Assign ("x", Const 5), Sequence (Assign ("y", Const 10), Filter (Comparison (Var "x", BiggerEquals, Var "y")))));
+    expect_bottom "Differenza incompatibile con costanti: x=10; y=2; Filter(x-y < 5)"
+      (Sequence (Assign ("x", Const 10), Sequence (Assign ("y", Const 2), Filter (Comparison (BinaryOperation (Var "x", Sub, Var "y"), Smaller, Const 5)))));
+    expect_bottom "Random range superiore violato: x in [1,5]; Filter(x > 10)"
+      (Sequence (Assign ("x", Random (1, 5)), Filter (Comparison (Var "x", Bigger, Const 10))));
+    expect_bottom "Random range inferiore violato: x in [1,5]; Filter(x < 0)"
+      (Sequence (Assign ("x", Random (1, 5)), Filter (Comparison (Var "x", Smaller, Const 0))));
+    expect_bottom "Random intervalli disgiunti: x in [1,5]; y in [10,20]; Filter(x >= y)"
+      (Sequence (Assign ("x", Random (1, 5)), Sequence (Assign ("y", Random (10, 20)), Filter (Comparison (Var "x", BiggerEquals, Var "y")))));
+    expect_bottom "Random intervalli disgiunti uguaglianza: x in [1,5]; y in [10,20]; Filter(x == y)"
+      (Sequence (Assign ("x", Random (1, 5)), Sequence (Assign ("y", Random (10, 20)), Filter (Comparison (Var "x", Equals, Var "y")))));
+    expect_bottom "Random differenza incompatibile: x in [0,5]; y in [20,30]; Filter(x-y > 0)"
+      (Sequence (Assign ("x", Random (0, 5)), Sequence (Assign ("y", Random (20, 30)), Filter (Comparison (BinaryOperation (Var "x", Sub, Var "y"), Bigger, Const 0)))));
+    expect_bottom "Random differenza incompatibile inversa: x in [20,30]; y in [0,5]; Filter(x-y < 0)"
+      (Sequence (Assign ("x", Random (20, 30)), Sequence (Assign ("y", Random (0, 5)), Filter (Comparison (BinaryOperation (Var "x", Sub, Var "y"), Smaller, Const 0)))));
+    expect_bottom "Shift var e contraddizione: x=5; y=x+3; Filter(y <= x)"
+      (Sequence (Assign ("x", Const 5), Sequence (Assign ("y", BinaryOperation (Var "x", Add, Const 3)), Filter (Comparison (Var "y", SmallerEquals, Var "x")))));
+    expect_bottom "Shift var e contraddizione inversa: x=5; y=x-4; Filter(x <= y)"
+      (Sequence (Assign ("x", Const 5), Sequence (Assign ("y", BinaryOperation (Var "x", Sub, Const 4)), Filter (Comparison (Var "x", SmallerEquals, Var "y")))));
+    expect_bottom "Shift e bound incompatibile: x=10; y=x+2; Filter(y < 12)"
+      (Sequence (Assign ("x", Const 10), Sequence (Assign ("y", BinaryOperation (Var "x", Add, Const 2)), Filter (Comparison (Var "y", Smaller, Const 12)))));
+    expect_bottom "Shift e bound incompatibile negativo: x=10; y=x-2; Filter(y > 8)"
+      (Sequence (Assign ("x", Const 10), Sequence (Assign ("y", BinaryOperation (Var "x", Sub, Const 2)), Filter (Comparison (Var "y", Bigger, Const 8)))));
+    expect_bottom "Doppio filtro incompatibile: x in [1,10]; Filter(x < 3); Filter(x > 7)"
+      (Sequence (Assign ("x", Random (1, 10)), Sequence (Filter (Comparison (Var "x", Smaller, Const 3)), Filter (Comparison (Var "x", Bigger, Const 7)))));
+    expect_bottom "Ciclo chiuso di differenze impossibile: x-y<=0, y-x<=-1"
+      (Sequence (
+        Assign ("x", Random (0, 10)),
+        Sequence (
+          Assign ("y", Random (0, 10)),
+          Sequence (
+            Filter (Comparison (BinaryOperation (Var "x", Sub, Var "y"), SmallerEquals, Const 0)),
+            Filter (Comparison (BinaryOperation (Var "y", Sub, Var "x"), SmallerEquals, Const (-1)))
+          )
+        )
+      ));
+    expect_bottom "If con entrambi i rami contraddittori"
+      (Sequence (
+        Assign ("x", Random (1, 5)),
+        If (Comparison (Var "x", Bigger, Const 10), Assign ("y", Const 1), Filter (Boolean false))
+      ));
+    expect_bottom "While con condizione impossibile e stato iniziale vuoto"
+      (Sequence (
+        Assign ("x", Const 5),
+        Sequence (
+          Filter (Comparison (Var "x", Equals, Const 0)),
+          While (Comparison (Var "x", Smaller, Const 10), Assign ("x", Const 1))
+        )
+      ));
+  ]
+
   let tests = [
     "Assegnamenti", assigntests;
     "Shift e Offset", shifttests;
@@ -617,6 +769,7 @@ module Make_WeakRelational_Tests
     "Skip", skiptests;
     "Filtri", filtertests;
     "Filtri Contraddittori (Bottom)", bottomtests;
+    "Inconsistenze Relazionali Aggiuntive", relational_inconsistency_tests;
     "Istruzioni Condizionali", iftests;
     "Cicli While", whiletests;
   ]
@@ -692,6 +845,153 @@ module OctagonSpecificTests = struct
             Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Var "y"), SmallerEquals, Const 15))
           )
         ));
+
+      (* --- 35 TEST AGGIUNTIVI SPECIFICI SUGLI OTTAGONI --- *)
+      make_case (
+        "Assegnamento negativo con zero: x=0; y=-x",
+        Sequence (Assign ("x", Const 0), Assign ("y", UnaryOperation (Negation, Var "x"))),
+        [ "x", abstract_int 0; "y", abstract_int 0 ]
+      );
+      make_case (
+        "Assegnamento negativo da valore negativo: x=-7; y=-x",
+        Sequence (Assign ("x", Const (-7)), Assign ("y", UnaryOperation (Negation, Var "x"))),
+        [ "x", abstract_int (-7); "y", abstract_int 7 ]
+      );
+      make_case (
+        "Assegnamento affine negativo sottrazione: x=4; y=-x-2",
+        Sequence (Assign ("x", Const 4), Assign ("y", BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Const 2))),
+        [ "x", abstract_int 4; "y", abstract_int (-6) ]
+      );
+      make_case (
+        "Assegnamento affine negativo su negativo: x=-5; y=-x+10",
+        Sequence (Assign ("x", Const (-5)), Assign ("y", BinaryOperation (UnaryOperation (Negation, Var "x"), Add, Const 10))),
+        [ "x", abstract_int (-5); "y", abstract_int 15 ]
+      );
+      make_case (
+        "Assegnamento affine negativo con offset zero: x=8; y=-x+0",
+        Sequence (Assign ("x", Const 8), Assign ("y", BinaryOperation (UnaryOperation (Negation, Var "x"), Add, Const 0))),
+        [ "x", abstract_int 8; "y", abstract_int (-8) ]
+      );
+      make_case (
+        "Doppia negazione di variabile: x=6; y=-x; z=-y",
+        Sequence (Assign ("x", Const 6), Sequence (Assign ("y", UnaryOperation (Negation, Var "x")), Assign ("z", UnaryOperation (Negation, Var "y")))),
+        [ "x", abstract_int 6; "y", abstract_int (-6); "z", abstract_int 6 ]
+      );
+      make_case (
+        "Catena di negazioni: x=-3; y=-x; z=-y; w=-z",
+        Sequence (Assign ("x", Const (-3)), Sequence (Assign ("y", UnaryOperation (Negation, Var "x")), Sequence (Assign ("z", UnaryOperation (Negation, Var "y")), Assign ("w", UnaryOperation (Negation, Var "z"))))),
+        [ "x", abstract_int (-3); "y", abstract_int 3; "z", abstract_int (-3); "w", abstract_int 3 ]
+      );
+      make_case (
+        "Somma di opposti: x=5; y=-x; s=x+y",
+        Sequence (Assign ("x", Const 5), Sequence (Assign ("y", UnaryOperation (Negation, Var "x")), Assign ("s", BinaryOperation (Var "x", Add, Var "y")))),
+        [ "x", abstract_int 5; "y", abstract_int (-5); "s", abstract_int 0 ]
+      );
+      make_case (
+        "Filtro somma concorde upper bound: x=4; y=6; Filter(x+y <= 10)",
+        Sequence (Assign ("x", Const 4), Sequence (Assign ("y", Const 6), Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), SmallerEquals, Const 10)))),
+        [ "x", abstract_int 4; "y", abstract_int 6 ]
+      );
+      make_case (
+        "Filtro somma concorde lower bound: x=4; y=6; Filter(x+y >= 10)",
+        Sequence (Assign ("x", Const 4), Sequence (Assign ("y", Const 6), Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), BiggerEquals, Const 10)))),
+        [ "x", abstract_int 4; "y", abstract_int 6 ]
+      );
+      make_case (
+        "Filtro somma concorde uguaglianza: x=3; y=7; Filter(x+y == 10)",
+        Sequence (Assign ("x", Const 3), Sequence (Assign ("y", Const 7), Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), Equals, Const 10)))),
+        [ "x", abstract_int 3; "y", abstract_int 7 ]
+      );
+      make_case (
+        "Filtro -x-y <= -10 valido: x=5; y=5; Filter(-x-y <= -10)",
+        Sequence (Assign ("x", Const 5), Sequence (Assign ("y", Const 5), Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Var "y"), SmallerEquals, Const (-10))))),
+        [ "x", abstract_int 5; "y", abstract_int 5 ]
+      );
+      make_case (
+        "Filtro -x+y <= 6 valido: x=2; y=8; Filter(-x+y <= 6)",
+        Sequence (Assign ("x", Const 2), Sequence (Assign ("y", Const 8), Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Add, Var "y"), SmallerEquals, Const 6)))),
+        [ "x", abstract_int 2; "y", abstract_int 8 ]
+      );
+      make_case (
+        "Filtro x-y <= 10 valido: x=8; y=2; Filter(x-y <= 10)",
+        Sequence (Assign ("x", Const 8), Sequence (Assign ("y", Const 2), Filter (Comparison (BinaryOperation (Var "x", Sub, Var "y"), SmallerEquals, Const 10)))),
+        [ "x", abstract_int 8; "y", abstract_int 2 ]
+      );
+      make_case (
+        "Filtro affine positivo: x=3; y=x+5; Filter(x-y <= -5)",
+        Sequence (Assign ("x", Const 3), Sequence (Assign ("y", BinaryOperation (Var "x", Add, Const 5)), Filter (Comparison (BinaryOperation (Var "x", Sub, Var "y"), SmallerEquals, Const (-5))))),
+        [ "x", abstract_int 3; "y", abstract_int 8 ]
+      );
+      make_case (
+        "If con filtro somma vero: x=3; y=4; if (x+y <= 10) z=1 else z=2",
+        Sequence (Assign ("x", Const 3), Sequence (Assign ("y", Const 4), If (Comparison (BinaryOperation (Var "x", Add, Var "y"), SmallerEquals, Const 10), Assign ("z", Const 1), Assign ("z", Const 2)))),
+        [ "x", abstract_int 3; "y", abstract_int 4; "z", abstract_int 1 ]
+      );
+      make_case (
+        "If con filtro somma falso: x=3; y=4; if (x+y <= 5) z=1 else z=2",
+        Sequence (Assign ("x", Const 3), Sequence (Assign ("y", Const 4), If (Comparison (BinaryOperation (Var "x", Add, Var "y"), SmallerEquals, Const 5), Assign ("z", Const 1), Assign ("z", Const 2)))),
+        [ "x", abstract_int 3; "y", abstract_int 4; "z", abstract_int 2 ]
+      );
+      make_case (
+        "If con filtro somma negativa vero: x=-3; y=-4; if (-x-y <= 10) z=1 else z=2",
+        Sequence (Assign ("x", Const (-3)), Sequence (Assign ("y", Const (-4)), If (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Var "y"), SmallerEquals, Const 10), Assign ("z", Const 1), Assign ("z", Const 2)))),
+        [ "x", abstract_int (-3); "y", abstract_int (-4); "z", abstract_int 1 ]
+      );
+      make_case (
+        "If con filtro somma negativa falso: x=-3; y=-4; if (-x-y <= 5) z=1 else z=2",
+        Sequence (Assign ("x", Const (-3)), Sequence (Assign ("y", Const (-4)), If (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Var "y"), SmallerEquals, Const 5), Assign ("z", Const 1), Assign ("z", Const 2)))),
+        [ "x", abstract_int (-3); "y", abstract_int (-4); "z", abstract_int 2 ]
+      );
+      make_case (
+        "While mai eseguito su somma: x=10; y=10; while (x+y < 15) x=0",
+        Sequence (Assign ("x", Const 10), Sequence (Assign ("y", Const 10), While (Comparison (BinaryOperation (Var "x", Add, Var "y"), Smaller, Const 15), Assign ("x", Const 0)))),
+        [ "x", abstract_int 10; "y", abstract_int 10 ]
+      );
+      expect_bottom
+        "Filtro somma contraddittorio: x=5; y=5; Filter(x+y <= 9)"
+        (Sequence (Assign ("x", Const 5), Sequence (Assign ("y", Const 5), Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), SmallerEquals, Const 9)))));
+      expect_bottom
+        "Filtro somma contraddittorio: x=5; y=5; Filter(x+y < 10)"
+        (Sequence (Assign ("x", Const 5), Sequence (Assign ("y", Const 5), Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), Smaller, Const 10)))));
+      expect_bottom
+        "Filtro somma contraddittorio: x=5; y=5; Filter(x+y > 10)"
+        (Sequence (Assign ("x", Const 5), Sequence (Assign ("y", Const 5), Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), Bigger, Const 10)))));
+      expect_bottom
+        "Filtro somma contraddittorio: x=5; y=5; Filter(x+y >= 11)"
+        (Sequence (Assign ("x", Const 5), Sequence (Assign ("y", Const 5), Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), BiggerEquals, Const 11)))));
+      expect_bottom
+        "Filtro somma negativa contraddittorio: x=2; y=3; Filter(-x-y >= 0)"
+        (Sequence (Assign ("x", Const 2), Sequence (Assign ("y", Const 3), Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Var "y"), BiggerEquals, Const 0)))));
+      expect_bottom
+        "Filtro somma negativa contraddittorio: x=-5; y=-5; Filter(-x-y <= 9)"
+        (Sequence (Assign ("x", Const (-5)), Sequence (Assign ("y", Const (-5)), Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Var "y"), SmallerEquals, Const 9)))));
+      expect_bottom
+        "Filtro somma negativa contraddittorio: x=-5; y=-5; Filter(-x-y < 10)"
+        (Sequence (Assign ("x", Const (-5)), Sequence (Assign ("y", Const (-5)), Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Var "y"), Smaller, Const 10)))));
+      expect_bottom
+        "Filtro -x+y contraddittorio: x=10; y=2; Filter(-x+y >= 0)"
+        (Sequence (Assign ("x", Const 10), Sequence (Assign ("y", Const 2), Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Add, Var "y"), BiggerEquals, Const 0)))));
+      expect_bottom
+        "Filtro x-y contraddittorio: x=2; y=10; Filter(x-y >= 0)"
+        (Sequence (Assign ("x", Const 2), Sequence (Assign ("y", Const 10), Filter (Comparison (BinaryOperation (Var "x", Sub, Var "y"), BiggerEquals, Const 0)))));
+      expect_bottom
+        "Filtro Random somma contraddittoria: x in [5,10]; y in [5,10]; Filter(x+y <= 8)"
+        (Sequence (Assign ("x", Random (5, 10)), Sequence (Assign ("y", Random (5, 10)), Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), SmallerEquals, Const 8)))));
+      expect_bottom
+        "Filtro Random somma contraddittoria: x in [1,2]; y in [1,2]; Filter(x+y >= 10)"
+        (Sequence (Assign ("x", Random (1, 2)), Sequence (Assign ("y", Random (1, 2)), Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), BiggerEquals, Const 10)))));
+      expect_bottom
+        "Filtro Random somma negativa contraddittoria: x in [5,10]; y in [5,10]; Filter(-x-y >= 0)"
+        (Sequence (Assign ("x", Random (5, 10)), Sequence (Assign ("y", Random (5, 10)), Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Var "y"), BiggerEquals, Const 0)))));
+      expect_bottom
+        "Filtro Random -x-y contraddittoria: x in [-2, -1]; y in [-2, -1]; Filter(-x-y <= 1)"
+        (Sequence (Assign ("x", Random (-2, -1)), Sequence (Assign ("y", Random (-2, -1)), Filter (Comparison (BinaryOperation (UnaryOperation (Negation, Var "x"), Sub, Var "y"), SmallerEquals, Const 1)))));
+      expect_bottom
+        "While con filtro somma contraddittorio all'ingresso"
+        (Sequence (Assign ("x", Const 10), Sequence (Assign ("y", Const 10), Sequence (Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), Smaller, Const 0)), While (Boolean true, Skip)))));
+      expect_bottom
+        "Filtro somma concorde uguaglianza contraddittoria: x=3; y=4; Filter(x+y == 10)"
+        (Sequence (Assign ("x", Const 3), Sequence (Assign ("y", Const 4), Filter (Comparison (BinaryOperation (Var "x", Add, Var "y"), Equals, Const 10)))));
     ]
   ]
 end

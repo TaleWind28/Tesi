@@ -1,6 +1,6 @@
 open Syntax
 open Interpeters
-let test_prog = 
+(* let test_prog = 
   Sequence (
     (* x parte in un intervallo positivo [1, 5] *)
     Assign ("x", Random (1, 5)),
@@ -10,7 +10,9 @@ let test_prog =
       (* z = x + 2    (relazione zonale: z - x = 2) *)
       Assign ("z", BinaryOperation (Var "x", Add, Const 2))
     )
-  )
+  ) *)
+  let test_prog = 
+    Sequence(Filter(Comparison(Const 5, Smaller, Const 2)),Skip)
 
 let () =
   let risultato = ExtendedSignInterp.eval test_prog in

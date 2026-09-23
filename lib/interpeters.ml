@@ -306,9 +306,13 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         (* 3. x - y <= c *)
         | BinaryOperation(Var x, Sub, Var y), Const c -> 
             Some (Binary (Pos, x, Neg, y, c + offset))
+        | Const c, BinaryOperation(Var x, Sub, Var y) -> 
+            Some(Binary(Pos, y, Neg, x, -c + offset ))
         (* 4. x + y <= c  (fondamentale per gli ottagoni!) *)
         | BinaryOperation(Var x, Add, Var y),Const c ->
             Some(Binary (Pos, x, Pos, y, c+ offset))
+        | Const c, BinaryOperation(Var x, Add, Var y) -> 
+            Some(Binary(Neg, y, Neg, x, -c + offset ))
         (* 5. x <= c (vincolo unario) *)
         | Var x, Const c -> 
             Some(Unary(Pos,x, c + offset))
@@ -328,6 +332,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             | None -> None
             )
         | _ -> None
+
         in match atom with
         | Some a -> D.filter_atom a env
         | None -> env
@@ -424,4 +429,5 @@ module IntervalInterp = NonRelationalAbsInterp (Intervals)
 (* Domini Debolmente Relazionali *)
 (* Dominio delle Zone *)
 module ZoneInterp = WeakRelationalAbsInterp (Zones)
+(* Dominio degli ottagoni *)
 module OctagonInterp = WeakRelationalAbsInterp (Octagons)
