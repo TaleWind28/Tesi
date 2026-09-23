@@ -296,41 +296,70 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | Var x -> D.retrieve_variable x env 
 
     let filter_diff e1 e2 offset env =
-        let atom = match e1,e2 with
-        (* x <= y --> x - y <= offset *)
+        let atom = match e1, e2 with
+        (* 1. Confronti tra variabili semplici *)
         | Var x, Var y -> 
-            Some(Binary (Pos,x,Neg,y,offset))
-        (* 2. x <= y + c  -->  x - y <= c + offset *)
-        | Var x, BinaryOperation(Var y ,Add, Const c) ->
-            Some(Binary (Pos,x,Neg,y,c + offset))
-        (* 3. x - y <= c *)
+            Some(Binary (Pos, x, Neg, y, offset))
+        | Var x, UnaryOperation(Negation, Var y) ->
+            Some(Binary (Pos, x, Pos, y, offset))
+        | UnaryOperation(Negation, Var x), Var y ->
+            Some(Binary (Neg, x, Neg, y, offset))
+
+        (* 2. Forme affini x <= y +/- c e x +/- c <= y *)
+        | Var x, BinaryOperation(Var y, Add, Const c) ->
+            Some(Binary (Pos, x, Neg, y, c + offset))
+        | Var x, BinaryOperation(Var y, Sub, Const c) ->
+            Some(Binary (Pos, x, Neg, y, -c + offset))
+        | BinaryOperation(Var x, Add, Const c), Var y ->
+            Some(Binary (Pos, x, Neg, y, -c + offset))
+        | BinaryOperation(Var x, Sub, Const c), Var y ->
+            Some(Binary (Pos, x, Neg, y, c + offset))
+
+        (* 3. Differenza x - y <= c e c <= x - y *)
         | BinaryOperation(Var x, Sub, Var y), Const c -> 
             Some (Binary (Pos, x, Neg, y, c + offset))
         | Const c, BinaryOperation(Var x, Sub, Var y) -> 
-            Some(Binary(Pos, y, Neg, x, -c + offset ))
-        (* 4. x + y <= c  (fondamentale per gli ottagoni!) *)
-        | BinaryOperation(Var x, Add, Var y),Const c ->
-            Some(Binary (Pos, x, Pos, y, c+ offset))
+            Some (Binary (Pos, y, Neg, x, -c + offset))
+
+        (* 4. Somma concorde x + y <= c e c <= x + y *)
+        | BinaryOperation(Var x, Add, Var y), Const c ->
+            Some (Binary (Pos, x, Pos, y, c + offset))
         | Const c, BinaryOperation(Var x, Add, Var y) -> 
-            Some(Binary(Neg, y, Neg, x, -c + offset ))
-        (* 5. x <= c (vincolo unario) *)
+            Some (Binary (Neg, y, Neg, x, -c + offset))
+
+        (* 5. Somma negativa -x - y <= c e c <= -x - y *)
+        | BinaryOperation(UnaryOperation(Negation, Var x), Sub, Var y), Const c ->
+            Some (Binary (Neg, x, Neg, y, c + offset))
+        | Const c, BinaryOperation(UnaryOperation(Negation, Var x), Sub, Var y) ->
+            Some (Binary (Pos, x, Pos, y, -c + offset))
+
+        (* 6. Differenza inversa -x + y <= c e c <= -x + y *)
+        | BinaryOperation(UnaryOperation(Negation, Var x), Add, Var y), Const c ->
+            Some (Binary (Neg, x, Pos, y, c + offset))
+        | Const c, BinaryOperation(UnaryOperation(Negation, Var x), Add, Var y) ->
+            Some (Binary (Pos, x, Neg, y, -c + offset))
+
+        (* 7. Vincoli unari x <= c e c <= x *)
         | Var x, Const c -> 
-            Some(Unary(Pos,x, c + offset))
-        (* 6. c <= y  -->  -y <= -c + offset *)
+            Some(Unary (Pos, x, c + offset))
         | Const c, Var y ->
-            Some(Unary(Neg,y,(-c + offset )))
-        (* 7. Fallback: Var x <= exp_generica *)
+            Some(Unary (Neg, y, -c + offset))
+
+        (* 8. Vincoli unari negati -x <= c e c <= -x *)
+        | UnaryOperation(Negation, Var x), Const c -> 
+            Some(Unary (Neg, x, c + offset))
+        | Const c, UnaryOperation(Negation, Var x) -> 
+            Some(Unary (Pos, x, -c + offset))
+
+        (* 9. Fallback generici *)
         | Var x, _ ->
             (match D.unpack_value (eval_exp e2 env) true with
-            | Some hi -> Some (Unary(Pos, x, hi +offset))
-            | None -> None
-            )
-        (* 8. Fallback: exp_generica <= Var y *)
-        | _,Var y -> 
+            | Some hi -> Some (Unary(Pos, x, hi + offset))
+            | None -> None)
+        | _, Var y -> 
             (match D.unpack_value (eval_exp e1 env) false with
             | Some lo -> Some (Unary(Neg, y, -(lo - offset)))
-            | None -> None
-            )
+            | None -> None)
         | _ -> None
 
         in match atom with
@@ -373,6 +402,12 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             D.assign_var ide Pos x c env 
         | Assign(ide,BinaryOperation((UnaryOperation(Negation, Var(x)),Add,Const c))) -> 
             D.assign_var ide Neg x c env 
+        | Assign(ide,UnaryOperation(Negation,Var x)) ->
+            D.assign_var ide Neg x 0 env
+        | Assign(ide,BinaryOperation(Var x,Sub,Const c)) ->
+            D.assign_var ide Pos x (-c) env
+        | Assign(ide,BinaryOperation(UnaryOperation(Negation,Var x),Sub,Const c)) ->
+            D.assign_var ide Neg x (-c) env
         | Assign(ide,exp) -> 
             let v = eval_exp exp env in 
             D.assign ide v env
@@ -389,7 +424,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             let f x = D.lub env (eval_cmd cmd (eval_cond cond x)) in 
             (* let lfp f =  *)
                 let rec kleene x = 
-                    let x' = D.widen x ( f x ) in 
+                    let x' = D.widen x ( f x ) in
                     if D.leq x' x then x 
                     else kleene x' 
                 in 
