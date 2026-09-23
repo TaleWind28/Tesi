@@ -236,3 +236,29 @@ include IntervalArith
         | Int x -> if x < 0 then true else has_neg_cycle matrix dim (i + 1)
         | _ -> has_neg_cycle matrix dim (i + 1)
 end
+
+module VariableRetrieval = struct
+  let rec retrieve_var_from_exp (exp : exp) : ide list = 
+  match exp with
+  | Const _-> []
+  | Random _ -> []
+  | Var x -> [x]
+  | BinaryOperation(e1,bop,e2) -> retrieve_var_from_exp e1 @ retrieve_var_from_exp e2
+  | UnaryOperation(uop,e) -> retrieve_var_from_exp e
+  let rec retrieve_var_from_cond (cond:cond) : ide list = 
+    match cond with
+    | Comparison(e1,comp,e2) -> retrieve_var_from_exp e1 @ retrieve_var_from_exp e2
+    | Boolean _ -> []
+    | Not cd -> retrieve_var_from_cond cd
+    | And(cd1,cd2) -> retrieve_var_from_cond cd1 @ retrieve_var_from_cond cd2
+    | Or(cd1,cd2) -> retrieve_var_from_cond cd1 @ retrieve_var_from_cond cd2
+  let rec get_all_var (prog: cmd) : ide list = 
+    match prog with
+    | Skip -> []
+    | Sequence(c1,c2)-> get_all_var c1 @ get_all_var c2
+    | If(cd,cthen,celse) -> get_all_var cthen @ get_all_var celse @ retrieve_var_from_cond cd
+    | While(cd,c) -> get_all_var c @ retrieve_var_from_cond cd
+    | Filter(cd) -> retrieve_var_from_cond cd
+    | Assign(ide,e1) -> ide :: retrieve_var_from_exp e1
+  
+end

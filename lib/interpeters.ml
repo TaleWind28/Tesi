@@ -3,6 +3,7 @@ open Syntax
 
 (* Interprete astratto parametrico sul dominio D *)
 module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
+    include Shared_arithmetic.VariableRetrieval
     type state =
     | Env of (string, D.t) Hashtbl.t
     | BottomEnv 
@@ -230,40 +231,16 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
                 in eval_cmd (Filter((Not(cond)))) (invariant) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*) 
     (* Funzione eval generale *)
     let eval (prog : cmd) : state =
-        let initial_env = Env(Hashtbl.create 10) in
+        let var_list  = get_all_var prog in
+        let initial_env = Env(Hashtbl.create (List.length var_list)) in
         eval_cmd prog initial_env
 end
 
 module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
-
+    include Shared_arithmetic.VariableRetrieval
     let print_result env : unit = 
         print_string ((D.to_string env) ^ "\n")
     
-    let rec retrieve_var_from_exp (exp : exp) : ide list = 
-        match exp with
-        | Const _-> []
-        | Random _ -> []
-        | Var x -> [x]
-        | BinaryOperation(e1,bop,e2) -> retrieve_var_from_exp e1 @ retrieve_var_from_exp e2
-        | UnaryOperation(uop,e) -> retrieve_var_from_exp e
-
-    let rec retrieve_var_from_cond (cond:cond) : ide list = 
-        match cond with
-        | Comparison(e1,comp,e2) -> retrieve_var_from_exp e1 @ retrieve_var_from_exp e2
-        | Boolean _ -> []
-        | Not cd -> retrieve_var_from_cond cd
-        | And(cd1,cd2) -> retrieve_var_from_cond cd1 @ retrieve_var_from_cond cd2
-        | Or(cd1,cd2) -> retrieve_var_from_cond cd1 @ retrieve_var_from_cond cd2
-
-    let rec get_all_var (prog: cmd) : ide list = 
-        match prog with
-        | Skip -> []
-        | Sequence(c1,c2)-> get_all_var c1 @ get_all_var c2
-        | If(cd,cthen,celse) -> get_all_var cthen @ get_all_var celse @ retrieve_var_from_cond cd
-        | While(cd,c) -> get_all_var c @ retrieve_var_from_cond cd
-        | Filter(cd) -> retrieve_var_from_cond cd
-        | Assign(ide,e1) -> ide :: retrieve_var_from_exp e1
-
     let negate_comp comp = match comp with
     | Bigger -> SmallerEquals
     | Smaller -> BiggerEquals
