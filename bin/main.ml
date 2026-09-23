@@ -1,6 +1,6 @@
 open Syntax
 open Interpeters
-(* let test_prog = 
+let test_prog = 
   Sequence (
     (* x parte in un intervallo positivo [1, 5] *)
     Assign ("x", Random (1, 5)),
@@ -10,7 +10,7 @@ open Interpeters
       (* z = x + 2    (relazione zonale: z - x = 2) *)
       Assign ("z", BinaryOperation (Var "x", Add, Const 2))
     )
-  ) *)
+  )
   let test_prog = 
     Sequence(Filter(Comparison(Const 5, Smaller, Const 2)),Skip)
 
@@ -42,53 +42,3 @@ let () =
   ZoneInterp.print_result (ZoneInterp.eval test_prog);
   print_string "\nOctagones\n";
   OctagonInterp.print_result (OctagonInterp.eval test_prog)
-
-
-
-(* let test_completo =
-  Sequence(
-    Assign("a",Const(0)),
-    Sequence(
-      Assign("b",Const(10)),
-      Sequence(
-        Assign("c",Const(20)),
-        Sequence(
-          Assign("d",Const(-10)),
-          Sequence(
-            Assign("e",Const(10)),
-                  If (
-                  And (
-                    Comparison (Var "a", Equals, Const 0),
-                    Not (Comparison (Var "b", Bigger, Var "c"))
-                  ),
-                  Filter (Comparison (Var "d", Smaller, Const 5)),(* then *)
-                  Assign ("f", UnaryOperation (Negation, Var "e"))(* else *)
-                )
-      )))))
-   *)
-
-(* let test_extraction test () =
-  let vars = ZoneInterp.get_all_var test in
-  let sorted_vars = List.sort_uniq compare vars in 
-  Printf.printf
-    "Variabili estratte (%d): [%s]\n"
-    (List.length sorted_vars)
-    (String.concat "; " sorted_vars)
-
-let test_cmds = 
-  Sequence(
-    Assign("x",Const (-4)),
-    Sequence(
-    Assign("y",Const(3)),
-    Filter(Comparison (Var "x", Equals ,Var("x") )
-    )))
-     *)
-(* Invocazione *)
-(* let () = test_extraction test_completo()
-let () = test_extraction test_cmds () *)
-(* let () =  *)
-(* ZoneInterp.print_result (ZoneInterp.eval test_cmds);  *)
-(* ZoneInterp.print_result (ZoneInterp.eval test_completo); *)
-(* ZoneInterp.print_result (ZoneInterp.eval test_prog); *)
-(* OcatagonInterp.print_result (OcatagonInterp.eval test_prog) *)
-(* OcatagonInterp.print_result (OcatagonInterp.eval mine_test); *)
