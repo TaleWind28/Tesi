@@ -11,8 +11,8 @@ let test_prog =
       Assign ("z", BinaryOperation (Var "x", Add, Const 2))
     )
   )
-  let test_prog = 
-    Sequence(Filter(Comparison(Const 5, Smaller, Const 2)),Skip)
+  (* let test_prog = 
+    Sequence(Filter(Comparison(Const 5, Smaller, Const 2)),Skip) *)
 
 let () =
   let risultato = ExtendedSignInterp.eval test_prog in
