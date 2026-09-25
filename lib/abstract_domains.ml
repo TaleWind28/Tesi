@@ -306,20 +306,13 @@ module Signs = struct
   | NotEquals, _    -> SignTop
   (* 4. Maggiore Stretto (Bigger: x > v2) *)
   | Bigger, Pos -> Pos
-  | Bigger, Neg          -> SignTop
-  | Bigger, SignTop      -> SignTop
   (* 5. Maggiore o Uguale (BiggerEquals: x >= v2) *)
   | BiggerEquals, Pos     -> Pos     (* x >= Pos (es. x >= 5) => x dev'essere Pos *)
-  | BiggerEquals, Neg     -> SignTop
-  | BiggerEquals, SignTop -> SignTop
   (* 6. Minore Stretto (Smaller: x < v2) *)
   | Smaller, Neg -> Neg
-  | Smaller, Pos          -> SignTop
-  | Smaller, SignTop      -> SignTop
   (* 7. Minore o Uguale (SmallerEquals: x <= v2) *)
   | SmallerEquals, Neg     -> Neg     (* x <= Neg (es. x <= -3) => x dev'essere Neg *)
-  | SmallerEquals, Pos     -> SignTop
-  | SmallerEquals, SignTop -> SignTop
+  | _ -> SignTop
 
   let compare_type x y = match x,y with 
     | x,y when x = y -> 2
@@ -358,7 +351,6 @@ module Signs = struct
 
   let abstract_range a b = 
     if a > b then SignBottom
-  else if a < 0 && b > 0 then SignTop
   else lub (abstract_int a) (abstract_int b)
 
   let mul s1 s2 = match s1, s2 with

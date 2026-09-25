@@ -354,18 +354,6 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             D.lub env1 env2
         | While(cond,cmd) -> 
             let f x = D.lub env (eval_cmd cmd (eval_cond cond x)) in 
-            (* let lfp f =  *)
-                (* let rec kleene x = 
-                    let x' = D.widen x ( f x ) in
-                    if D.leq x' x then x 
-                    else kleene x' 
-                in 
-                let post_fp = kleene env in 
-                let rec descend x = 
-                    let x' = D.narrow x (f x) in 
-                    if D.leq x x' then x 
-                    else descend x' in 
-                    let invariant = descend post_fp  *)
             let invariant = compute_invariant ~widen:D.widen ~narrow:D.narrow ~leq:D.leq ~f env
             in eval_cmd (Filter(Not(cond))) invariant
 
