@@ -92,7 +92,6 @@ module ExtendedSigns = struct
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
     | x, y when x = y              -> x
-
     | Neg, Neg -> Neg
     | Pos, Pos -> Pos
     | NonZero, NonZero | NonZero,Pos | NonZero,Neg | Neg,Pos | Neg,NonZero | Pos,NonZero  | Pos,Neg -> NonZero
@@ -144,8 +143,7 @@ module ExtendedSigns = struct
     | PosZero,PosZero  -> PosZero
     | NegZero,NegZero -> NegZero
     | _,_ -> SignTop
-  
-  (*Non del tutto corretta in quanto dovrebbe essere divisione intera*)
+
   let div s1 s2 = match s1, s2 with
     (*Errore/Irraggiungibile*)
     | SignBottom, _ | _, SignBottom -> SignBottom
@@ -644,16 +642,16 @@ end
 
 (* Domini Relazionali *)
 module type WeakRelationalDomain = sig
-  type t (*done*)
+  type t 
 
-  type value (*done*) 
-  val bottom : t (*done*)
-  val init : ide list -> t (*done*)
-  val is_bottom : t -> bool (*done*)
-  val normalize : t -> t (*done*)
-  val leq : t -> t -> bool (*done*)
-  val lub : t -> t -> t (*done*)
-  val glb : t -> t -> t (*done*)
+  type value  
+  val bottom : t 
+  val init : ide list -> t 
+  val is_bottom : t -> bool 
+  val normalize : t -> t 
+  val leq : t -> t -> bool 
+  val lub : t -> t -> t 
+  val glb : t -> t -> t 
   val widen : t -> t -> t 
   val narrow : t -> t -> t
 
@@ -663,22 +661,18 @@ module type WeakRelationalDomain = sig
 
   (** {4 Funzioni di Trasferimento} *)
 
-  (** Assegnamento astratto: aggiorna la DBM a seguito dell'istruzione x := e.
-      Gestisce sia assegnamenti esatti (costanti, traslazioni x := x + c)
-      sia assegnamenti affini approssimati tramite intervalli *)
-  val assign_const : ide -> int -> t -> t (*done*)
+  (* Assegnamento astratto: (x := e). Gestisce sia assegnamenti esatti (costanti, traslazioni x := x + c) sia assegnamenti affini approssimati tramite intervalli *)
+  val assign_const : ide -> int -> t -> t 
 
   val assign : ide -> value -> t -> t 
   val assign_var : ide -> sign -> ide -> int -> t -> t  
 
-  val shift_var : ide -> int -> t -> t (*done*)
+  val shift_var : ide -> int -> t -> t 
 
-  (** Forget / Reset: rimuove tutti i vincoli che coinvolgono la variabile x.
-      Richiede la chiusura preventiva della DBM prima di impostare riga e colonna a +infinity *)
-  val forget : ide -> t -> t (*done*)
+  (* rimuove tutti i vincoli che coinvolgono la variabile x.*)
+  val forget : ide -> t -> t 
 
-  (** Filtro atomico sulle condizioni: raffina la DBM applicando la guardia c
-      (es. vincoli di differenza Vj - Vi <= c o guardie unarie Vi <= c) *)
+  (* raffina la DBM applicando la guardia c (es. vincoli di differenza Vj - Vi <= c o guardie unarie Vi <= c) *)
   val filter_atom : rel_atom -> t -> t
 
   val abstract_int   : int -> value
