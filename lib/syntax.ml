@@ -22,6 +22,8 @@ type exp =
   | BinaryOperation of exp * bop * exp
   | UnaryOperation of uop * exp
   | Random of int * int
+  | Inc of exp
+  | Dec of exp
 
 type cond = 
   | Comparison of exp * comparator * exp

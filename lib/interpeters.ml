@@ -135,6 +135,9 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
             D.negate (eval_exp e1 (Env(st)))
         | Random (a, b) -> (* valuto un valore intero non deterministico *)
             D.abstract_range a b
+        |Inc e  -> D.inc (eval_exp e (Env(st)))
+        |Dec e -> D.dec (eval_exp e (Env(st)))
+       
     
     (* Valutazione Condizioni *)
     let rec eval_cond (cond : cond) (env : state) :  state = 
@@ -225,7 +228,9 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | Random(a,b) -> D.abstract_range a b
         | Const c -> D.abstract_int c
         | Var x -> D.retrieve_variable x env 
-
+        | Inc e -> D.inc (eval_exp e env)
+        | Dec e -> D.dec (eval_exp e env)
+ 
     let filter_diff e1 e2 offset env =
         let atom = match e1, e2 with
         (* 1. Confronti tra variabili semplici *)

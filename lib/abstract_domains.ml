@@ -15,6 +15,8 @@ module type NonRelationalDomain = sig
 
   val abstract_int   : int -> t
   val abstract_range : int -> int -> t
+  val inc : t -> t
+  val dec : t -> t
   val sum    : t -> t -> t
   val mul    : t -> t -> t
   val div    : t -> t -> t
@@ -134,6 +136,15 @@ module ExtendedSigns = struct
     | NonZero,NonZero | NonZero,Pos | NonZero,Neg | Pos,NonZero | Neg,NonZero -> NonZero
     | _,_ -> SignTop
 
+  let inc value = match value with
+  | Zero | PosZero -> Pos
+  | Neg -> NegZero
+  | _ -> value
+
+  let dec value = match value with
+  | Zero | NegZero -> Neg
+  | Pos -> PosZero
+  | _ -> value
   let sum s1 s2 = match s1, s2 with
     | SignBottom, _ | _, SignBottom  -> SignBottom
     | Zero,Zero -> Zero
@@ -259,7 +270,15 @@ module SimplifiedSigns = struct
     | Pos, Pos | Neg,Neg -> Pos
     | Neg,Pos | Pos,Neg -> Neg
     | _,_ -> SignTop
+  let inc value = match value with
+  | Zero -> Pos
+  | Neg -> SignTop
+  | _ -> value
 
+  let dec value = match value with
+  | Zero -> Neg
+  | Pos -> SignTop
+  | _ -> value
   let sum s1 s2 = match s1, s2 with
     | SignBottom, _ | _, SignBottom  -> SignBottom
     | x,y when x == y -> x
@@ -357,6 +376,12 @@ module Signs = struct
     | Neg,Pos | Pos,Neg -> Neg
     | _,_ -> SignTop
 
+  let inc value = match value with
+  | Neg -> SignTop
+  | _ -> value 
+  let dec value = match value with
+  | Pos -> SignTop
+  | _ -> value
   let sum s1 s2 = match s1, s2 with
     | SignBottom, _ | _, SignBottom  -> SignBottom
     | x,y when x == y -> x
@@ -463,6 +488,13 @@ module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna cont
   else if a < 0 && b > 0 then SignTop
   else lub (abstract_int a) (abstract_int b)
 
+  let inc value = match value with
+  | Zero -> PosZero
+  | exp -> exp
+  let dec value = match value with
+  | Zero -> NegZero
+  | exp -> exp
+  
   let mul s1 s2 = match s1, s2 with
     | SignBottom, _ | _, SignBottom -> SignBottom
     | Zero, _       | _, Zero       -> Zero
@@ -588,6 +620,14 @@ module StrangeSigns = struct
     | Neg,PosZero | PosZero,Neg -> SignTop
     | _,_ -> SignTop
 
+  let inc value = match value  with
+  | Zero -> PosZero
+  | Neg -> SignTop
+  | _ -> value  
+  let dec value = match value  with
+  | Zero -> Neg
+  | PosZero -> SignTop
+  | _ -> value 
   let sum s1 s2 = match s1, s2 with
     | SignBottom, _ | _, SignBottom  -> SignBottom
     | x,y when x == y -> x
@@ -677,6 +717,9 @@ module type WeakRelationalDomain = sig
 
   val abstract_int   : int -> value
   val abstract_range : int -> int -> value
+
+  val inc : value -> value
+  val dec : value -> value
 
   val sum    : value -> value -> value
   val mul    : value -> value -> value

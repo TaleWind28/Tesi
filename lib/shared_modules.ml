@@ -81,7 +81,8 @@ module IntervalArith = struct
     let lo = max_bound a c in 
     let hi = min_bound b d in 
     if compare_bound lo hi > 0 then Bottom else Interval(lo, hi) 
-
+  
+ 
   (*Helper*)
   let add_bound a b = match a,b with 
     | PosInf,NegInf | NegInf,PosInf -> PosInf (*dovrebbe dare bottom*)
@@ -89,7 +90,6 @@ module IntervalArith = struct
     | NegInf,_ | _,NegInf -> NegInf
     | Int a, Int b -> Int (a+b)
 
-  
   let mul_bound x y = match x,y with
   | Int x, Int y -> Int( x* y)
   | NegInf, NegInf | PosInf,PosInf -> PosInf
@@ -125,10 +125,14 @@ module IntervalArith = struct
     |Bottom,_ | _,Bottom -> Bottom
     | Interval(a,b),Interval(c,d) -> 
       Interval (add_bound a c,add_bound b d)
-  
+
   let negate = function 
     |Bottom -> Bottom
     | Interval(a,b) -> Interval(neg_bound b,neg_bound a)
+
+  let dec value = sum value (negate(abstract_int 1))
+  let inc value = sum value (abstract_int 1)
+
 
   let mul c1 c2 = match c1,c2 with
     | Bottom,_ | _,Bottom -> Bottom
@@ -245,6 +249,7 @@ module VariableRetrieval = struct
   | Var x -> [x]
   | BinaryOperation(e1,bop,e2) -> retrieve_var_from_exp e1 @ retrieve_var_from_exp e2
   | UnaryOperation(uop,e) -> retrieve_var_from_exp e
+  | Inc e  | Dec e-> retrieve_var_from_exp e
   let rec retrieve_var_from_cond (cond:cond) : ide list = 
     match cond with
     | Comparison(e1,comp,e2) -> retrieve_var_from_exp e1 @ retrieve_var_from_exp e2

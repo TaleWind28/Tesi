@@ -1271,5 +1271,7 @@ let () =
         AdvancedInterpreterTests.make_sign_advanced_tests (function ExtendedSignInterp.BottomEnv -> true | _ -> false) ExtendedSignInterp.eval;
       "SimplifiedSigns: Sfide Avanzate Segni",
         AdvancedInterpreterTests.make_sign_advanced_tests (function SimplifiedSignInterp.BottomEnv -> true | _ -> false) SimplifiedSignInterp.eval;
-    ]
+    ] @
+    Inc_dec_tests.tests
   )
+
