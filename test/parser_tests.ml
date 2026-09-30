@@ -53,7 +53,10 @@ let tests = [
     check_exp "inc(x)" (Inc (Var "x")) (parse_exp "inc(x)");
     check_exp "dec(Const 5)" (Dec (Const 5)) (parse_exp "dec(5)");
     check_exp "x + 1 come inc(x)" (Inc (Var "x")) (parse_exp "x + 1");
-    check_exp "x - 1 come dec(x)" (Dec (Var "x")) (parse_exp "x - 1")
+    check_exp "x - 1 come dec(x)" (Dec (Var "x")) (parse_exp "x - 1");
+    check_exp "x++ come inc(x)" (Inc (Var "x")) (parse_exp "x++");
+    check_exp "x-- come dec(x)" (Dec (Var "x")) (parse_exp "x--");
+    check_exp "++x come inc(x)" (Inc (Var "x")) (parse_exp "++x")
   );
 
   ("Parser: Condizioni Relazionali comp", `Quick, fun () ->
@@ -84,7 +87,12 @@ let tests = [
     check_cmd "Skip" Skip (parse_cmd "Skip");
     check_cmd "skip minuscolo" Skip (parse_cmd "skip");
     check_cmd "x = 5" (Assign ("x", Const 5)) (parse_cmd "x = 5");
+    check_cmd "x++ comando" (Assign ("x", Inc (Var "x"))) (parse_cmd "x++");
+    check_cmd "x-- comando" (Assign ("x", Dec (Var "x"))) (parse_cmd "x--");
+    check_cmd "++x comando" (Assign ("x", Inc (Var "x"))) (parse_cmd "++x");
+    check_cmd "--x comando" (Assign ("x", Dec (Var "x"))) (parse_cmd "--x");
     check_cmd "x = 1; y = 2" (Sequence (Assign ("x", Const 1), Assign ("y", Const 2))) (parse_cmd "x = 1; y = 2");
+    check_cmd "x = 1; x--" (Sequence (Assign ("x", Const 1), Assign ("x", Dec (Var "x")))) (parse_cmd "x = 1; x--;");
     check_cmd "trailing semicolon" (Sequence (Assign ("x", Const 1), Assign ("y", Const 2))) (parse_cmd "x = 1; y = 2;")
   );
 

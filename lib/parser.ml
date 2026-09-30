@@ -62,10 +62,12 @@ type token_kind =
   | T_OR
   | T_BOOL of bool    (* true | false *)
 
-  (* Costruttori speciali di espressioni *)
+  (* Costruttori speciali di espressioni e operatori unari/postfissi *)
   | T_NONDET          (* nondet(...) oppure Random(...) *)
   | T_INC             (* inc(...) *)
   | T_DEC             (* dec(...) *)
+  | T_PLUSPLUS        (* ++ *)
+  | T_MINUSMINUS      (* -- *)
 
   (* Delimitatori di blocco *)
   | T_BEGIN
@@ -136,6 +138,8 @@ let string_of_token_kind = function
   | T_NONDET -> "nondet"
   | T_INC -> "inc"
   | T_DEC -> "dec"
+  | T_PLUSPLUS -> "++"
+  | T_MINUSMINUS -> "--"
   | T_BEGIN -> "begin"
   | T_END -> "end"
   | T_IDE s -> Printf.sprintf "identificatore '%s'" s
@@ -273,8 +277,14 @@ let tokenize (src : string) : token array =
             col = cur_col;
           })
 
-    (* Operatori aritmetici e punteggiatura a singolo carattere *)
+    (* Operatori aritmetici e punteggiatura *)
+    | '+' when peek_next () = '+' ->
+        advance (); advance ();
+        emit T_PLUSPLUS cur_line cur_col
     | '+' -> advance (); emit T_PLUS cur_line cur_col
+    | '-' when peek_next () = '-' ->
+        advance (); advance ();
+        emit T_MINUSMINUS cur_line cur_col
     | '-' -> advance (); emit T_MINUS cur_line cur_col
     | '*' -> advance (); emit T_STAR cur_line cur_col
     | '/' -> advance (); emit T_SLASH cur_line cur_col
@@ -564,6 +574,14 @@ and parse_exp_unary state : Syntax.exp =
        | _ ->
            let sub = parse_exp_unary state in
            Syntax.UnaryOperation (Syntax.Negation, sub))
+  | T_MINUSMINUS ->
+      ignore (advance state);
+      let sub = parse_exp_unary state in
+      Syntax.UnaryOperation (Syntax.Negation, Syntax.UnaryOperation (Syntax.Negation, sub))
+  | T_PLUSPLUS ->
+      ignore (advance state);
+      let sub = parse_exp_primary state in
+      Syntax.Inc sub
   | T_PLUS ->
       ignore (advance state);
       parse_exp_unary state
@@ -579,7 +597,15 @@ and parse_exp_primary state : Syntax.exp =
 
   | T_IDE name ->
       ignore (advance state);
-      Syntax.Var name
+      (match peek_kind state with
+       | T_PLUSPLUS ->
+           ignore (advance state);
+           Syntax.Inc (Syntax.Var name)
+       | T_MINUSMINUS ->
+           ignore (advance state);
+           Syntax.Dec (Syntax.Var name)
+       | _ ->
+           Syntax.Var name)
 
   (* Scelta non deterministica: nondet(E, E) oppure Random(E, E) *)
   | T_NONDET ->
@@ -823,7 +849,26 @@ and parse_cmd_atom state : Syntax.cmd =
       expect state T_END;
       cmd
 
-  (* 7. Gestione combinata di parentesi, filtri cond ? e assegnamenti *)
+  (* 7. Comandi prefissi di incremento e decremento: ++x oppure --x *)
+  | T_PLUSPLUS ->
+      ignore (advance state);
+      let ide_name =
+        match peek_kind state with
+        | T_IDE name -> ignore (advance state); name
+        | _ -> parse_error state (Printf.sprintf "Atteso identificatore dopo '++', trovato '%s'" (string_of_token (peek state)))
+      in
+      Syntax.Assign (ide_name, Syntax.Inc (Syntax.Var ide_name))
+
+  | T_MINUSMINUS ->
+      ignore (advance state);
+      let ide_name =
+        match peek_kind state with
+        | T_IDE name -> ignore (advance state); name
+        | _ -> parse_error state (Printf.sprintf "Atteso identificatore dopo '--', trovato '%s'" (string_of_token (peek state)))
+      in
+      Syntax.Assign (ide_name, Syntax.Dec (Syntax.Var ide_name))
+
+  (* 8. Gestione combinata di parentesi, filtri cond ? e assegnamenti *)
   | _ ->
       (* Tentativo A: verificare se il comando corrente è un filtro `cond ?` *)
       let saved = save_pos state in
@@ -849,16 +894,27 @@ and parse_cmd_atom state : Syntax.cmd =
              expect state T_RPAREN;
              cmd
            end
-           (* Tentativo C: assegnamento ide = E *)
+           (* Tentativo C: assegnamento ide = E oppure incremento/decremento ide++ / ide-- *)
            else if (match peek_kind state with T_IDE _ -> true | _ -> false) then begin
              let ide_name =
                match advance state with
                | { kind = T_IDE name; _ } -> name
                | _ -> assert false
              in
-             expect state T_ASSIGN;
-             let expr = parse_exp state in
-             Syntax.Assign (ide_name, expr)
+             match peek_kind state with
+             | T_PLUSPLUS ->
+                 ignore (advance state);
+                 Syntax.Assign (ide_name, Syntax.Inc (Syntax.Var ide_name))
+             | T_MINUSMINUS ->
+                 ignore (advance state);
+                 Syntax.Assign (ide_name, Syntax.Dec (Syntax.Var ide_name))
+             | T_ASSIGN ->
+                 ignore (advance state);
+                 let expr = parse_exp state in
+                 Syntax.Assign (ide_name, expr)
+             | _ ->
+                 expect state T_ASSIGN;
+                 assert false
            end
            else
              parse_error state (Printf.sprintf "Comando inatteso o non valido: '%s'"

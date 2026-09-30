@@ -1,0 +1,6 @@
+x = -5;
+y = x+1;
+while x > 0 do begin
+    z = x + y;
+    x++;
+end;
