@@ -1,6 +1,6 @@
 (* open Syntax *)
 open Parsers
-open Interpeters
+open Interpreters
 
 
 (* let read_file (filename:string) : string = 

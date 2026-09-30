@@ -72,7 +72,7 @@ Determina le proprietà di sicurezza, i limiti numerici delle variabili, i segni
 
 ## 📜 Sintassi e Grammatica BNF (Parser)
 
-Il modulo `lib/parser.ml` implementa un analizzatore per la seguente grammatica formale:
+Il modulo `lib/parsers.ml` implementa un analizzatore per la seguente grammatica formale:
 
 ```text
 c    ::= Skip 
@@ -107,26 +107,26 @@ int  ::= [-]?[0-9]+
 bool ::= true | false
 ```
 
-### Funzioni Esportate dal Modulo `Parser`
+### Funzioni Esportate dal Modulo `Parsers`
 
 - **Parsing di Comandi**:
-  - `Parser.parse_cmd : string -> Syntax.cmd` (alias di `parse_cmd_from_string`)
-  - `Parser.parse_cmd_from_file : string -> Syntax.cmd`
-  - `Parser.parse_cmd_from_channel : in_channel -> Syntax.cmd`
+  - `Parsers.parse_cmd : string -> Syntax.cmd` (alias di `parse_cmd_from_string`)
+  - `Parsers.parse_cmd_from_file : string -> Syntax.cmd`
+  - `Parsers.parse_cmd_from_channel : in_channel -> Syntax.cmd`
 - **Parsing di Espressioni e Condizioni**:
-  - `Parser.parse_exp : string -> Syntax.exp`
-  - `Parser.parse_cond : string -> Syntax.cond`
+  - `Parsers.parse_exp : string -> Syntax.exp`
+  - `Parsers.parse_cond : string -> Syntax.cond`
 - **Pretty Printing**:
-  - `Parser.string_of_cmd : Syntax.cmd -> string`
-  - `Parser.string_of_exp : Syntax.exp -> string`
-  - `Parser.string_of_cond : Syntax.cond -> string`
-  - `Parser.string_of_parse_error : ParseError -> string`
+  - `Parsers.string_of_cmd : Syntax.cmd -> string`
+  - `Parsers.string_of_exp : Syntax.exp -> string`
+  - `Parsers.string_of_cond : Syntax.cond -> string`
+  - `Parsers.string_of_parse_error : ParseError -> string`
 
 ---
 
 ## 📐 Domini Astratti
 
-I domini astratti sono implementati in `lib/abstract_domains.ml` e gli interpreti concreti in `lib/interpeters.ml`:
+I domini astratti sono implementati in `lib/abstract_domains.ml` e gli interpreti concreti in `lib/interpreters.ml`:
 
 ### Domini Non-Relazionali
 
@@ -169,8 +169,8 @@ I domini astratti sono implementati in `lib/abstract_domains.ml` e gli interpret
 ├── lib/
 │   ├── abstract_domains.ml   # Firme e implementazioni dei domini astratti
 │   ├── dune                  # Configurazione Dune per la libreria (tesi_lib)
-│   ├── interpeters.ml        # Funtori di analisi statica e moduli interprete istanziati
-│   ├── parser.ml             # Lexer, Parser BNF a discesa ricorsiva e Pretty Printer
+│   ├── interpreters.ml       # Funtori di analisi statica e moduli interprete istanziati
+│   ├── parsers.ml            # Lexer, Parser BNF a discesa ricorsiva e Pretty Printer
 │   ├── shared_modules.ml     # Moduli condivisi: IntervalArith, DBMOperations, VariableRetrieval, SyntaxUtils, Fixpoint
 │   └── syntax.ml             # Abstract Syntax Tree (bop, uop, exp, cond, cmd)
 ├── test/
@@ -299,8 +299,8 @@ Per sperimentare in modo interattivo con il parser e i domini astratti:
 
 2. All'interno di `utop` (sfruttando direttamente il parser per scrivere programmi come stringhe):
    ```ocaml
-   open Parser;;
-   open Interpeters;;
+   open Parsers;;
+   open Interpreters;;
 
    (* Parsing diretto del codice imperativo *)
    let p1 = parse_cmd "x = 0; while x < 10 do x = x + 2";;
@@ -327,8 +327,8 @@ Per sperimentare in modo interattivo con il parser e i domini astratti:
 Grazie al modulo `Parser`, è possibile scrivere i programmi in sintassi testuale e analizzarli con poche righe di codice:
 
 ```ocaml
-open Parser
-open Interpeters
+open Parsers
+open Interpreters
 
 let source_code = "
   x = nondet(1, 5);
@@ -356,7 +356,7 @@ In alternativa al parser testuale, è possibile costruire programmaticamente l'A
 
 ```ocaml
 open Syntax
-open Interpeters
+open Interpreters
 
 (* Programma:
    x = Random(1, 5);

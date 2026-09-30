@@ -156,11 +156,11 @@ let tests = [
 
   ("Parser: Valutazione End-to-End con Interprete Astratto", `Quick, fun () ->
     let prog = parse_cmd "x = nondet(1, 5); y = -x + 10; z = x + 2" in
-    let res = Interpeters.IntervalInterp.eval prog in
+    let res = Interpreters.IntervalInterp.eval prog in
     match res with
-    | Interpeters.IntervalInterp.BottomEnv ->
+    | Interpreters.IntervalInterp.BottomEnv ->
         Alcotest.fail "Lo stato dell'interprete non dovrebbe essere Bottom"
-    | Interpeters.IntervalInterp.Env env ->
+    | Interpreters.IntervalInterp.Env env ->
         let x_val = Hashtbl.find env "x" in
         let y_val = Hashtbl.find env "y" in
         let z_val = Hashtbl.find env "z" in
