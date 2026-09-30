@@ -800,15 +800,15 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let mul_10 = SignBottom
 
   (* Divisione *)
-  let div_1 = Pos
-  let div_2 = Neg
-  let div_3 = Pos
+  let div_1 = top
+  let div_2 = top
+  let div_3 = top
   let div_4 = bottom
   let div_5 = top
   let div_6 = top
   let div_7 = top
-  let div_8 = Zero
-  let div_9 = Zero
+  let div_8 = top
+  let div_9 = top
   let div_10 = top
   let div_11 = top
   let div_12 = top
@@ -992,9 +992,9 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t =
   let mul_10 = SignBottom
 
   (* Divisione *)
-  let div_1 = Pos
-  let div_2 = Neg
-  let div_3 = Pos
+  let div_1 = top
+  let div_2 = top
+  let div_3 = top
   let div_4 = top              (* ⚠️⚠️ era SignBottom (divisore esattamente 0); qui z=Pos non è riconoscibile come "0 esatto", quindi niente check div-by-zero: risultato Pos/Pos=Pos. ReducedSigns NON rileva più la divisione per zero certa. *)
   let div_5 = top
   let div_6 = top

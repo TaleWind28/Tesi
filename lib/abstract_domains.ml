@@ -160,7 +160,7 @@ module ExtendedSigns = struct
     | SignBottom, _ | _, SignBottom -> SignBottom
     (* divisione per zero *)
     | _, Zero -> SignBottom
-    | Zero,(Pos | Neg | NonZero) -> Zero
+    | Zero,(Pos | Neg | NonZero | PosZero) -> Zero
     (*Unici casi noti della tabella della divisione*)
     | Pos, Pos    | Neg, Neg     -> PosZero
     | Pos, Neg    | Neg, Pos     -> NegZero
@@ -285,16 +285,10 @@ module SimplifiedSigns = struct
     | Zero, n       | n, Zero      -> n
     | _,_ -> SignTop
   
-  (*Non del tutto corretta in quanto dovrebbe essere divisione intera*)
+  (*Non del tutto corretta in quanto dovrebbe essere divisione intera -> Infatti collassiamo tutto a Top perchè 1/5 = 0 a causa del troncamento*)
   let div s1 s2 = match s1, s2 with
     (*Errore/Irraggiungibile*)
-    | SignBottom, _ | _, SignBottom -> SignBottom
-    (* divisione per zero *)
-    | _, Zero -> SignBottom
-    | Zero,(Pos | Neg ) -> Zero
-    (*Unici casi noti della tabella della divisione*)
-    | Pos, Pos    | Neg, Neg     -> Pos
-    | Pos, Neg    | Neg, Pos     -> Neg
+    | SignBottom, _ | _, (SignBottom | Zero) -> SignBottom
     (*Casi con possibili divisioni per 0 oppure divisioni con NonZero*)
     | _ -> SignTop
 
@@ -387,14 +381,10 @@ module Signs = struct
     | x,y when x == y -> x
     | _,_ -> SignTop
   
-  (*Non del tutto corretta in quanto dovrebbe essere divisione intera*)
+  (*Non del tutto corretta in quanto dovrebbe essere divisione intera -> Infatti collassiamo tutto a Top perchè 1/5 = 0 a causa del troncamento*)
   let div s1 s2 = match s1, s2 with
     (*Errore/Irraggiungibile*)
     | SignBottom, _ | _, SignBottom -> SignBottom
-    (*Unici casi noti della tabella della divisione*)
-    | Pos, Pos    | Neg, Neg     -> Pos
-    | Pos, Neg    | Neg, Pos     -> Neg
-    (*Casi con possibili divisioni per 0 oppure divisioni con NonZero*)
     | _ -> SignTop
 
   let negate = function
@@ -634,14 +624,13 @@ module StrangeSigns = struct
     | Zero, n       | n, Zero      -> n
     | _,_ -> SignTop
   
-  (*Non del tutto corretta in quanto dovrebbe essere divisione intera*)
+    (*Non del tutto corretta in quanto dovrebbe essere divisione intera -> Infatti collassiamo tutto a Top perchè 1/5 = 0 a causa del troncamento*)
   let div s1 s2 = match s1, s2 with
     (*Errore/Irraggiungibile*)
     | SignBottom, _ | _, SignBottom -> SignBottom
     | Zero, _ -> Zero
     (* divisione per zero *)
     | _, Zero -> SignBottom
-    | PosZero, Neg -> SignTop
     (*Unici casi noti della tabella della divisione*)
     | PosZero,PosZero | Neg, Neg -> PosZero
     (*Casi con possibili divisioni per 0 oppure divisioni con NonZero*)
