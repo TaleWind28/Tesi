@@ -1,19 +1,8 @@
-open Syntax
+(* open Syntax *)
+open Parser
 open Interpeters
-let test_prog = 
-  Sequence (
-    (* x parte in un intervallo positivo [1, 5] *)
-    Assign ("x", Random (1, 5)),
-    Sequence (
-      (* y = -x + 10  (relazione ottagonale: x + y = 10) *)
-      Assign ("y", BinaryOperation (UnaryOperation (Negation, Var "x"), Add, Const 10)),
-      (* z = x + 2    (relazione zonale: z - x = 2) *)
-      Assign ("z", BinaryOperation (Var "x", Add, Const 2))
-    )
-  )
-  (* let test_prog = 
-    Sequence(Filter(Comparison(Const 5, Smaller, Const 2)),Skip) *)
-
+let prog_exp = "x = -1;y = nondet(1,50);z = nondet(1,50);x = x + 1;"
+  let test_prog = parse_cmd prog_exp
 let () =
   let risultato = ExtendedSignInterp.eval test_prog in
   print_string "\nExtendedSigns\n";

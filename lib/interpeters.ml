@@ -250,6 +250,14 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             Some(Binary (Pos, x, Neg, y, -c + offset))
         | BinaryOperation(Var x, Sub, Const c), Var y ->
             Some(Binary (Pos, x, Neg, y, c + offset))
+        | Var x, Inc(Var y) ->
+            Some(Binary (Pos, x, Neg, y, 1 + offset))
+        | Var x, Dec(Var y) ->
+            Some(Binary (Pos, x, Neg, y, -1 + offset))
+        | Inc(Var x), Var y ->
+            Some(Binary (Pos, x, Neg, y, -1 + offset))
+        | Dec(Var x), Var y ->
+            Some(Binary (Pos, x, Neg, y, 1 + offset))
 
         (* 3. Differenza x - y <= c e c <= x - y *)
         | BinaryOperation(Var x, Sub, Var y), Const c -> 
@@ -345,6 +353,14 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             D.assign_var ide Pos x (-c) env
         | Assign(ide,BinaryOperation(UnaryOperation(Negation,Var x),Sub,Const c)) ->
             D.assign_var ide Neg x (-c) env
+        | Assign(ide, Inc(Var x)) ->
+            D.assign_var ide Pos x 1 env
+        | Assign(ide, Dec(Var x)) ->
+            D.assign_var ide Pos x (-1) env
+        | Assign(ide, Inc(UnaryOperation(Negation, Var x))) ->
+            D.assign_var ide Neg x 1 env
+        | Assign(ide, Dec(UnaryOperation(Negation, Var x))) ->
+            D.assign_var ide Neg x (-1) env
         | Assign(ide,exp) -> 
             let v = eval_exp exp env in 
             D.assign ide v env
