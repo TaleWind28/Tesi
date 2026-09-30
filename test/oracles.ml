@@ -78,6 +78,47 @@ module type EXPECTED_VALUES = sig
   val rand_5 : t
   val rand_6 : t
 
+  (* Incremento *)
+  val inc_1 : t
+  val inc_2 : t
+  val inc_3 : t
+  val inc_4 : t
+  val inc_5 : t
+  val inc_6 : t
+  val inc_7 : t
+  val inc_8 : t
+  val inc_9 : t
+  val inc_10 : t
+
+  (* Decremento *)
+  val dec_1 : t
+  val dec_2 : t
+  val dec_3 : t
+  val dec_4 : t
+  val dec_5 : t
+  val dec_6 : t
+  val dec_7 : t
+  val dec_8 : t
+  val dec_9 : t
+  val dec_10 : t
+
+  (* Assegnamenti Inc e Dec *)
+  val assign_inc_5 : t
+  val assign_dec_5 : t
+  val assign_inc_0_y : t
+  val assign_dec_0_z : t
+  val assign_seq_3_inc : t
+  val assign_seq_3_dec : t
+  val assign_inc_dec_cancel : t
+  val assign_inc_rand_y : t
+  val assign_dec_rand_y : t
+
+  (* Filtri validi Inc e Dec *)
+  val filter_inc_valid_y : t
+  val filter_inc_valid_x : t
+  val filter_dec_valid_y : t
+  val filter_dec_valid_x : t
+
   (* Assegnamenti *)
   val assign_1 : t
   val assign_2 : t
@@ -132,6 +173,19 @@ module type EXPECTED_VALUES = sig
   val filter_13 : t filter_outcome
   val filter_14 : t filter_outcome
   val filter_15 : t filter_outcome
+
+  (* Filtri Contraddittori Inc e Dec *)
+  val filter_inc_contra_1 : t filter_outcome
+  val filter_dec_contra_1 : t filter_outcome
+  val filter_inc_rand_contra : t filter_outcome
+  val filter_dec_rand_contra : t filter_outcome
+  val filter_direct_inc_contra : t filter_outcome
+  val filter_direct_dec_contra : t filter_outcome
+  val filter_chain_3_inc_contra : t filter_outcome
+  val filter_chain_3_dec_contra : t filter_outcome
+  val filter_if_inc_contra : t filter_outcome
+  val filter_if_dec_contra : t filter_outcome
+  val filter_while_dec_contra : t filter_outcome
 end
 
 module Expected_ExtendedSigns : EXPECTED_VALUES with type t = Abstract_domains.ExtendedSigns.t  = struct
@@ -212,6 +266,47 @@ module Expected_ExtendedSigns : EXPECTED_VALUES with type t = Abstract_domains.E
   let rand_5 = NegZero
   let rand_6 = Zero
 
+  (* Incremento *)
+  let inc_1 = Pos
+  let inc_2 = NegZero
+  let inc_3 = Pos
+  let inc_4 = Pos
+  let inc_5 = NegZero
+  let inc_6 = NonZero
+  let inc_7 = top
+  let inc_8 = SignBottom
+  let inc_9 = Pos
+  let inc_10 = PosZero
+
+  (* Decremento *)
+  let dec_1 = PosZero
+  let dec_2 = Neg
+  let dec_3 = Neg
+  let dec_4 = PosZero
+  let dec_5 = Neg
+  let dec_6 = NonZero
+  let dec_7 = top
+  let dec_8 = SignBottom
+  let dec_9 = Neg
+  let dec_10 = Pos
+
+  (* Assegnamenti Inc e Dec *)
+  let assign_inc_5 = Pos
+  let assign_dec_5 = PosZero
+  let assign_inc_0_y = Pos
+  let assign_dec_0_z = Neg
+  let assign_seq_3_inc = Pos
+  let assign_seq_3_dec = Neg
+  let assign_inc_dec_cancel = PosZero
+  let assign_inc_rand_y = Pos
+  let assign_dec_rand_y = PosZero
+
+  (* Filtri validi Inc e Dec *)
+  let filter_inc_valid_y = Pos
+  let filter_inc_valid_x = Pos
+  let filter_dec_valid_y = Pos
+  let filter_dec_valid_x = Pos
+
   (* Assegnamenti *)
   let assign_1 = Pos
   let assign_2 = Neg
@@ -266,6 +361,19 @@ module Expected_ExtendedSigns : EXPECTED_VALUES with type t = Abstract_domains.E
   let filter_13 = ExpectBottom
   let filter_14 = ExpectBottom
   let filter_15 = ExpectBottom
+
+  (* Filtri Contraddittori Inc e Dec *)
+  let filter_inc_contra_1 = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_dec_contra_1 = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_inc_rand_contra = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_dec_rand_contra = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_direct_inc_contra = ExpectEnv [ "x", Pos ]
+  let filter_direct_dec_contra = ExpectEnv [ "x", Pos ]
+  let filter_chain_3_inc_contra = ExpectEnv [ "x", Pos ]
+  let filter_chain_3_dec_contra = ExpectEnv [ "x", Pos ]
+  let filter_if_inc_contra = ExpectEnv [ "x", Zero; "y", Pos ]
+  let filter_if_dec_contra = ExpectEnv [ "x", Zero; "y", Pos ]
+  let filter_while_dec_contra = ExpectBottom
 end
 
 module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.SimpleSigns.t = struct
@@ -344,6 +452,47 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let rand_5 = NegZero
   let rand_6 = Zero
 
+  (* Incremento *)
+  let inc_1 = PosZero
+  let inc_2 = NegZero
+  let inc_3 = PosZero
+  let inc_4 = PosZero
+  let inc_5 = NegZero
+  let inc_6 = top
+  let inc_7 = top
+  let inc_8 = SignBottom
+  let inc_9 = PosZero
+  let inc_10 = PosZero
+
+  (* Decremento *)
+  let dec_1 = PosZero
+  let dec_2 = NegZero
+  let dec_3 = NegZero
+  let dec_4 = PosZero
+  let dec_5 = NegZero
+  let dec_6 = top
+  let dec_7 = top
+  let dec_8 = SignBottom
+  let dec_9 = NegZero
+  let dec_10 = PosZero
+
+  (* Assegnamenti Inc e Dec *)
+  let assign_inc_5 = PosZero
+  let assign_dec_5 = PosZero
+  let assign_inc_0_y = PosZero
+  let assign_dec_0_z = NegZero
+  let assign_seq_3_inc = PosZero
+  let assign_seq_3_dec = NegZero
+  let assign_inc_dec_cancel = PosZero
+  let assign_inc_rand_y = PosZero
+  let assign_dec_rand_y = PosZero
+
+  (* Filtri validi Inc e Dec *)
+  let filter_inc_valid_y = PosZero
+  let filter_inc_valid_x = PosZero
+  let filter_dec_valid_y = PosZero
+  let filter_dec_valid_x = PosZero
+
   (* Assegnamenti *)
   let assign_1 = PosZero
   let assign_2 = NegZero
@@ -398,6 +547,19 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let filter_13 = ExpectBottom
   let filter_14 = ExpectBottom
   let filter_15 = ExpectEnv [ "x", Zero ]
+
+  (* Filtri Contraddittori Inc e Dec *)
+  let filter_inc_contra_1 = ExpectEnv [ "x", PosZero; "y", PosZero ]
+  let filter_dec_contra_1 = ExpectEnv [ "x", PosZero; "y", PosZero ]
+  let filter_inc_rand_contra = ExpectEnv [ "x", PosZero; "y", PosZero ]
+  let filter_dec_rand_contra = ExpectEnv [ "x", PosZero; "y", PosZero ]
+  let filter_direct_inc_contra = ExpectEnv [ "x", PosZero ]
+  let filter_direct_dec_contra = ExpectEnv [ "x", PosZero ]
+  let filter_chain_3_inc_contra = ExpectEnv [ "x", PosZero ]
+  let filter_chain_3_dec_contra = ExpectEnv [ "x", PosZero ]
+  let filter_if_inc_contra = ExpectEnv [ "x", Zero; "y", PosZero ]
+  let filter_if_dec_contra = ExpectEnv [ "x", Zero; "y", PosZero ]
+  let filter_while_dec_contra = ExpectEnv [ "x", Zero ]
 end
 
 module Expected_StrangeSigns : EXPECTED_VALUES with type t = Abstract_domains.StrangeSigns.t = struct
@@ -481,6 +643,47 @@ module Expected_StrangeSigns : EXPECTED_VALUES with type t = Abstract_domains.St
   let rand_5 = top           (* attraversa Neg e Zero *)
   let rand_6 = Zero
 
+  (* Incremento *)
+  let inc_1 = PosZero
+  let inc_2 = top
+  let inc_3 = PosZero
+  let inc_4 = PosZero
+  let inc_5 = top
+  let inc_6 = top
+  let inc_7 = top
+  let inc_8 = SignBottom
+  let inc_9 = PosZero
+  let inc_10 = top
+
+  (* Decremento *)
+  let dec_1 = top
+  let dec_2 = Neg
+  let dec_3 = Neg
+  let dec_4 = top
+  let dec_5 = top
+  let dec_6 = top
+  let dec_7 = top
+  let dec_8 = SignBottom
+  let dec_9 = Neg
+  let dec_10 = top
+
+  (* Assegnamenti Inc e Dec *)
+  let assign_inc_5 = PosZero
+  let assign_dec_5 = top
+  let assign_inc_0_y = PosZero
+  let assign_dec_0_z = Neg
+  let assign_seq_3_inc = PosZero
+  let assign_seq_3_dec = Neg
+  let assign_inc_dec_cancel = top
+  let assign_inc_rand_y = PosZero
+  let assign_dec_rand_y = top
+
+  (* Filtri validi Inc e Dec *)
+  let filter_inc_valid_y = PosZero
+  let filter_inc_valid_x = PosZero
+  let filter_dec_valid_y = PosZero
+  let filter_dec_valid_x = PosZero
+
   (* Assegnamenti *)
   let assign_1 = PosZero
   let assign_2 = Neg
@@ -537,6 +740,19 @@ module Expected_StrangeSigns : EXPECTED_VALUES with type t = Abstract_domains.St
   let filter_13 = ExpectBottom
   let filter_14 = ExpectBottom
   let filter_15 = ExpectEnv [ "x", PosZero ]
+
+  (* Filtri Contraddittori Inc e Dec *)
+  let filter_inc_contra_1 = ExpectEnv [ "x", PosZero; "y", PosZero ]
+  let filter_dec_contra_1 = ExpectEnv [ "x", PosZero; "y", PosZero ]
+  let filter_inc_rand_contra = ExpectEnv [ "x", PosZero; "y", PosZero ]
+  let filter_dec_rand_contra = ExpectEnv [ "x", PosZero; "y", PosZero ]
+  let filter_direct_inc_contra = ExpectEnv [ "x", PosZero ]
+  let filter_direct_dec_contra = ExpectEnv [ "x", PosZero ]
+  let filter_chain_3_inc_contra = ExpectEnv [ "x", PosZero ]
+  let filter_chain_3_dec_contra = ExpectEnv [ "x", top ]
+  let filter_if_inc_contra = ExpectEnv [ "x", Zero; "y", PosZero ]
+  let filter_if_dec_contra = ExpectEnv [ "x", Zero; "y", PosZero ]
+  let filter_while_dec_contra = ExpectBottom
 end
 
 module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.SimplifiedSigns.t = struct
@@ -617,6 +833,47 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let rand_5 = top
   let rand_6 = Zero
 
+  (* Incremento *)
+  let inc_1 = Pos
+  let inc_2 = top
+  let inc_3 = Pos
+  let inc_4 = top
+  let inc_5 = top
+  let inc_6 = top
+  let inc_7 = top
+  let inc_8 = SignBottom
+  let inc_9 = Pos
+  let inc_10 = top
+
+  (* Decremento *)
+  let dec_1 = top
+  let dec_2 = Neg
+  let dec_3 = Neg
+  let dec_4 = top
+  let dec_5 = top
+  let dec_6 = top
+  let dec_7 = top
+  let dec_8 = SignBottom
+  let dec_9 = Neg
+  let dec_10 = top
+
+  (* Assegnamenti Inc e Dec *)
+  let assign_inc_5 = Pos
+  let assign_dec_5 = top
+  let assign_inc_0_y = Pos
+  let assign_dec_0_z = Neg
+  let assign_seq_3_inc = Pos
+  let assign_seq_3_dec = Neg
+  let assign_inc_dec_cancel = top
+  let assign_inc_rand_y = Pos
+  let assign_dec_rand_y = top
+
+  (* Filtri validi Inc e Dec *)
+  let filter_inc_valid_y = Pos
+  let filter_inc_valid_x = Pos
+  let filter_dec_valid_y = Pos
+  let filter_dec_valid_x = Pos
+
   (* Assegnamenti *)
   let assign_1 = Pos
   let assign_2 = Neg
@@ -672,6 +929,19 @@ module Expected_SimplifiedSigns :EXPECTED_VALUES with type t = Abstract_domains.
   let filter_13 = ExpectBottom
   let filter_14 = ExpectBottom
   let filter_15 = ExpectBottom
+
+  (* Filtri Contraddittori Inc e Dec *)
+  let filter_inc_contra_1 = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_dec_contra_1 = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_inc_rand_contra = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_dec_rand_contra = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_direct_inc_contra = ExpectEnv [ "x", Pos ]
+  let filter_direct_dec_contra = ExpectEnv [ "x", Pos ]
+  let filter_chain_3_inc_contra = ExpectEnv [ "x", Pos ]
+  let filter_chain_3_dec_contra = ExpectEnv [ "x", top ]
+  let filter_if_inc_contra = ExpectEnv [ "x", Zero; "y", Pos ]
+  let filter_if_dec_contra = ExpectEnv [ "x", Zero; "y", Pos ]
+  let filter_while_dec_contra = ExpectBottom
 end
 
 module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t = struct
@@ -755,6 +1025,47 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t =
   let rand_5 = top
   let rand_6 = top             (* ⚠️ era Zero esatto (Random(0,0)); convenzione -> Pos *)
 
+  (* Incremento *)
+  let inc_1 = Pos
+  let inc_2 = top
+  let inc_3 = top
+  let inc_4 = top
+  let inc_5 = top
+  let inc_6 = top
+  let inc_7 = top
+  let inc_8 = SignBottom
+  let inc_9 = top
+  let inc_10 = top
+
+  (* Decremento *)
+  let dec_1 = top
+  let dec_2 = Neg
+  let dec_3 = top
+  let dec_4 = top
+  let dec_5 = top
+  let dec_6 = top
+  let dec_7 = top
+  let dec_8 = SignBottom
+  let dec_9 = top
+  let dec_10 = top
+
+  (* Assegnamenti Inc e Dec *)
+  let assign_inc_5 = Pos
+  let assign_dec_5 = top
+  let assign_inc_0_y = top
+  let assign_dec_0_z = top
+  let assign_seq_3_inc = top
+  let assign_seq_3_dec = top
+  let assign_inc_dec_cancel = top
+  let assign_inc_rand_y = Pos
+  let assign_dec_rand_y = top
+
+  (* Filtri validi Inc e Dec *)
+  let filter_inc_valid_y = Pos
+  let filter_inc_valid_x = Pos
+  let filter_dec_valid_y = Pos
+  let filter_dec_valid_x = Pos
+
   (* Assegnamenti *)
   let assign_1 = Pos
   let assign_2 = Neg
@@ -809,6 +1120,19 @@ module Expected_Signs : EXPECTED_VALUES with type t = Abstract_domains.Signs.t =
   let filter_13 = ExpectBottom
   let filter_14 = ExpectBottom
   let filter_15 = ExpectEnv [ "x", Pos ]
+
+  (* Filtri Contraddittori Inc e Dec *)
+  let filter_inc_contra_1 = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_dec_contra_1 = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_inc_rand_contra = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_dec_rand_contra = ExpectEnv [ "x", Pos; "y", Pos ]
+  let filter_direct_inc_contra = ExpectEnv [ "x", Pos ]
+  let filter_direct_dec_contra = ExpectEnv [ "x", Pos ]
+  let filter_chain_3_inc_contra = ExpectEnv [ "x", top ]
+  let filter_chain_3_dec_contra = ExpectEnv [ "x", top ]
+  let filter_if_inc_contra = ExpectEnv [ "x", top; "y", Pos ]
+  let filter_if_dec_contra = ExpectEnv [ "x", top; "y", Pos ]
+  let filter_while_dec_contra = ExpectEnv [ "x", Neg ]
 end
 
 module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Intervals.t = struct
@@ -895,6 +1219,44 @@ module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Inter
   let rand_5 = interval (-10) 0
   let rand_6 = interval 0 0
 
+  (* ---------------- Incremento e Decremento ---------------- *)
+  let inc_1 = interval 2 11
+  let inc_2 = interval (-9) 0
+  let inc_3 = interval 1 1
+  let inc_4 = interval 1 11
+  let inc_5 = interval (-9) 1
+  let inc_6 = interval (-9) 11
+  let inc_7 = top_val
+  let inc_8 = bottom_val
+  let inc_9 = interval 2 2
+  let inc_10 = interval 1 10
+
+  let dec_1 = interval 0 9
+  let dec_2 = interval (-11) (-2)
+  let dec_3 = interval (-1) (-1)
+  let dec_4 = interval (-1) 9
+  let dec_5 = interval (-11) (-1)
+  let dec_6 = interval (-11) 9
+  let dec_7 = top_val
+  let dec_8 = bottom_val
+  let dec_9 = interval (-2) (-2)
+  let dec_10 = interval 1 10
+
+  let assign_inc_5 = interval 6 6
+  let assign_dec_5 = interval 4 4
+  let assign_inc_0_y = interval 1 1
+  let assign_dec_0_z = interval (-1) (-1)
+  let assign_seq_3_inc = interval 3 3
+  let assign_seq_3_dec = interval (-3) (-3)
+  let assign_inc_dec_cancel = interval 10 10
+  let assign_inc_rand_y = interval 2 6
+  let assign_dec_rand_y = interval 0 4
+
+  let filter_inc_valid_y = interval 6 6
+  let filter_inc_valid_x = interval 5 5
+  let filter_dec_valid_y = interval 4 4
+  let filter_dec_valid_x = interval 5 5
+
   (* ---------------- Assegnamenti ---------------- *)
   let assign_1 = interval 5 5
   let assign_2 = interval (-5) (-5)
@@ -951,6 +1313,19 @@ module Expected_Intervals : EXPECTED_VALUES with type t = Abstract_domains.Inter
   let filter_13 = ExpectBottom
   let filter_14 = ExpectBottom
   let filter_15 = ExpectBottom
+
+  (* Filtri Contraddittori Inc e Dec *)
+  let filter_inc_contra_1 = ExpectBottom
+  let filter_dec_contra_1 = ExpectBottom
+  let filter_inc_rand_contra = ExpectBottom
+  let filter_dec_rand_contra = ExpectBottom
+  let filter_direct_inc_contra = ExpectBottom
+  let filter_direct_dec_contra = ExpectBottom
+  let filter_chain_3_inc_contra = ExpectBottom
+  let filter_chain_3_dec_contra = ExpectBottom
+  let filter_if_inc_contra = ExpectBottom
+  let filter_if_dec_contra = ExpectBottom
+  let filter_while_dec_contra = ExpectBottom
 end
 
 module type EXPECTED_ZONES = sig
@@ -983,6 +1358,23 @@ module type EXPECTED_ZONES = sig
   val binop_mul : value
   val binop_div : value
   val unop_neg : value
+
+  (* Inc e Dec *)
+  val inc_const : value
+  val dec_const : value
+  val assign_inc_x : value
+  val assign_dec_x : value
+  val assign_inc_0_y : value
+  val assign_dec_0_z : value
+  val assign_seq_3_inc : value
+  val assign_seq_3_dec : value
+  val assign_inc_dec_cancel : value
+  val assign_inc_rand_y : value
+  val assign_dec_rand_y : value
+  val filter_inc_valid_x : value
+  val filter_inc_valid_y : value
+  val filter_dec_valid_x : value
+  val filter_dec_valid_y : value
 
   (* Sequenze e Skip *)
   val seq_x : value
@@ -1063,6 +1455,23 @@ module Make_Expected_Relational (D : Abstract_domains.WeakRelationalDomain) : EX
   let binop_mul = const 20
   let binop_div = const 5
   let unop_neg = const (-7)
+
+  (* Inc e Dec *)
+  let inc_const = const 4
+  let dec_const = const 2
+  let assign_inc_x = const 6
+  let assign_dec_x = const 4
+  let assign_inc_0_y = const 1
+  let assign_dec_0_z = const (-1)
+  let assign_seq_3_inc = const 3
+  let assign_seq_3_dec = const (-3)
+  let assign_inc_dec_cancel = const 10
+  let assign_inc_rand_y = interval 2 6
+  let assign_dec_rand_y = interval 0 4
+  let filter_inc_valid_x = const 5
+  let filter_inc_valid_y = const 6
+  let filter_dec_valid_x = const 5
+  let filter_dec_valid_y = const 4
 
   (* Sequenze e Skip *)
   let seq_x = const 1

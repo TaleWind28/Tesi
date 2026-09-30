@@ -172,6 +172,122 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
     "Random(0,0)", parse_exp "Random(0, 0)", E.rand_6;
   ]
 
+  let inctests = List.map make_case [
+    "Inc: Pos", parse_exp "inc(x)", E.inc_1;
+    "Inc: Neg", parse_exp "inc(y)", E.inc_2;
+    "Inc: Zero", parse_exp "inc(z)", E.inc_3;
+    "Inc: PosZero", parse_exp "inc(w)", E.inc_4;
+    "Inc: NegZero", parse_exp "inc(k)", E.inc_5;
+    "Inc: NonZero", parse_exp "inc(n)", E.inc_6;
+    "Inc: Top", parse_exp "inc(t)", E.inc_7;
+    "Inc: Bottom", parse_exp "inc(b)", E.inc_8;
+    "Inc: Annidato inc(inc(z))", parse_exp "inc(inc(z))", E.inc_9;
+    "Inc/Dec: dec(inc(x))", parse_exp "dec(inc(x))", E.inc_10;
+  ]
+
+  let dectests = List.map make_case [
+    "Dec: Pos", parse_exp "dec(x)", E.dec_1;
+    "Dec: Neg", parse_exp "dec(y)", E.dec_2;
+    "Dec: Zero", parse_exp "dec(z)", E.dec_3;
+    "Dec: PosZero", parse_exp "dec(w)", E.dec_4;
+    "Dec: NegZero", parse_exp "dec(k)", E.dec_5;
+    "Dec: NonZero", parse_exp "dec(n)", E.dec_6;
+    "Dec: Top", parse_exp "dec(t)", E.dec_7;
+    "Dec: Bottom", parse_exp "dec(b)", E.dec_8;
+    "Dec: Annidato dec(dec(z))", parse_exp "dec(dec(z))", E.dec_9;
+    "Dec/Inc: inc(dec(x))", parse_exp "inc(dec(x))", E.dec_10;
+  ]
+
+  let inc_dec_assigntests = [
+    make_prog_case
+      ( "Assign con Inc: x = 5; x = inc(x)",
+        parse_cmd "x = 5; x = inc(x)",
+        [ "x", E.assign_inc_5 ] );
+    make_prog_case
+      ( "Assign con Dec: x = 5; x = dec(x)",
+        parse_cmd "x = 5; x = dec(x)",
+        [ "x", E.assign_dec_5 ] );
+    make_prog_case
+      ( "Assign con Inc e Dec a nuove variabili",
+        parse_cmd "x = 0; y = inc(x); z = dec(x)",
+        [ "y", E.assign_inc_0_y; "z", E.assign_dec_0_z ] );
+    make_prog_case
+      ( "Sequenza di 3 Inc: x = 0; x = inc(x); x = inc(x); x = inc(x)",
+        parse_cmd "x = 0; x = inc(x); x = inc(x); x = inc(x)",
+        [ "x", E.assign_seq_3_inc ] );
+    make_prog_case
+      ( "Sequenza di 3 Dec: x = 0; x = dec(x); x = dec(x); x = dec(x)",
+        parse_cmd "x = 0; x = dec(x); x = dec(x); x = dec(x)",
+        [ "x", E.assign_seq_3_dec ] );
+    make_prog_case
+      ( "Alternanza Inc e Dec: x = 10; x = inc(x); x = dec(x)",
+        parse_cmd "x = 10; x = inc(x); x = dec(x)",
+        [ "x", E.assign_inc_dec_cancel ] );
+    make_prog_case
+      ( "Inc con Random: x = Random(1, 5); y = inc(x)",
+        parse_cmd "x = Random(1, 5); y = inc(x)",
+        [ "y", E.assign_inc_rand_y ] );
+    make_prog_case
+      ( "Dec con Random: x = Random(1, 5); y = dec(x)",
+        parse_cmd "x = Random(1, 5); y = dec(x)",
+        [ "y", E.assign_dec_rand_y ] );
+  ]
+
+  let inc_dec_filtertests = [
+    check_filter_case
+      ( "Filtro contraddittorio su Inc: x=5; y=inc(x); Filter(y <= 5)",
+        parse_cmd "x = 5; y = inc(x); y <= 5 ?",
+        E.filter_inc_contra_1 );
+    check_filter_case
+      ( "Filtro contraddittorio su Dec: x=5; y=dec(x); Filter(y >= 5)",
+        parse_cmd "x = 5; y = dec(x); y >= 5 ?",
+        E.filter_dec_contra_1 );
+    check_filter_case
+      ( "Filtro contraddittorio con Random e Inc: x in [1,5]; y=inc(x); Filter(y < 2)",
+        parse_cmd "x = Random(1, 5); y = inc(x); y < 2 ?",
+        E.filter_inc_rand_contra );
+    check_filter_case
+      ( "Filtro contraddittorio con Random e Dec: x in [1,5]; y=dec(x); Filter(y > 4)",
+        parse_cmd "x = Random(1, 5); y = dec(x); y > 4 ?",
+        E.filter_dec_rand_contra );
+    check_filter_case
+      ( "Filtro diretto su Inc: x=10; Filter(inc(x) <= 10)",
+        parse_cmd "x = 10; inc(x) <= 10 ?",
+        E.filter_direct_inc_contra );
+    check_filter_case
+      ( "Filtro diretto su Dec: x=10; Filter(dec(x) >= 10)",
+        parse_cmd "x = 10; dec(x) >= 10 ?",
+        E.filter_direct_dec_contra );
+    check_filter_case
+      ( "Catena di 3 Inc e filtro != 3",
+        parse_cmd "x = 0; x = inc(inc(inc(x))); x != 3 ?",
+        E.filter_chain_3_inc_contra );
+    check_filter_case
+      ( "Catena di 3 Dec e filtro != 0",
+        parse_cmd "x = 3; x = dec(dec(dec(x))); x != 0 ?",
+        E.filter_chain_3_dec_contra );
+    make_prog_case
+      ( "Filtro valido su Inc preserva lo stato",
+        parse_cmd "x = 5; y = inc(x); y == 6 ?",
+        [ "x", E.filter_inc_valid_x; "y", E.filter_inc_valid_y ] );
+    make_prog_case
+      ( "Filtro valido su Dec preserva lo stato",
+        parse_cmd "x = 5; y = dec(x); y == 4 ?",
+        [ "x", E.filter_dec_valid_x; "y", E.filter_dec_valid_y ] );
+    check_filter_case
+      ( "If con guardia Inc contraddittoria",
+        parse_cmd "x = 0; if inc(x) > 0 then y = 1 else y = 2; y == 2 ?",
+        E.filter_if_inc_contra );
+    check_filter_case
+      ( "If con guardia Dec contraddittoria",
+        parse_cmd "x = 0; if dec(x) < 0 then y = 1 else y = 2; y == 2 ?",
+        E.filter_if_dec_contra );
+    check_filter_case
+      ( "While decrementale mai eseguito contraddittorio",
+        parse_cmd "x = -5; while x > 0 do x = dec(x); x > 0 ?",
+        E.filter_while_dec_contra );
+  ]
+
   (* ------------------------------------------------------------ *)
   (* TEST COMANDI                                                 *)
   (* ------------------------------------------------------------ *)
@@ -331,12 +447,16 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
     "Divisione", divtests;
     "Negazione Unaria", negatetests;
     "Random", randomtests;
+    "Incremento", inctests;
+    "Decremento", dectests;
     "Assegnamenti", assigntests;
+    "Inc/Dec Assegnamenti", inc_dec_assigntests;
     "Sequenze", sequencetests;
     "Skip", skiptests;
     "Istruzioni Condizionali", iftests;
     "Cicli While", whiletests;
     "Filtri Contraddittori Base", contradiction_tests;
+    "Inc/Dec Filtri e Contraddizioni", inc_dec_filtertests;
   ]
 end
 
@@ -645,6 +765,61 @@ module Make_WeakRelational_Tests
       (parse_cmd "x = 5; x == 0 ?; while x < 10 do x = 1");
   ]
 
+  let inc_dec_tests = [
+    make_prog_case
+      ( "Zones/Octagons: Assign con Inc: x = 5; x = inc(x)",
+        parse_cmd "x = 5; x = inc(x)",
+        [ "x", E.assign_inc_x ] );
+    make_prog_case
+      ( "Zones/Octagons: Assign con Dec: x = 5; x = dec(x)",
+        parse_cmd "x = 5; x = dec(x)",
+        [ "x", E.assign_dec_x ] );
+    make_prog_case
+      ( "Zones/Octagons: Assign con Inc e Dec a nuove variabili",
+        parse_cmd "x = 0; y = inc(x); z = dec(x)",
+        [ "y", E.assign_inc_0_y; "z", E.assign_dec_0_z ] );
+    make_prog_case
+      ( "Zones/Octagons: Sequenza di 3 Inc",
+        parse_cmd "x = 0; x = inc(x); x = inc(x); x = inc(x)",
+        [ "x", E.assign_seq_3_inc ] );
+    make_prog_case
+      ( "Zones/Octagons: Sequenza di 3 Dec",
+        parse_cmd "x = 0; x = dec(x); x = dec(x); x = dec(x)",
+        [ "x", E.assign_seq_3_dec ] );
+    make_prog_case
+      ( "Zones/Octagons: Alternanza Inc e Dec",
+        parse_cmd "x = 10; x = inc(x); x = dec(x)",
+        [ "x", E.assign_inc_dec_cancel ] );
+    make_prog_case
+      ( "Zones/Octagons: Inc con Random",
+        parse_cmd "x = Random(1, 5); y = inc(x)",
+        [ "y", E.assign_inc_rand_y ] );
+    make_prog_case
+      ( "Zones/Octagons: Dec con Random",
+        parse_cmd "x = Random(1, 5); y = dec(x)",
+        [ "y", E.assign_dec_rand_y ] );
+    make_prog_case
+      ( "Zones/Octagons: Filtro valido su Inc",
+        parse_cmd "x = 5; y = inc(x); y == 6 ?",
+        [ "x", E.filter_inc_valid_x; "y", E.filter_inc_valid_y ] );
+    make_prog_case
+      ( "Zones/Octagons: Filtro valido su Dec",
+        parse_cmd "x = 5; y = dec(x); y == 4 ?",
+        [ "x", E.filter_dec_valid_x; "y", E.filter_dec_valid_y ] );
+    expect_bottom
+      "Zones/Octagons: Filtro contraddittorio su Inc"
+      (parse_cmd "x = 10; y = inc(x); y <= 10 ?");
+    expect_bottom
+      "Zones/Octagons: Filtro contraddittorio su Dec"
+      (parse_cmd "x = 10; y = dec(x); y >= 10 ?");
+    expect_bottom
+      "Zones/Octagons: While con Inc contraddittorio all'uscita"
+      (parse_cmd "x = 0; while x < 5 do x = inc(x); x > 5 ?");
+    expect_bottom
+      "Zones/Octagons: While con Dec contraddittorio all'uscita"
+      (parse_cmd "x = 5; while x > 0 do x = dec(x); x < 0 ?");
+  ]
+
   let tests = [
     "Assegnamenti", assigntests;
     "Shift e Offset", shifttests;
@@ -656,6 +831,7 @@ module Make_WeakRelational_Tests
     "Inconsistenze Relazionali Aggiuntive", relational_inconsistency_tests;
     "Istruzioni Condizionali", iftests;
     "Cicli While", whiletests;
+    "Inc/Dec Relazionali", inc_dec_tests;
   ]
 end
 
@@ -871,6 +1047,13 @@ module AdvancedInterpreterTests = struct
         if not (is_bottom (eval prog)) then
           Alcotest.fail (Printf.sprintf "%s: atteso Bottom, ottenuto stato valido" desc) )
 
+  let expect_not_bottom is_bottom eval desc prog =
+    ( desc,
+      `Quick,
+      fun () ->
+        if is_bottom (eval prog) then
+          Alcotest.fail (Printf.sprintf "%s: atteso stato valido, ottenuto Bottom" desc) )
+
   (* 1. TEST RELAZIONALI CONDIVISI (Zone e Ottagoni) *)
   let make_shared_relational_tests is_bottom eval = [
     expect_bottom is_bottom eval
@@ -930,10 +1113,22 @@ module AdvancedInterpreterTests = struct
     expect_bottom is_interval_bottom IntervalInterp.eval
       "Intervals: Divisione sicura: x in [20,40]; y in [2,4]; z=x/y; Filter(z < 4)"
       (parse_cmd "x = Random(20, 40); y = Random(2, 4); z = x / y; z < 4 ?");
+
+    expect_bottom is_interval_bottom IntervalInterp.eval
+      "Intervals: While incrementale con Inc: x=0; while(x<10) x=inc(x); Filter(x != 10)"
+      (parse_cmd "x = 0; while x < 10 do x = inc(x); x != 10 ?");
+
+    expect_bottom is_interval_bottom IntervalInterp.eval
+      "Intervals: While decrementale con Dec: x=10; while(x>0) x=dec(x); Filter(x != 0)"
+      (parse_cmd "x = 10; while x > 0 do x = dec(x); x != 0 ?");
+
+    expect_bottom is_interval_bottom IntervalInterp.eval
+      "Intervals: While con doppio Inc: x=0; while(x<10) x=inc(inc(x)); Filter(x > 11)"
+      (parse_cmd "x = 0; while x < 10 do x = inc(inc(x)); x > 11 ?");
   ]
 
   (* 4. TEST AVANZATI PER I DOMINI DEI SEGNI *)
-  let make_sign_advanced_tests is_bottom eval = [
+  let make_sign_advanced_tests ?(has_neg_zero = true) is_bottom eval = [
     expect_bottom is_bottom eval
       "Signs: Negazione di positivo: x in [1,10]; y=-x; Filter(y > 0)"
       (parse_cmd "x = Random(1, 10); y = -x; y > 0 ?");
@@ -949,7 +1144,15 @@ module AdvancedInterpreterTests = struct
     expect_bottom is_bottom eval
       "Signs: While mai eseguito: x=-5; while(x>0) x=x+1; Filter(x > 0)"
       (parse_cmd "x = -5; while x > 0 do x = x + 1; x > 0 ?");
-  ]
+  ] @ (if has_neg_zero then [
+    expect_bottom is_bottom eval
+      "Signs: Inc con valore negativo: x=-5; x=inc(x); Filter(x > 0)"
+      (parse_cmd "x = -5; x = inc(x); x > 0 ?");
+  ] else [
+    expect_not_bottom is_bottom eval
+      "Signs: Inc con valore negativo (SimplifiedSigns sovra-approssima inc(Neg) a SignTop)"
+      (parse_cmd "x = -5; x = inc(x); x > 0 ?");
+  ])
 end
 
 (* 2. Esecuzione tramite Alcotest *)
@@ -974,11 +1177,10 @@ let () =
       "Intervals: Sfide Avanzate Narrowing e Aritmetica",
         AdvancedInterpreterTests.intervals_advanced_tests;
       "ExtendedSigns: Sfide Avanzate Segni",
-        AdvancedInterpreterTests.make_sign_advanced_tests (function ExtendedSignInterp.BottomEnv -> true | _ -> false) ExtendedSignInterp.eval;
+        AdvancedInterpreterTests.make_sign_advanced_tests ~has_neg_zero:true (function ExtendedSignInterp.BottomEnv -> true | _ -> false) ExtendedSignInterp.eval;
       "SimplifiedSigns: Sfide Avanzate Segni",
-        AdvancedInterpreterTests.make_sign_advanced_tests (function SimplifiedSignInterp.BottomEnv -> true | _ -> false) SimplifiedSignInterp.eval;
+        AdvancedInterpreterTests.make_sign_advanced_tests ~has_neg_zero:false (function SimplifiedSignInterp.BottomEnv -> true | _ -> false) SimplifiedSignInterp.eval;
     ] @
-    Inc_dec_tests.tests @
     [ ("Parser BNF", Parser_tests.tests) ]
   )
 
