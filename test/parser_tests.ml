@@ -1,5 +1,5 @@
 open Syntax
-open Parser
+open Parsers
 
 let check_cmd name expected actual =
   Alcotest.(check bool) name true (expected = actual)

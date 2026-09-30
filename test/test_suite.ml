@@ -2,7 +2,7 @@ open Abstract_domains
 open Interpeters
 open Oracles
 open Syntax
-open Parser
+open Parsers
 
 module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type t = D.t) = struct
   module Interp = NonRelationalAbsInterp (D)
