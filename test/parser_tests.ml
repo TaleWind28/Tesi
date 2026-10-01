@@ -65,7 +65,6 @@ let tests = [
     check_cond "x < 10" (Comparison (Var "x", Smaller, Const 10)) (parse_cond "x < 10");
     check_cond "x <= y" (Comparison (Var "x", SmallerEquals, Var "y")) (parse_cond "x <= y");
     check_cond "x == y" (Comparison (Var "x", Equals, Var "y")) (parse_cond "x == y");
-    check_cond "x = y" (Comparison (Var "x", Equals, Var "y")) (parse_cond "x = y");
     check_cond "x != 0" (Comparison (Var "x", NotEquals, Const 0)) (parse_cond "x != 0");
     check_cond "x <> 0" (Comparison (Var "x", NotEquals, Const 0)) (parse_cond "x <> 0")
   );
@@ -108,7 +107,24 @@ let tests = [
     check_cmd "if then else" expected_if (parse_cmd "if x > 0 then y = 1 else y = 2");
 
     let expected_while = While (Comparison (Var "x", Bigger, Const 0), Assign ("x", Dec (Var "x"))) in
-    check_cmd "while do" expected_while (parse_cmd "while x > 0 do x = x - 1")
+    check_cmd "while do" expected_while (parse_cmd "while x > 0 do x = x - 1");
+
+    (* Test scope con e senza graffe *)
+    let expected_while_seq =
+      Sequence (
+        While (Comparison (Var "x", Bigger, Const 0), Assign ("x", Dec (Var "x"))),
+        Assign ("y", Var "x")
+      )
+    in
+    check_cmd "while senza graffe (C -> C;C)" expected_while_seq (parse_cmd "while x>0 do x = x-1; y = x");
+
+    let expected_while_block =
+      While (
+        Comparison (Var "x", Bigger, Const 0),
+        Sequence (Assign ("x", Dec (Var "x")), Assign ("y", Var "x"))
+      )
+    in
+    check_cmd "while con graffe (C -> while cond do {C})" expected_while_block (parse_cmd "while x>0 do {x = x-1; y = x}")
   );
 
   ("Parser: Programma Completo (README)", `Quick, fun () ->

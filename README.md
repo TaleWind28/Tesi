@@ -83,7 +83,6 @@ c    ::= Skip
        | cond ? 
        | filter(cond)
        | { C }
-       | begin C end
 
 cond ::= E comp E 
        | bool 
@@ -99,7 +98,7 @@ E    ::= int
        | inc(E) | E++
        | dec(E) | E--
 
-comp ::= > | >= | < | <= | = | == | != | <>
+comp ::= > | >= | < | <= | == | != | <>
 bop  ::= + | - | * | /
 uop  ::= -
 Ide  ::= [a-zA-Z_][a-zA-Z0-9_]*

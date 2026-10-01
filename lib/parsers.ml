@@ -15,6 +15,7 @@
             | if cond then C else C 
             | while cond do C 
             | cond ?
+            | { C }
      cond ::= E comp E 
             | bool 
             | not cond 
@@ -25,7 +26,7 @@
             | E bop E 
             | uop E 
             | nondet(E, E)
-     comp ::= > | >= | < | <= | = | !=
+     comp ::= > | >= | < | <= | == | !=
      bop  ::= + | - | * | /
      uop  ::= -
      Ide  ::= string
@@ -69,10 +70,6 @@ type token_kind =
   | T_PLUSPLUS        (* ++ *)
   | T_MINUSMINUS      (* -- *)
 
-  (* Delimitatori di blocco *)
-  | T_BEGIN
-  | T_END
-
   (* Identificatori e costanti numeriche *)
   | T_IDE of string   (* Nomi di variabili *)
   | T_INT of int      (* Costanti intere *)
@@ -85,7 +82,7 @@ type token_kind =
 
   (* Operatori relazionali e di assegnamento *)
   | T_ASSIGN          (* = per assegnamento *)
-  | T_EQ              (* = o == per confronto *)
+  | T_EQ              (* == per confronto *)
   | T_NEQ             (* != o <> *)
   | T_LT              (* < *)
   | T_LTE             (* <= *)
@@ -140,8 +137,6 @@ let string_of_token_kind = function
   | T_DEC -> "dec"
   | T_PLUSPLUS -> "++"
   | T_MINUSMINUS -> "--"
-  | T_BEGIN -> "begin"
-  | T_END -> "end"
   | T_IDE s -> Printf.sprintf "identificatore '%s'" s
   | T_INT n -> Printf.sprintf "intero %d" n
   | T_PLUS -> "+"
@@ -371,8 +366,6 @@ let tokenize (src : string) : token array =
           | "random" -> T_NONDET   (* Supporta sia la notazione BNF 'nondet' sia 'Random' *)
           | "inc"    -> T_INC
           | "dec"    -> T_DEC
-          | "begin"  -> T_BEGIN
-          | "end"    -> T_END
           | _        -> T_IDE id
         in
         emit kind cur_line cur_col
@@ -468,7 +461,6 @@ let comparator_of_token = function
   | T_GTE -> Some Syntax.BiggerEquals
   | T_LT -> Some Syntax.Smaller
   | T_LTE -> Some Syntax.SmallerEquals
-  | T_ASSIGN    (* In contesti di condizione, '=' è interpretato come confronto *)
   | T_EQ -> Some Syntax.Equals
   | T_NEQ -> Some Syntax.NotEquals
   | _ -> None
@@ -744,7 +736,7 @@ and parse_comparison state : Syntax.cond =
       let e2 = parse_exp state in
       Syntax.Comparison (e1, cmp, e2)
   | None ->
-      parse_error state (Printf.sprintf "Atteso operatore di confronto (>, >=, <, <=, =, !=), trovato '%s'"
+      parse_error state (Printf.sprintf "Atteso operatore di confronto (>, >=, <, <=, ==, !=), trovato '%s'"
         (string_of_token (peek state)))
 
 
@@ -763,9 +755,7 @@ and parse_comparison state : Syntax.cond =
                   | 'filter' '('? cond ')'?
                   | cond '?'
                   | Ide '=' E
-                  | '(' c_seq ')'
                   | '{' c_seq '}'
-                  | 'begin' c_seq 'end'
    -----------------------------------------------------------------------------
 *)
 
@@ -780,8 +770,7 @@ and parse_cmd_seq state : Syntax.cmd =
 
   if is_eof state ||
      peek_kind state = T_RPAREN ||
-     peek_kind state = T_RBRACE ||
-     peek_kind state = T_END then
+     peek_kind state = T_RBRACE then
     Syntax.Skip
   else
     let first = parse_cmd_atom state in
@@ -790,8 +779,7 @@ and parse_cmd_seq state : Syntax.cmd =
       (* Se dopo il ';' c'è EOF o chiusura di blocco, la sequenza termina *)
       if is_eof state ||
          peek_kind state = T_RPAREN ||
-         peek_kind state = T_RBRACE ||
-         peek_kind state = T_END then
+         peek_kind state = T_RBRACE then
         first
       else
         let rest = parse_cmd_seq state in
@@ -842,14 +830,7 @@ and parse_cmd_atom state : Syntax.cmd =
       expect state T_RBRACE;
       cmd
 
-  (* 6. Blocchi delimitati da begin ... end *)
-  | T_BEGIN ->
-      ignore (advance state);
-      let cmd = parse_cmd_seq state in
-      expect state T_END;
-      cmd
-
-  (* 7. Comandi prefissi di incremento e decremento: ++x oppure --x *)
+  (* 6. Comandi prefissi di incremento e decremento: ++x oppure --x *)
   | T_PLUSPLUS ->
       ignore (advance state);
       let ide_name =
@@ -868,7 +849,7 @@ and parse_cmd_atom state : Syntax.cmd =
       in
       Syntax.Assign (ide_name, Syntax.Dec (Syntax.Var ide_name))
 
-  (* 8. Gestione combinata di parentesi, filtri cond ? e assegnamenti *)
+  (* 7. Gestione di filtri cond ? e assegnamenti *)
   | _ ->
       (* Tentativo A: verificare se il comando corrente è un filtro `cond ?` *)
       let saved = save_pos state in
@@ -887,14 +868,14 @@ and parse_cmd_atom state : Syntax.cmd =
        | _ ->
            restore_pos state saved;
 
-           (* Tentativo B: blocco di comandi racchiuso tra parentesi tonde ( C ) *)
+           (* Tentativo B: blocco o comando racchiuso tra parentesi tonde ( C ) *)
            if peek_kind state = T_LPAREN then begin
              ignore (advance state);
              let cmd = parse_cmd_seq state in
              expect state T_RPAREN;
              cmd
            end
-           (* Tentativo C: assegnamento ide = E oppure incremento/decremento ide++ / ide-- *)
+           (* Assegnamento ide = E oppure incremento/decremento ide++ / ide-- *)
            else if (match peek_kind state with T_IDE _ -> true | _ -> false) then begin
              let ide_name =
                match advance state with
