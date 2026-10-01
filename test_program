@@ -1,1 +1,1 @@
-x = 2 ;if 5 > 2 then while true do x++ else {while false do {x++;x--;}} 
+x = 10-3-2;

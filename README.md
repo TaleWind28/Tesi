@@ -77,6 +77,8 @@ Il modulo `lib/parsers.ml` implementa un analizzatore per la seguente grammatica
 ```text
 c    ::= Skip 
        | ide = E 
+       | ide = ide++ | ide = ide--
+       | ide++ | ide-- | ++ide | --ide
        | C ; C 
        | if cond then C else C 
        | while cond do C 
@@ -95,8 +97,8 @@ E    ::= int
        | E bop E 
        | uop E 
        | nondet(E, E) | Random(E, E)
-       | inc(E) | E++
-       | dec(E) | E--
+       | inc(E)
+       | dec(E)
 
 comp ::= > | >= | < | <= | == | != | <>
 bop  ::= + | - | * | /

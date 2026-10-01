@@ -18,7 +18,7 @@ type rel_atom =
 (* Espressioni *)
 type exp =
   | Const of int
-  | Var of string
+  | Var of ide
   | BinaryOperation of exp * bop * exp
   | UnaryOperation of uop * exp
   | Random of int * int
