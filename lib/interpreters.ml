@@ -138,7 +138,6 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
         |Inc e  -> D.inc (eval_exp e (Env(st)))
         |Dec e -> D.dec (eval_exp e (Env(st)))
        
-    
     (* Valutazione Condizioni *)
     let rec eval_cond (cond : cond) (env : state) :  state = 
         match env with 
@@ -230,7 +229,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         | Var x -> D.retrieve_variable x env 
         | Inc e -> D.inc (eval_exp e env)
         | Dec e -> D.dec (eval_exp e env)
- 
+
     let filter_diff e1 e2 offset env =
         let atom = match e1, e2 with
         (* 1. Confronti tra variabili semplici *)

@@ -151,6 +151,7 @@ module ExtendedSigns = struct
     | Zero, n       | n, Zero      -> n
     | Pos, Pos | PosZero, Pos | Pos, PosZero -> Pos
     | Neg, Neg | NegZero, Neg | Neg, NegZero -> Neg
+    | NonZero, Pos | NonZero, Neg | NonZero, NonZero | Pos, NonZero | Neg, NonZero  -> NonZero
     | PosZero,PosZero  -> PosZero
     | NegZero,NegZero -> NegZero
     | _,_ -> SignTop
@@ -671,7 +672,7 @@ end
 
 (* Domini Relazionali *)
 module type WeakRelationalDomain = sig
-  type t 
+  type t
 
   type value  
   val bottom : t 
