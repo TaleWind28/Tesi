@@ -78,9 +78,7 @@ module ExtendedSigns = struct
     | SignTop, _ | _,SignTop -> 2
     
     | NonZero,_ | _,NonZero -> 2
-    | PosZero, (Zero | Pos | NegZero) | (Zero | Pos | NegZero), PosZero | NegZero,Neg | Neg,NegZero | NegZero, NegZero | Neg,Neg-> 2
-    (* | Pos,PosZero -> 2
-    | NegZero, PosZero | Zero,PosZero -> 2 *)
+    | PosZero, (Zero | Pos | NegZero) | (Zero | Pos | NegZero), PosZero | (NegZero | Neg) , (Neg|NegZero) -> 2
     | PosZero,_ -> 1
     | _,PosZero -> -1
     | Pos,_ -> 1
@@ -88,9 +86,6 @@ module ExtendedSigns = struct
     | Zero,NegZero | NegZero,Zero -> 2
     | Zero,_ -> 1
     | _,Zero -> -1
-
-    (* | NegZero,Neg | Neg,NegZero | NegZero, NegZero | Neg,Neg-> 2 *)
-
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
     | x, y when x = y              -> x
@@ -151,7 +146,7 @@ module ExtendedSigns = struct
     | Zero, n       | n, Zero      -> n
     | Pos, Pos | PosZero, Pos | Pos, PosZero -> Pos
     | Neg, Neg | NegZero, Neg | Neg, NegZero -> Neg
-    | NonZero, Pos | NonZero, Neg | NonZero, NonZero | Pos, NonZero | Neg, NonZero  -> NonZero
+    (* | NonZero, Pos | NonZero, Neg | NonZero, NonZero | Pos, NonZero | Neg, NonZero  -> NonZero *)
     | PosZero,PosZero  -> PosZero
     | NegZero,NegZero -> NegZero
     | _,_ -> SignTop
