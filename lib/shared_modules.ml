@@ -82,7 +82,6 @@ module IntervalArith = struct
     let hi = min_bound b d in 
     if compare_bound lo hi > 0 then Bottom else Interval(lo, hi) 
   
- 
   (*Helper*)
   let add_bound a b = match a,b with 
     | PosInf,NegInf | NegInf,PosInf -> PosInf (*dovrebbe dare bottom*)
@@ -106,7 +105,6 @@ module IntervalArith = struct
     
     Interval (min_bound (min_bound p1 p2) (min_bound p3 p4), max_bound (max_bound p1 p2) (max_bound p3 p4) )
   
-
   let div_bound x y = match x,y with
   | Int 0,_ -> Int 0
   | _,Int 0 -> PosInf
@@ -114,7 +112,6 @@ module IntervalArith = struct
   | PosInf, Int b -> if b > 0 then PosInf else NegInf
   | NegInf, Int b -> if b > 0 then NegInf else PosInf 
   | Int a, Int b -> Int (a/b)
-
 
   let neg_bound = function
     | PosInf -> NegInf 
@@ -133,7 +130,6 @@ module IntervalArith = struct
   let dec value = sum value (negate(abstract_int 1))
   let inc value = sum value (abstract_int 1)
 
-
   let mul c1 c2 = match c1,c2 with
     | Bottom,_ | _,Bottom -> Bottom
     | Interval(a,b),Interval(c,d) -> mul_helper a b c d
@@ -149,8 +145,8 @@ module IntervalArith = struct
     match c1,c2 with
     | Bottom,_ | _,Bottom -> Bottom
     | Interval(a,b), Interval(c,d) -> 
-      if c >= Int 1 then Interval(min_bound (div_bound a c) (div_bound a d), max_bound (div_bound b c) (div_bound b d))
-      else if d <= Int(-1) then  Interval(min_bound (div_bound b c) (div_bound b d), max_bound (div_bound a c) (div_bound a d))
+      if compare_bound c (Int 1) >= 0 then Interval(min_bound (div_bound a c) (div_bound a d), max_bound (div_bound b c) (div_bound b d))
+      else if compare_bound d (Int(-1)) <= 0 then  Interval(min_bound (div_bound b c) (div_bound b d), max_bound (div_bound a c) (div_bound a d))
       else div_helper a b c d
 
 end
