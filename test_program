@@ -1,2 +1,2 @@
-x = nondet(-5,5);
+x = nondet(5,-5);
 x = x * x;

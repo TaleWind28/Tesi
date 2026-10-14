@@ -644,12 +644,12 @@ module Intervals = struct
   include Shared_modules.IntervalArith
   type t = value
 
-  let abstract_int n = Interval (Int n,Int n)
+  (* let abstract_int n = Interval (Int n,Int n)
 
   let abstract_range c1 c2 = 
-  if c1 > c2 then Interval (Int c2, Int c1)
-  else if c2 > c1 then Interval (Int c1, Int c2)
-  else abstract_int c1
+  if c1 > c2 then Bottom
+  else if c2 > c1 then  Interval (Int c1, Int c2)
+  else abstract_int c1 *)
   let bottom = Bottom
   let top = Interval (NegInf,PosInf)
 
@@ -905,8 +905,9 @@ module Zones : WeakRelationalDomain = struct
   let abstract_int x = Interval (Int x, Int x)
 
   let abstract_range x y = 
-    if x > y then Interval (Int y, Int x) 
-    else Interval (Int x, Int y)
+    if x < y then Interval (Int x, Int y)
+    else if y < x then Bottom 
+    else abstract_int x
 
   let unpack_value (value : value) (flag : bool) : int option = 
     match value with
@@ -1222,4 +1223,8 @@ module Octagons : WeakRelationalDomain = struct
       header ^ "\n" ^ String.concat "\n" rows
 
   let string_of_value value = Shared_modules.IntervalArith.to_string value
+  let abstract_range x y = 
+    if x < y then Interval (Int x, Int y)
+    else if y < x then Bottom 
+    else abstract_int x
 end

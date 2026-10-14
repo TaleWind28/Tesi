@@ -7,9 +7,8 @@ module IntervalArith = struct
   let abstract_int n = Interval (Int n,Int n)
 
   let abstract_range c1 c2 = 
-  if c1 > c2 then Interval (Int c2, Int c1)
-  else if c2 > c1 then Interval (Int c1, Int c2)
-  else abstract_int c1
+  if c1 > c2 then Bottom
+  else Interval (Int c1, Int c2)
 
   let bound_to_string bound = match bound with
   | NegInf -> "-Inf"
@@ -90,10 +89,10 @@ module IntervalArith = struct
     | Int a, Int b -> Int (a+b)
 
   let mul_bound x y = match x,y with
-  | Int x, Int y -> Int( x* y)
   | NegInf, NegInf | PosInf,PosInf -> PosInf
   | NegInf,PosInf | PosInf,NegInf -> NegInf
   | Int 0, _ | _, Int 0 -> Int 0
+  | Int x, Int y -> Int( x* y)
   | Int x, PosInf | PosInf, Int x -> if x>= 0 then PosInf else NegInf
   | Int x, NegInf | NegInf, Int x -> if x>= 0 then NegInf else PosInf
   
@@ -107,7 +106,7 @@ module IntervalArith = struct
   
   let div_bound x y = match x,y with
   | Int 0,_ -> Int 0
-  | _,Int 0 -> PosInf
+  | _,Int 0 -> assert false
   | _,PosInf | _,NegInf -> Int 0
   | PosInf, Int b -> if b > 0 then PosInf else NegInf
   | NegInf, Int b -> if b > 0 then NegInf else PosInf 
