@@ -643,13 +643,6 @@ end
 module Intervals = struct
   include Shared_modules.IntervalArith
   type t = value
-
-  (* let abstract_int n = Interval (Int n,Int n)
-
-  let abstract_range c1 c2 = 
-  if c1 > c2 then Bottom
-  else if c2 > c1 then  Interval (Int c1, Int c2)
-  else abstract_int c1 *)
   let bottom = Bottom
   let top = Interval (NegInf,PosInf)
 
