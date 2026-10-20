@@ -197,9 +197,9 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
                 lub_env e1 e2
                     
             | While(cond,cmd) -> (* Ciclo che tramite Least Fixpoint valuta  *)
-                let f x = lub_env (Env(env)) (eval_cmd cmd (eval_cond cond x)) in (* Funzione che si occupa di valutare lo stato aggiornandolo ad ogni iterazione *)
+                let f x = lub_env (Env (env)) (eval_cmd (Sequence(Filter(cond),cmd)) x) in 
                 (* let lfp f = Tramite funzione ausiliaria kleene lfp restituisce, se possibile, il punto dopo il quale il ciclo smette di produrre risultati che espandono lo stato corrente *)
-                let invariant = compute_invariant ~widen:widen_env ~narrow:narrow_env ~leq:leq_env ~f (Env env)
+                let invariant = compute_invariant widen_env narrow_env leq_env f (Env env)
                 in eval_cmd (Filter((Not(cond)))) (invariant) (*Valuto la condizione che fa uscire dal while con lo stato una volta raggiunto il Least Fixpoint*) 
     (* Funzione eval generale *)
     let eval (prog : cmd) : state =
@@ -374,7 +374,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             D.lub env1 env2
         | While(cond,cmd) -> 
             let f x = D.lub env (eval_cmd cmd (eval_cond cond x)) in 
-            let invariant = compute_invariant ~widen:D.widen ~narrow:D.narrow ~leq:D.leq ~f env
+            let invariant = compute_invariant D.widen D.narrow D.leq f env
             in eval_cmd (Filter(Not(cond))) invariant
 
     let eval (prog: cmd) : D.t = 

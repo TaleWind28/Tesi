@@ -290,7 +290,7 @@ module SyntaxUtils = struct
 end
 
 module Fixpoint = struct
-  let compute_invariant ~widen ~narrow ~leq ~f init =
+  let compute_invariant widen narrow leq f init =
     let rec kleene x =
       let x' = widen x (f x) in
       if leq x' x then x else kleene x'
