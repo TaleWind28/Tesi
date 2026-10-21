@@ -763,8 +763,7 @@ module Zones : WeakRelationalDomain = struct
     match m, n with
     | Bottom, _ | _, Bottom -> Bottom
     | Env m1, Env n1 ->
-      let maxmat = glb_matrix m1 n1 
-      in
+      let maxmat = glb_matrix m1 n1 in 
       close_dbm (create_type_dbm m1.n m1.env maxmat)
 
   let widen m n = 

@@ -1,23 +1,13 @@
 open Syntax
 
-module IntervalArith = struct
+(** Bound: ℤ ∪ {-∞, +∞}, supporto comune a intervalli e DBM *)
+module Bound = struct
   type bound = NegInf | Int of int | PosInf 
-  type value = Interval of bound * bound | Bottom
-
-  let abstract_int n = Interval (Int n,Int n)
-
-  let abstract_range c1 c2 = 
-  if c1 > c2 then Bottom
-  else Interval (Int c1, Int c2)
 
   let bound_to_string bound = match bound with
   | NegInf -> "-Inf"
   | Int(n) -> string_of_int n
   | PosInf -> "+Inf" 
-  let to_string t = match t with
-  | Bottom -> "Bottom"
-  | Interval (b1,b2)-> 
-    Printf.sprintf "[%s, %s]" (bound_to_string b1) (bound_to_string b2)
 
   let next_bound bound = match bound with
   | NegInf -> NegInf
@@ -44,6 +34,51 @@ module IntervalArith = struct
   | NegInf,_ | _,PosInf -> -1
   | _,NegInf | PosInf,_ -> 1
   | Int x, Int y -> compare x y
+
+  let b_leq b1 b2 = compare_bound b1 b2 <= 0
+
+  let add_bound a b = match a,b with 
+    | PosInf,NegInf | NegInf,PosInf -> PosInf (*dovrebbe dare bottom*)
+    | PosInf,_ | _,PosInf -> PosInf
+    | NegInf,_ | _,NegInf -> NegInf
+    | Int a, Int b -> Int (a+b)
+
+  let mul_bound x y = match x,y with
+  | NegInf, NegInf | PosInf,PosInf -> PosInf
+  | NegInf,PosInf | PosInf,NegInf -> NegInf
+  | Int 0, _ | _, Int 0 -> Int 0
+  | Int x, Int y -> Int( x* y)
+  | Int x, PosInf | PosInf, Int x -> if x>= 0 then PosInf else NegInf
+  | Int x, NegInf | NegInf, Int x -> if x>= 0 then NegInf else PosInf
+
+  let div_bound x y = match x,y with
+  | Int 0,_ -> Int 0
+  | _,Int 0 -> assert false
+  | _,PosInf | _,NegInf -> Int 0
+  | PosInf, Int b -> if b > 0 then PosInf else NegInf
+  | NegInf, Int b -> if b > 0 then NegInf else PosInf 
+  | Int a, Int b -> Int (a/b)
+
+  let neg_bound = function
+    | PosInf -> NegInf 
+    | NegInf -> PosInf
+    | Int n -> Int (-n)
+end
+
+module IntervalArith = struct
+  include Bound
+  type value = Interval of bound * bound | Bottom
+
+  let abstract_int n = Interval (Int n,Int n)
+
+  let abstract_range c1 c2 = 
+  if c1 > c2 then Bottom
+  else Interval (Int c1, Int c2)
+
+  let to_string t = match t with
+  | Bottom -> "Bottom"
+  | Interval (b1,b2)-> 
+    Printf.sprintf "[%s, %s]" (bound_to_string b1) (bound_to_string b2)
 
   let leq  c1 c2 = match c1,c2 with
     |Bottom,_ -> true
@@ -82,20 +117,6 @@ module IntervalArith = struct
     if compare_bound lo hi > 0 then Bottom else Interval(lo, hi) 
   
   (*Helper*)
-  let add_bound a b = match a,b with 
-    | PosInf,NegInf | NegInf,PosInf -> PosInf (*dovrebbe dare bottom*)
-    | PosInf,_ | _,PosInf -> PosInf
-    | NegInf,_ | _,NegInf -> NegInf
-    | Int a, Int b -> Int (a+b)
-
-  let mul_bound x y = match x,y with
-  | NegInf, NegInf | PosInf,PosInf -> PosInf
-  | NegInf,PosInf | PosInf,NegInf -> NegInf
-  | Int 0, _ | _, Int 0 -> Int 0
-  | Int x, Int y -> Int( x* y)
-  | Int x, PosInf | PosInf, Int x -> if x>= 0 then PosInf else NegInf
-  | Int x, NegInf | NegInf, Int x -> if x>= 0 then NegInf else PosInf
-  
   let mul_helper a b c d = 
     let p1 = mul_bound a c in
     let p2 = mul_bound a d in
@@ -104,19 +125,6 @@ module IntervalArith = struct
     
     Interval (min_bound (min_bound p1 p2) (min_bound p3 p4), max_bound (max_bound p1 p2) (max_bound p3 p4) )
   
-  let div_bound x y = match x,y with
-  | Int 0,_ -> Int 0
-  | _,Int 0 -> assert false
-  | _,PosInf | _,NegInf -> Int 0
-  | PosInf, Int b -> if b > 0 then PosInf else NegInf
-  | NegInf, Int b -> if b > 0 then NegInf else PosInf 
-  | Int a, Int b -> Int (a/b)
-
-  let neg_bound = function
-    | PosInf -> NegInf 
-    | NegInf -> PosInf
-    | Int n -> Int (-n)
-
   let sum c1 c2 = match c1, c2 with
     |Bottom,_ | _,Bottom -> Bottom
     | Interval(a,b),Interval(c,d) -> 
@@ -151,7 +159,7 @@ module IntervalArith = struct
 end
 
 module DBMOperations = struct
-include IntervalArith
+  open Bound
 
   type dbm = {
     n : int;
@@ -171,14 +179,6 @@ include IntervalArith
     match index_of env x with
     | Some i -> i
     | None -> failwith (Printf.sprintf "Zones: variabile '%s' non dichiarata" x)
-
-  let b_leq b1 b2 = 
-    match b1, b2 with
-    | NegInf, _ -> true
-    | Int x, Int y -> x <= y
-    | PosInf, Int _ -> false
-    | _, PosInf -> true
-    | _ -> false
 
   let leq_matrix m n = 
     Array.for_all2 (
