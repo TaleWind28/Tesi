@@ -213,7 +213,14 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
     include Shared_modules.SyntaxUtils
     include Shared_modules.Fixpoint
     let print_result env : unit = 
-        print_string ((D.to_string env) ^ "\n")
+        if not (D.is_bottom env) then print_string "DBM:\n";
+        print_string ((D.to_string env) ^ "\n");
+        if not (D.is_bottom env) then begin
+            print_string "\n";
+            List.iter (fun x ->
+                Printf.printf "%s : %s\n" x (D.string_of_value (D.retrieve_variable x env))
+            ) (D.variables env)
+        end
     (* let init var_list = D.init var_list  *)
 
     let rec eval_exp (exp : exp) (env : D.t) : D.value = 

@@ -1,2 +1,1 @@
-x = 2;
-if x>3 and x<2 then x++ else x--;
+x = 0;y=0;while x < 10 do{x++;y++}; x != y ? ;

@@ -677,6 +677,9 @@ module type WeakRelationalDomain = sig
 
   val retrieve_variable : ide -> t -> value
 
+  (* Elenco delle variabili tracciate dall'ambiente (vuoto se Bottom) *)
+  val variables : t -> ide list
+
   (** {4 Funzioni di Trasferimento} *)
 
   (* Assegnamento astratto: (x := e). Gestisce sia assegnamenti esatti (costanti, traslazioni x := x + c) sia assegnamenti affini approssimati tramite intervalli *)

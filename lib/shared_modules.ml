@@ -171,6 +171,14 @@ module DBMOperations = struct
 
   let create_type_dbm n env matrix = Env { n; env; matrix }
 
+  (* Restituisce le variabili tracciate dalla DBM, ordinate per indice *)
+  let variables = function
+    | Bottom -> []
+    | Env dbm ->
+        dbm.env
+        |> List.sort (fun (_, i) (_, j) -> compare i j)
+        |> List.map fst
+
   let copy_matrix m = Array.map Array.copy m
 
   let index_of env x = try Some (List.assoc x env) with Not_found -> None
