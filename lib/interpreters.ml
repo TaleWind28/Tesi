@@ -36,7 +36,6 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
         t2;
         Env(result)
 
-    
     let refine_vars e1 e2 v1 v2 env comp =
         let new_env = Hashtbl.copy env in
         let became_bottom = ref false in
@@ -215,7 +214,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
     include Shared_modules.Fixpoint
     let print_result env : unit = 
         print_string ((D.to_string env) ^ "\n")
-    let init var_list = D.init var_list 
+    (* let init var_list = D.init var_list  *)
 
     let rec eval_exp (exp : exp) (env : D.t) : D.value = 
         match exp with
@@ -381,7 +380,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
         (* Raccoglie la lista variabili del programma dall'albero di sintassi astratta*)
         let var_list  = get_all_var prog in
         (* Crea lo stato iniziale *)
-        let initial_env = init var_list in
+        let initial_env = D.init var_list in
         (* Valuta il programma *)
         eval_cmd prog initial_env
 

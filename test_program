@@ -1,6 +1,2 @@
-x = nondet(-5,5);
-y = 0;
-while y <= 0 do{
-    y--;
-    x = x * x;
-}
+x = 2;
+if x>3 and x<2 then x++ else x--;

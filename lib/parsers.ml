@@ -21,6 +21,7 @@
             | not cond 
             | cond and cond 
             | cond or cond
+            | ( cond )
      E    ::= int 
             | Ide 
             | E bop E 
@@ -754,6 +755,8 @@ and parse_comparison state : Syntax.cond =
                   | cond '?'
                   | Ide '=' E
                   | '{' c_seq '}'
+   Nota: le parentesi tonde NON delimitano blocchi di comandi; a livello di
+   comando compaiono solo come parte di una condizione, es. (x > 0 or y < 1) ?
    -----------------------------------------------------------------------------
 *)
 
@@ -767,7 +770,6 @@ and parse_cmd_seq state : Syntax.cmd =
   done;
 
   if is_eof state ||
-     peek_kind state = T_RPAREN ||
      peek_kind state = T_RBRACE then
     Syntax.Skip
   else
@@ -776,7 +778,6 @@ and parse_cmd_seq state : Syntax.cmd =
       ignore (advance state);
       (* Se dopo il ';' c'è EOF o chiusura di blocco, la sequenza termina *)
       if is_eof state ||
-         peek_kind state = T_RPAREN ||
          peek_kind state = T_RBRACE then
         first
       else
@@ -866,15 +867,9 @@ and parse_cmd_atom state : Syntax.cmd =
        | _ ->
            restore_pos state saved;
 
-           (* Tentativo B: blocco o comando racchiuso tra parentesi tonde ( C ) *)
-           if peek_kind state = T_LPAREN then begin
-             ignore (advance state);
-             let cmd = parse_cmd_seq state in
-             expect state T_RPAREN;
-             cmd
-           end
-           (* Assegnamento ide = E oppure incremento/decremento ide++ / ide-- *)
-           else if (match peek_kind state with T_IDE _ -> true | _ -> false) then begin
+           (* Tentativo B: assegnamento ide = E oppure incremento/decremento ide++ / ide--
+              (le parentesi tonde non delimitano blocchi di comandi: usare { C }) *)
+           if (match peek_kind state with T_IDE _ -> true | _ -> false) then begin
              let ide_name =
                match advance state with
                | { kind = T_IDE name; _ } -> name
@@ -891,7 +886,7 @@ and parse_cmd_atom state : Syntax.cmd =
                  ignore (advance state);
                  let saved_rhs = save_pos state in
                  let is_cmd_delim = function
-                   | T_SEMI | T_RBRACE | T_RPAREN | T_EOF | T_ELSE -> true
+                   | T_SEMI | T_RBRACE | T_EOF | T_ELSE -> true
                    | _ -> false
                  in
                  (match peek_kind state with

@@ -4,10 +4,10 @@ open Oracles
 open Syntax
 open Parsers
 
-module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type t = D.t) = struct
+module Make_Non_Relational_Test (D : NonRelationalDomain) (E : EXPECTED_VALUES with type t = D.t) = struct
   module Interp = NonRelationalAbsInterp (D)
 
-  let sign_testable =
+  let val_testable =
     Alcotest.testable
       (fun fmt s -> Format.fprintf fmt "%s" (D.to_string s))
       (fun a b -> a = b)
@@ -30,7 +30,7 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
       `Quick,
       fun () ->
         let res = Interp.eval_exp expr (Interp.Env (make_test_state ())) in
-        Alcotest.(check sign_testable) desc expected res )
+        Alcotest.(check val_testable) desc expected res )
 
   let check_vars desc (final_env : Interp.state) expected_vars =
     match final_env with
@@ -40,7 +40,7 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
         List.iter
           (fun (var, expected) ->
             match Hashtbl.find_opt tbl var with
-            | Some v -> Alcotest.(check sign_testable) (desc ^ " - " ^ var) expected v
+            | Some v -> Alcotest.(check val_testable) (desc ^ " - " ^ var) expected v
             | None -> Alcotest.fail (Printf.sprintf "Variabile '%s' non trovata" var))
           expected_vars
 
@@ -316,7 +316,7 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
       fun () ->
         let prog = parse_cmd "x = 42; skip" in
         match Interp.eval_cmd prog (Interp.Env (make_test_state ())) with
-        | Interp.Env tbl -> Alcotest.(check sign_testable) "x resta Pos" E.skip_1 (Hashtbl.find tbl "x")
+        | Interp.Env tbl -> Alcotest.(check val_testable) "x resta Pos" E.skip_1 (Hashtbl.find tbl "x")
         | Interp.BottomEnv -> Alcotest.fail "Skip: stato inaspettatamente BottomEnv" );
   ]
 
@@ -365,7 +365,7 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
         parse_cmd "if w > x then skip else m = -7", [ "m", E.if_10 ]; );
     make_prog_case_with_env
       ( "If annidato",
-        parse_cmd "if w > x then (if w > x then k = 1 else k = -1) else k = 100",
+        parse_cmd "if w > x then {if w > x then k = 1 else k = -1} else k = 100",
         [ "k", E.if_11 ] );
     make_prog_case_with_env
       ( "If con And",
@@ -397,7 +397,7 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
         | Interp.Env tbl ->
             (* Per domini senza Pos stretto (come SimpleSigns), il ciclo esce soundly con x = 0 *)
             (match Hashtbl.find_opt tbl "x" with
-             | Some v -> Alcotest.(check sign_testable) "x deve valere 0 (Zero o PosZero)" (E.while_3_2) v
+             | Some v -> Alcotest.(check val_testable) "x deve valere 0 (Zero o PosZero)" (E.while_3_2) v
              | None -> Alcotest.fail "Variabile 'x' non trovata nello stato finale") );
     expect_bottom "Filter(false) prima del while"
       (parse_cmd "filter(false); while true do x = 1");
@@ -460,14 +460,14 @@ module Make_Sign_Tests (D : NonRelationalDomain) (E : EXPECTED_VALUES with type 
   ]
 end
 
-module TestSuite_ExtendedSigns = Make_Sign_Tests (Abstract_domains.ExtendedSigns) (Expected_ExtendedSigns)
-module TestSuite_SimpleSigns = Make_Sign_Tests (Abstract_domains.SimpleSigns) (Expected_SimpleSigns)
-module TestSuite_Signs = Make_Sign_Tests (Abstract_domains.Signs) (Expected_Signs)
-module TestSuite_SimplifiedSigns = Make_Sign_Tests (Abstract_domains.SimplifiedSigns) (Expected_SimplifiedSigns)
-module TestSuite_StrangeSigns = Make_Sign_Tests (Abstract_domains.StrangeSigns) (Expected_StrangeSigns)
-module TestSuite_Intervals = Make_Sign_Tests (Abstract_domains.Intervals) (Expected_Intervals)
+module TestSuite_ExtendedSigns = Make_Non_Relational_Test (Abstract_domains.ExtendedSigns) (Expected_ExtendedSigns)
+module TestSuite_SimpleSigns = Make_Non_Relational_Test (Abstract_domains.SimpleSigns) (Expected_SimpleSigns)
+module TestSuite_Signs = Make_Non_Relational_Test (Abstract_domains.Signs) (Expected_Signs)
+module TestSuite_SimplifiedSigns = Make_Non_Relational_Test (Abstract_domains.SimplifiedSigns) (Expected_SimplifiedSigns)
+module TestSuite_StrangeSigns = Make_Non_Relational_Test (Abstract_domains.StrangeSigns) (Expected_StrangeSigns)
+module TestSuite_Intervals = Make_Non_Relational_Test (Abstract_domains.Intervals) (Expected_Intervals)
 
-module Make_WeakRelational_Tests
+module Make_Weak_Relational_Test
     (D : Abstract_domains.WeakRelationalDomain)
     (Interp : sig val eval : cmd -> D.t end)
     (E : EXPECTED_ZONES with type value = D.value) = struct
@@ -661,8 +661,8 @@ module Make_WeakRelational_Tests
         [ "k", E.if_rel_ambig_k ] );
 
     make_prog_case
-      ( "If annidato: x=5; if (x > 0) then (if (x < 10) y = 1 else y = 2) else y = 3",
-        parse_cmd "x = 5; if x > 0 then (if x < 10 then y = 1 else y = 2) else y = 3",
+      ( "If annidato: x=5; if (x > 0) then {if (x < 10) then y = 1 else y = 2} else y = 3",
+        parse_cmd "x = 5; if x > 0 then {if x < 10 then y = 1 else y = 2} else y = 3",
         [ "y", E.if_nested_y ] );
 
     make_prog_case
@@ -835,8 +835,8 @@ module Make_WeakRelational_Tests
   ]
 end
 
-module TestSuite_Zones = Make_WeakRelational_Tests (Abstract_domains.Zones) (ZoneInterp) (Expected_Zones)
-module TestSuite_Octagons = Make_WeakRelational_Tests (Abstract_domains.Octagons) (OctagonInterp) (Expected_Octagons)
+module TestSuite_Zones = Make_Weak_Relational_Test (Abstract_domains.Zones) (ZoneInterp) (Expected_Zones)
+module TestSuite_Octagons = Make_Weak_Relational_Test (Abstract_domains.Octagons) (OctagonInterp) (Expected_Octagons)
 
 module OctagonSpecificTests = struct
   open Abstract_domains.Octagons
