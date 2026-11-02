@@ -510,7 +510,7 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   (* If *)
   let if_1 = top (*è corretto top*)
   let if_2 = PosZero
-  let if_3 = PosZero
+  let if_3 = top
   let if_4 = top
   let if_5 = PosZero
   let if_6 = NegZero
@@ -535,17 +535,17 @@ module Expected_SimpleSigns : EXPECTED_VALUES with type t = Abstract_domains.Sim
   let filter_1 = ExpectBottom
   let filter_2 = ExpectEnv []
   let filter_3 = ExpectEnv []
-  let filter_4 = ExpectBottom
+  let filter_4 = ExpectEnv []
   let filter_5 = ExpectEnv []
   let filter_6 = ExpectBottom
   let filter_7 = ExpectEnv [ "x", Zero ]
   let filter_8 = ExpectEnv [ "y", Zero ]
   let filter_9 = ExpectBottom
-  let filter_10 = ExpectBottom
-  let filter_11 = ExpectBottom
-  let filter_12 = ExpectBottom
+  let filter_10 = ExpectEnv ["x",Zero;"y",Zero]
+  let filter_11 = ExpectEnv ["x",Zero;"y",Zero]
+  let filter_12 = ExpectEnv ["x",Zero;"y",Zero]
   let filter_13 = ExpectBottom
-  let filter_14 = ExpectBottom
+  let filter_14 = ExpectEnv ["x",Zero;"y",Zero]
   let filter_15 = ExpectEnv [ "x", Zero ]
 
   (* Filtri Contraddittori Inc e Dec *)

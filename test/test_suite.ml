@@ -159,7 +159,7 @@ module Make_Non_Relational_Test (D : NonRelationalDomain) (E : EXPECTED_VALUES w
     "Negate: NonZero", parse_exp "-n", E.neg_6;
     "Negate: Top", parse_exp "-t", E.neg_7;
     "Negate: Bottom", parse_exp "-b", E.neg_8;
-    "Doppia negazione: --Pos", parse_exp "--x", E.neg_9;
+    "Doppia negazione: -(-Pos)", parse_exp "-(-x)", E.neg_9;
     "Pos + (-Neg)", parse_exp "x + (-y)", E.neg_10;
   ]
 

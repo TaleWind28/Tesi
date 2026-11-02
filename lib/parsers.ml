@@ -569,8 +569,8 @@ and parse_exp_unary state : Syntax.exp =
            Syntax.UnaryOperation (Syntax.Negation, sub))
   | T_MINUSMINUS ->
       ignore (advance state);
-      let sub = parse_exp_unary state in
-      Syntax.UnaryOperation (Syntax.Negation, Syntax.UnaryOperation (Syntax.Negation, sub))
+      let sub = parse_exp_primary state in
+      Syntax.Dec sub
   | T_PLUSPLUS ->
       ignore (advance state);
       let sub = parse_exp_primary state in

@@ -107,7 +107,14 @@ module IntervalArith = struct
     let max = if compare_bound d b <= 0 then b else PosInf in
     Interval(min,max)
 
-  let narrow x y = if leq y x then y else x
+  (* let narrow x y = if leq y x then y else x *)
+
+  let narrow c1 c2 = match c1, c2 with
+  | Bottom, _ | _, Bottom -> Bottom
+  | Interval(a, b), Interval(c, d) ->
+    let lo = if a = NegInf then c else a in
+    let hi = if b = PosInf then d else b in
+    Interval(lo, hi)
 
   let glb c1 c2 = match c1,c2 with
   | Bottom,_ | _,Bottom -> Bottom

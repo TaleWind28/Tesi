@@ -38,7 +38,7 @@ let tests = [
 
   ("Parser: Operatore Unario -x e Doppia Negazione", `Quick, fun () ->
     check_exp "unario -x" (UnaryOperation (Negation, Var "x")) (parse_exp "-x");
-    check_exp "doppia negazione --x" (UnaryOperation (Negation, UnaryOperation (Negation, Var "x"))) (parse_exp "--x");
+    check_exp "doppia negazione -(-x)" (UnaryOperation (Negation, UnaryOperation (Negation, Var "x"))) (parse_exp "-(-x)");
     let exp_complex = BinaryOperation (UnaryOperation (Negation, Var "x"), Add, Const 10) in
     check_exp "-x + 10" exp_complex (parse_exp "-x + 10")
   );
@@ -54,7 +54,8 @@ let tests = [
     check_exp "dec(Const 5)" (Dec (Const 5)) (parse_exp "dec(5)");
     check_exp "x + 1 come inc(x)" (Inc (Var "x")) (parse_exp "x + 1");
     check_exp "x - 1 come dec(x)" (Dec (Var "x")) (parse_exp "x - 1");
-    check_exp "++x come inc(x)" (Inc (Var "x")) (parse_exp "++x")
+    check_exp "++x come inc(x)" (Inc (Var "x")) (parse_exp "++x");
+    check_exp "--x come dec(x)" (Dec (Var "x")) (parse_exp "--x")
   );
 
   ("Parser: Condizioni Relazionali comp", `Quick, fun () ->
