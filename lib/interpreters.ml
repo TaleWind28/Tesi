@@ -383,9 +383,7 @@ module WeakRelationalAbsInterp ( D: WeakRelationalDomain) = struct
             let invariant = compute_invariant D.widen D.narrow D.leq f env
             in eval_cmd (Filter(Not(cond))) invariant
 
-                (* let f x = lub_env (Env (env)) (eval_cmd (Sequence(Filter(cond),cmd)) x) in  *)
-                (* let lfp f = Tramite funzione ausiliaria kleene lfp restituisce, se possibile, il punto dopo il quale il ciclo smette di produrre risultati che espandono lo stato corrente *)
-    let eval (prog: cmd) : D.t = 
+   let eval (prog: cmd) : D.t = 
         (* Raccoglie la lista variabili del programma dall'albero di sintassi astratta*)
         let var_list  = get_all_var prog in
         (* Crea lo stato iniziale *)
