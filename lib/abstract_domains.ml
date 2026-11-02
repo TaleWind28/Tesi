@@ -437,9 +437,9 @@ module SimpleSigns = struct (* a regola è questo SimpleSigns però bisogna cont
 
   let compare_type x y = match x,y with 
     | Zero,Zero -> 0
-    | SignTop, _ | _,SignTop | PosZero,( Zero | PosZero | NegZero) | NegZero,( NegZero | Zero | PosZero) | Zero,( PosZero | NegZero ) -> 2 (* Controllare se è uguale a PosZero | Zero | NegZero *)
     | SignBottom,_ -> -1
     | _,SignBottom -> 1
+    | _ -> 2
   
   let lub s1 s2 = match s1, s2 with
     | SignBottom, x | x, SignBottom -> x
