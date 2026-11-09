@@ -890,6 +890,52 @@ and parse_cmd_atom state : Syntax.cmd =
                    | _ -> false
                  in
                  (match peek_kind state with
+                  | T_PLUSPLUS ->
+                      ignore (advance state);
+                      (match peek_kind state with
+                       | T_IDE src_name ->
+                           let saved_after = save_pos state in
+                           ignore (advance state);
+                           let next_k = peek_kind state in
+                           restore_pos state saved_after;
+                           if is_cmd_delim next_k then begin
+                             ignore (advance state);
+                             Syntax.Sequence (
+                               Syntax.Assign (src_name, Syntax.Inc (Syntax.Var src_name)),
+                               Syntax.Assign (ide_name, Syntax.Var src_name)
+                             )
+                           end else begin
+                             restore_pos state saved_rhs;
+                             let expr = parse_exp state in
+                             Syntax.Assign (ide_name, expr)
+                           end
+                       | _ ->
+                           restore_pos state saved_rhs;
+                           let expr = parse_exp state in
+                           Syntax.Assign (ide_name, expr))
+                  | T_MINUSMINUS ->
+                      ignore (advance state);
+                      (match peek_kind state with
+                       | T_IDE src_name ->
+                           let saved_after = save_pos state in
+                           ignore (advance state);
+                           let next_k = peek_kind state in
+                           restore_pos state saved_after;
+                           if is_cmd_delim next_k then begin
+                             ignore (advance state);
+                             Syntax.Sequence (
+                               Syntax.Assign (src_name, Syntax.Dec (Syntax.Var src_name)),
+                               Syntax.Assign (ide_name, Syntax.Var src_name)
+                             )
+                           end else begin
+                             restore_pos state saved_rhs;
+                             let expr = parse_exp state in
+                             Syntax.Assign (ide_name, expr)
+                           end
+                       | _ ->
+                           restore_pos state saved_rhs;
+                           let expr = parse_exp state in
+                           Syntax.Assign (ide_name, expr))
                   | T_IDE src_name ->
                       ignore (advance state);
                       (match peek_kind state with
@@ -932,6 +978,66 @@ and parse_cmd_atom state : Syntax.cmd =
                   | T_LPAREN ->
                       ignore (advance state);
                       (match peek_kind state with
+                       | T_PLUSPLUS ->
+                           ignore (advance state);
+                           (match peek_kind state with
+                            | T_IDE src_name ->
+                                ignore (advance state);
+                                if peek_kind state = T_RPAREN then begin
+                                  let saved_after = save_pos state in
+                                  ignore (advance state);
+                                  let next_k = peek_kind state in
+                                  restore_pos state saved_after;
+                                  if is_cmd_delim next_k then begin
+                                    ignore (advance state);
+                                    Syntax.Sequence (
+                                      Syntax.Assign (src_name, Syntax.Inc (Syntax.Var src_name)),
+                                      Syntax.Assign (ide_name, Syntax.Var src_name)
+                                    )
+                                  end else begin
+                                    restore_pos state saved_rhs;
+                                    let expr = parse_exp state in
+                                    Syntax.Assign (ide_name, expr)
+                                  end
+                                end else begin
+                                  restore_pos state saved_rhs;
+                                  let expr = parse_exp state in
+                                  Syntax.Assign (ide_name, expr)
+                                end
+                            | _ ->
+                                restore_pos state saved_rhs;
+                                let expr = parse_exp state in
+                                Syntax.Assign (ide_name, expr))
+                       | T_MINUSMINUS ->
+                           ignore (advance state);
+                           (match peek_kind state with
+                            | T_IDE src_name ->
+                                ignore (advance state);
+                                if peek_kind state = T_RPAREN then begin
+                                  let saved_after = save_pos state in
+                                  ignore (advance state);
+                                  let next_k = peek_kind state in
+                                  restore_pos state saved_after;
+                                  if is_cmd_delim next_k then begin
+                                    ignore (advance state);
+                                    Syntax.Sequence (
+                                      Syntax.Assign (src_name, Syntax.Dec (Syntax.Var src_name)),
+                                      Syntax.Assign (ide_name, Syntax.Var src_name)
+                                    )
+                                  end else begin
+                                    restore_pos state saved_rhs;
+                                    let expr = parse_exp state in
+                                    Syntax.Assign (ide_name, expr)
+                                  end
+                                end else begin
+                                  restore_pos state saved_rhs;
+                                  let expr = parse_exp state in
+                                  Syntax.Assign (ide_name, expr)
+                                end
+                            | _ ->
+                                restore_pos state saved_rhs;
+                                let expr = parse_exp state in
+                                Syntax.Assign (ide_name, expr))
                        | T_IDE src_name ->
                            ignore (advance state);
                            (match peek_kind state with

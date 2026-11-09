@@ -93,7 +93,9 @@ let tests = [
     check_cmd "x = 1; x--" (Sequence (Assign ("x", Const 1), Assign ("x", Dec (Var "x")))) (parse_cmd "x = 1; x--;");
     check_cmd "trailing semicolon" (Sequence (Assign ("x", Const 1), Assign ("y", Const 2))) (parse_cmd "x = 1; y = 2;");
     check_cmd "y = x++ post-incremento" (Sequence (Assign ("y", Var "x"), Assign ("x", Inc (Var "x")))) (parse_cmd "y = x++");
-    check_cmd "y = x-- post-decremento" (Sequence (Assign ("y", Var "x"), Assign ("x", Dec (Var "x")))) (parse_cmd "y = x--")
+    check_cmd "y = x-- post-decremento" (Sequence (Assign ("y", Var "x"), Assign ("x", Dec (Var "x")))) (parse_cmd "y = x--");
+    check_cmd "y = ++x pre-incremento" (Sequence (Assign ("x", Inc (Var "x")), Assign ("y", Var "x"))) (parse_cmd "y = ++x");
+    check_cmd "y = --x pre-decremento" (Sequence (Assign ("x", Dec (Var "x")), Assign ("y", Var "x"))) (parse_cmd "y = --x")
   );
 
   ("Parser: Filtri cond ?", `Quick, fun () ->
