@@ -37,28 +37,22 @@ module NonRelationalAbsInterp (D : NonRelationalDomain) = struct
         Env(result)
 
     let refine_vars e1 e2 v1 v2 env comp =
+        let refine exp comp v1 v2 env became_bottom = 
+        match exp with
+            | Var s -> 
+                let filtered = D.filter_rel comp v2 in 
+                let refined = D.glb v1 filtered in 
+                if refined = D.bottom then became_bottom := true;
+                Hashtbl.replace env s refined
+            | _ -> ()
+        in
         let new_env = Hashtbl.copy env in
         let became_bottom = ref false in
-
         (* Raffina e1 usando il vincolo derivato da val2 e dal comparatore diretto *)
-        (match e1 with
-        | Var s1 ->
-            let filtered = D.filter_rel comp v2 in
-            let refined = D.glb v1 filtered in
-            if refined = D.bottom then became_bottom := true;
-            Hashtbl.replace new_env s1 refined
-        | _ -> ());
-
+        refine  e1 comp v1 v2 new_env became_bottom;
+        let inverted_comp = inv_comp comp in 
         (* Raffina e2 usando il vincolo derivato da val1 e dal comparatore CONVERSO *)
-        (match e2 with
-        | Var s2 ->
-            let inve_comp = inv_comp comp in
-            let filtered = D.filter_rel inve_comp v1 in
-            let refined = D.glb v2 filtered in
-            if refined = D.bottom then became_bottom := true;
-            Hashtbl.replace new_env s2 refined
-        | _ -> ());
-
+        refine  e2 inverted_comp v2 v1 new_env became_bottom;
         if !became_bottom then BottomEnv
         else Env new_env
 
