@@ -812,39 +812,26 @@ module Zones : WeakRelationalDomain = struct
       done;
       create_type_dbm dbm.n dbm.env dbm.matrix
 
-  let filter_atom rel env = 
-    match rel, env with
-    | _, Bottom -> Bottom
-    (* Vincolo Unario: x <= c *)
-    | Unary (Pos, x, c), Env dbm ->
-      let i = resolve_index dbm.env x in 
-      let new_m = copy_matrix dbm.matrix in
-      new_m.(i).(0) <- min_bound new_m.(i).(0) (Int c); 
-      close_dbm (create_type_dbm dbm.n dbm.env new_m) 
-    (* Vincolo Unario: -x <= c *)
-    | Unary (Neg, x, c), Env dbm ->
-      let i = resolve_index dbm.env x in 
-      let new_m = copy_matrix dbm.matrix in
-      new_m.(0).(i) <- min_bound new_m.(0).(i) (Int c); 
-      close_dbm (create_type_dbm dbm.n dbm.env new_m)
-    (* Vincolo Binario: x - y <= c *)
-    | Binary (Pos, x, Neg, y, c), Env dbm ->
-      let i = resolve_index dbm.env x in 
-      let j = resolve_index dbm.env y in 
-      let new_m = copy_matrix dbm.matrix in
-      new_m.(i).(j) <- min_bound new_m.(i).(j) (Int c); 
-      close_dbm (create_type_dbm dbm.n dbm.env new_m)
-    (* Vincolo Binario: y - x <= c *)
-    | Binary (Neg, x, Pos, y, c), Env dbm -> 
-      let i = resolve_index dbm.env x in 
-      let j = resolve_index dbm.env y in 
-      let new_m = copy_matrix dbm.matrix in
-      new_m.(j).(i) <- min_bound new_m.(j).(i) (Int c); 
-      close_dbm (create_type_dbm dbm.n dbm.env new_m)
-    (* Somme concordi: Safe over-approximation (le Zone non le supportano) *)
-    | Binary (Pos, _, Pos, _, _), Env dbm -> Env dbm
-    | Binary (Neg, _, Neg, _, _), Env dbm -> Env dbm
-
+  let filter_atom rel env =
+    match env with
+    | Bottom -> Bottom
+    | Env dbm ->
+      let constraint_opt = match rel with
+        (* Vincoli Unari: x <= c e -x <= c *)
+        | Unary (Pos, x, c)          -> Some (resolve_index dbm.env x, 0, c)
+        | Unary (Neg, x, c)          -> Some (0, resolve_index dbm.env x, c)
+        (* Vincoli Binari: x - y <= c e y - x <= c *)
+        | Binary (Pos, x, Neg, y, c) -> Some (resolve_index dbm.env x, resolve_index dbm.env y, c)
+        | Binary (Neg, x, Pos, y, c) -> Some (resolve_index dbm.env y, resolve_index dbm.env x, c)
+        (* Somme concordi: Safe over-approximation (le Zone non le supportano) *)
+        | Binary (Pos, _, Pos, _, _) | Binary (Neg, _, Neg, _, _) -> None
+      in
+      match constraint_opt with
+      | None -> Env dbm
+      | Some (row, col, c) ->
+        let new_m = copy_matrix dbm.matrix in
+        new_m.(row).(col) <- min_bound new_m.(row).(col) (Int c);
+        close_dbm (create_type_dbm dbm.n dbm.env new_m)
   let assign ide value env = match env, value with
     | Bottom, _ | _, Shared_modules.IntervalArith.Bottom -> Bottom
     | Env dbm, Interval (lo, hi) -> 
@@ -1143,57 +1130,27 @@ module Octagons : WeakRelationalDomain = struct
   let filter_atom rel env =
     match env with
     | Bottom -> Bottom
-    | Env dbm -> 
-      let new_m = copy_matrix dbm.matrix in 
-      match rel with
-      (* Vincolo Unario: x <= c *)
-      | Unary(Pos,x,c) -> 
-        let k = resolve_index dbm.env x in 
-        let pos, neg = 2 * k, 2 * k + 1 in
-        new_m.(pos).(neg) <- min_bound new_m.(pos).(neg) (Int (2*c));
-        strong_closure(create_type_dbm dbm.n dbm.env new_m)
-      (* Vincolo Binario: -x <= c (Supportato!) *)
-      | Unary(Neg,x,c) -> 
-        let k = resolve_index dbm.env x in 
-        let pos, neg = 2 * k, 2 * k + 1 in
-        new_m.(neg).(pos) <- min_bound new_m.(neg).(pos) (Int (2*c));
-        strong_closure(create_type_dbm dbm.n dbm.env new_m)
-      (* Vincolo Binario: x - y <= c (Supportato!) *)
-      | Binary(Pos,x,Neg,y,c) -> 
-        let kx = resolve_index dbm.env x in 
-        let ky = resolve_index dbm.env y in 
-        let px,nx = 2*kx, 2*kx +1 in 
-        let py,ny = 2*ky, 2*ky +1 in
-        new_m.(px).(py) <- min_bound new_m.(px).(py) (Int c);
-        new_m.(ny).(nx) <- min_bound new_m.(ny).(nx) (Int c);
-        strong_closure(create_type_dbm dbm.n dbm.env new_m)
-      (* Vincolo Binario: -x + y <= c (Supportato!) *)
-      | Binary(Neg,x,Pos,y,c) -> 
-        let kx = resolve_index dbm.env x in 
-        let ky = resolve_index dbm.env y in 
-        let px,nx = 2*kx, 2*kx +1 in 
-        let py,ny = 2*ky, 2*ky +1 in
-        new_m.(py).(px) <- min_bound new_m.(py).(px) (Int c);
-        new_m.(nx).(ny) <- min_bound new_m.(nx).(ny) (Int c);
-        strong_closure(create_type_dbm dbm.n dbm.env new_m)
-      (* Vincolo Binario: x + y <= c (Supportato!) *)
-      | Binary(Pos,x,Pos,y,c) -> 
-        let kx = resolve_index dbm.env x in 
-        let ky = resolve_index dbm.env y in 
-        let px,nx = 2*kx, 2*kx +1 in 
-        let py,ny = 2*ky, 2*ky +1 in
-        new_m.(px).(ny) <- min_bound new_m.(px).(ny) (Int c);
-        new_m.(py).(nx) <- min_bound new_m.(py).(nx) (Int c);
-        strong_closure(create_type_dbm dbm.n dbm.env new_m)
-      (* Vincolo Binario: -x - y <= c (Supportato!) *)
-      | Binary(Neg,x,Neg,y,c) -> 
-        let kx = resolve_index dbm.env x in 
-        let ky = resolve_index dbm.env y in 
-        let px,nx = 2*kx, 2*kx +1 in 
-        let py,ny = 2*ky, 2*ky +1 in
-        new_m.(nx).(py) <- min_bound new_m.(nx).(py) (Int c);
-        new_m.(ny).(px) <- min_bound new_m.(ny).(px) (Int c);
-        strong_closure(create_type_dbm dbm.n dbm.env new_m)
+    | Env dbm ->
+      let idx_of s x =
+        let k = resolve_index dbm.env x in
+        match s with Pos -> 2 * k | Neg -> 2 * k + 1
+      in
+      let new_m = copy_matrix dbm.matrix in
+      let update r c_idx bound =
+        new_m.(r).(c_idx) <- min_bound new_m.(r).(c_idx) (Int bound)
+      in
+      (match rel with
+       (* Vincoli Unari: ±x <= c  <=>  (±x) - (∓x) <= 2c *)
+       | Unary (s, x, c) ->
+         let i = idx_of s x in
+         update i (dual i) (2 * c)
+       (* Vincoli Binari: s1*x + s2*y <= c  <=>  s1*x - (-s2*y) <= c  e  s2*y - (-s1*x) <= c *)
+       | Binary (s1, x, s2, y, c) ->
+         let i = idx_of s1 x in
+         let j = idx_of s2 y in
+         update i (dual j) c;
+         update j (dual i) c);
+      strong_closure (create_type_dbm dbm.n dbm.env new_m)
 
   let to_string t = match t with
     | Bottom -> "Bottom"
